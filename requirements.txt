@@ -1,9 +1,26 @@
-# 剧本分镜工坊 — Python 依赖（离线安装，来源：Infinite Canvas\packages + 随 python 复制的 site-packages）
+# 小麻雀剧本分镜工坊 — Python 依赖清单
+#
+# 运行环境要求：Python 3.10 ~ 3.12
+#   注意：Python 3.13 起标准库已移除 audioop（asset_validator 音频检测依赖），3.13+ 会失败。
+#
+# 安装：pip install -r requirements.txt
+
+# ── Web 服务 ──
 fastapi==0.141.1
 uvicorn==0.52.3
 requests==2.34.2
 httpx==0.28.1
 pydantic==2.13.4
 python-multipart==0.0.32
-pillow==12.3.0
 watchfiles==1.2.0
+
+# ── 图像 / 音频处理（asset_validator 校验音频/图片用）──
+pillow==12.3.0
+numpy==2.2.6
+soundfile==0.14.0
+
+# ── 语音合成（人物音色样本生成）──
+edge-tts==7.2.8
+
+# ── 开发依赖（仅跑测试时需要，按需放开）──
+# pytest==9.1.1

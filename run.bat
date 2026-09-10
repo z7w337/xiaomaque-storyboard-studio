@@ -32,7 +32,7 @@ if not defined PYEXE where python >nul 2>&1 && set "PYEXE=python"
 if not defined PYEXE where py >nul 2>&1 && set "PYEXE=py -3"
 if not defined PYEXE (
   echo  [错误] 未找到 Python 解释器。
-  echo         请安装 Python 3.10+ 并加入 PATH；
+  echo         请安装 Python 3.10 ~ 3.12 并加入 PATH（3.13+ 已移除标准库 audioop，无法运行）；
   echo         或在本目录放置内嵌解释器 python\python.exe 后重试。
   echo.
   pause
