@@ -73,7 +73,7 @@ def _path(kind: str) -> Path:
 
 # ---- 运行配置（外部路径注入） ----
 
-DEFAULT_SHARED_ASSETS = r"<shared-assets-dir>"  # 占位符（收口整改 2026-09-11，去本机绝对路径）；仅初始化默认值，真机在设置页配置后代码一律从配置读
+DEFAULT_SHARED_ASSETS = str(BASE_DIR / "SharedAssets")  # 默认=程序目录下 SharedAssets（可移植、不含本机路径）；真机可在设置页改为任意目录
 # 收尾A②(2026-09-10): 默认值改占位符,不写死内网IP; 真实地址由 data/settings.json 配置(get_comfyui_url 从 settings 读)
 DEFAULT_COMFYUI_URL = "http://<comfyui-ip>:8188"  # 占位符; 真机在设置页配置实际 ComfyUI 地址
 
@@ -98,7 +98,7 @@ def _settings(read_only: bool) -> dict:
     defaults = {
         "shared_assets_path": DEFAULT_SHARED_ASSETS,
         "comfyui_url": DEFAULT_COMFYUI_URL,  # v1.55：ComfyUI 直连（音色样本 + 6-10 视频）；收尾A②默认占位
-        "ic_path": "<ic-path>",  # 占位符（收口整改 2026-09-11，去本机绝对路径）；IC 已下线，仅作历史工作流兜底
+        "ic_path": "",  # IC 已下线；历史工作流兜底路径留空（收口整改 2026-09-11，去本机绝对路径）
         "llm_models": [],       # 模型列表 [{id,name,base_url,model,api_key,temperature,price_per_1k,is_default}]
         "listen": "127.0.0.1",  # 监听地址
         "protect_copy": False,  # 保护性副本开关
