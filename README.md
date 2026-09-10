@@ -23,10 +23,23 @@
 
 **第 1 步：下载**
 
-📦 百度网盘下载地址：
+文件名：`xiaomaque-storyboard-studio-portable-20260911.zip`（44.7 MB）
 
-> **链接**：`<待填写：上传后回填>`
-> **提取码**：`<待填写>`
+**渠道一 · GitHub Release（推荐，免登录直接下载）**
+
+> **直链**：https://github.com/z7w337/xiaomaque-storyboard-studio/releases/download/20260911/xiaomaque-storyboard-studio-portable-20260911.zip
+>
+> **发布页**：https://github.com/z7w337/xiaomaque-storyboard-studio/releases/tag/20260911
+
+**渠道二 · 夸克网盘（国内速度更快）**
+
+> **链接**：https://pan.quark.cn/s/8748e5722179
+>
+> **口令**：`/~777f3anbKo~:/`
+>
+> 用法：点开链接即可；若提示需用 App，则复制上面整段内容，打开「夸克 APP」自动识别。
+
+> 文件完整性校验（可选）：SHA256 `4ffc04045f16f1a7d02d816c6b3bbc6862f2d35daea0669861ebd1f5756e16e1`
 
 **第 2 步：解压**
 
