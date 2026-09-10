@@ -76,4 +76,18 @@ FastAPI · 原生前端（无框架依赖）· MiniMax H3 · ComfyUI · gsplat.j
 
 ## 截图
 
-（待补充：资产库 / 场页 / 生图工具 / GS 预览）
+**资产库** —— 人物 / 场景 / 道具三类卡片，变体管理与图片版本历史
+
+![资产库](screenshots/01-assets.png)
+
+**场页** —— 提示词编辑器、@ 引用组装、场视频预览
+
+![场页](screenshots/02-scene.png)
+
+**生图工具** —— 内置 5 个可选工作流（Z-Image / 2511 / Flux2-Klein / Enhance / upscale）
+
+![生图工具](screenshots/03-gentools.png)
+
+**3D 高斯泼溅预览** —— .ply 查看，左键旋转 / 中键平移 / 滚轮缩放
+
+![GS 预览](screenshots/04-gsplat.png)

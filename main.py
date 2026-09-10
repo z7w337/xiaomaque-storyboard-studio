@@ -1477,7 +1477,7 @@ def api_recommend_scopes(kind: str, item_id: str, payload: RecommendScopesPayloa
 
 # ---- IC 代理（阶段 5，固定前缀：必须在 /api/{kind} 通配之前） ----
 
-IC_DEFAULT_URL = "http://127.0.0.1:3000"   # IC HTTP 服务地址（settings.ic_url 可覆盖）
+IC_DEFAULT_URL = ""   # IC 已下线：默认不再指向任何地址，兼容旧部署时由设置页 settings.ic_url 提供
 
 
 def _ic_url() -> str:
