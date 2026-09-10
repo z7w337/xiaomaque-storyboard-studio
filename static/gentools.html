@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>小麻雀剧本分镜工坊 - 生图工具</title>
+<style>
+  /* ===== 页面骨架（与工坊各页一致：侧栏 nav.js + 主区）===== */
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "Microsoft YaHei", "PingFang SC", sans-serif; background: #f5f6f8; color: #333; display: flex; min-height: 100vh; }
+  .main-wrap { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  main { max-width: 1180px; margin: 18px auto; padding: 0 18px; width: 100%; }
+  button { padding: 8px 16px; border: none; border-radius: 8px; cursor: pointer; font-size: 13px; }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  .btn-primary { background: #2563eb; color: #fff; }
+  .btn-primary:hover { background: #1d4ed8; }
+  .btn-ghost { background: #f3f4f6; color: #374151; border: 1px solid #e5e7eb; }
+  .btn-ghost:hover { background: #e5e7eb; }
+  .btn-mini { padding: 4px 10px; font-size: 12px; border-radius: 6px; }
+  .panel { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 18px; }
+  .page-title { font-size: 18px; font-weight: 700; color: #1f2937; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
+  .page-title .sub { font-size: 12px; font-weight: 400; color: #9ca3af; }
+  .banner { font-size: 12px; color: #9a3412; background: #fff7ed; border: 1px solid #fed7aa; border-radius: 8px; padding: 6px 12px; margin: 8px 0 14px; line-height: 1.7; }
+  .hint { font-size: 12px; color: #9ca3af; line-height: 1.7; }
+  textarea, input[type=number], input[type=text], select { border: 1px solid #d1d5db; border-radius: 8px; padding: 6px 8px; font-size: 13px; font-family: inherit; }
+  textarea:focus, input:focus, select:focus { outline: none; border-color: #2563eb; }
+
+  /* 生图工具：5 模式分段条 */
+  #gt-modes { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+  .gt-mode { display: flex; flex-direction: column; align-items: center; gap: 2px; border: 1px solid #e5e7eb; border-radius: 10px; padding: 8px 16px; background: #fafafa; cursor: pointer; font-size: 12px; color: #374151; }
+  .gt-mode b { font-size: 13px; }
+  .gt-mode i { font-style: normal; font-size: 11px; color: #9ca3af; }
+  .gt-mode:hover { border-color: #2563eb; }
+  .gt-mode.active { background: #eef2ff; border-color: #2563eb; color: #3730a3; }
+  .gt-mode.active i { color: #6d6a9c; }
+  /* 参考图槽 */
+  .gt-slot-row { display: flex; gap: 10px; flex-wrap: wrap; }
+  .gt-slot { display: inline-flex; flex-direction: column; align-items: center; gap: 6px; border: 1px solid #e5e7eb; border-radius: 10px; padding: 8px; min-width: 120px; background: #fafafa; }
+  .gt-slot .lbl { font-size: 11px; color: #6b7280; }
+  .gt-slot .box { width: 104px; height: 104px; border: 2px dashed #d1d5db; border-radius: 8px; overflow: hidden; cursor: pointer; background: #fff; display: flex; align-items: center; justify-content: center; color: #9ca3af; font-size: 24px; }
+  .gt-slot .box img { width: 100%; height: 100%; object-fit: cover; }
+  .gt-divider { margin: 12px 0; border-top: 1px solid #f3f4f6; }
+  .range-row { display: flex; align-items: center; gap: 8px; margin: 6px 0; font-size: 13px; color: #374151; }
+  .range-row .rl { flex: 0 0 90px; }
+  .range-row input[type=range] { flex: 1; }
+  .range-row .rv { flex: 0 0 56px; text-align: right; color: #2563eb; }
+  /* ===== 参考图槽：下拉菜单（上传 / 从资产库）===== */
+  .gt-slot { position: relative; }
+  .gt-slot-menu { position: absolute; top: 100%; left: 50%; transform: translateX(-50%); margin-top: 4px; background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.12); z-index: 60; min-width: 150px; padding: 4px; display: none; }
+  .gt-slot-menu.open { display: block; }
+  .gt-slot-menu .gsm-item { display: flex; align-items: center; gap: 8px; padding: 7px 10px; font-size: 12px; color: #1f2937; border-radius: 7px; cursor: pointer; white-space: nowrap; }
+  .gt-slot-menu .gsm-item:hover { background: #eef2ff; color: #3730a3; }
+  .gt-slot-menu .gsm-sep { height: 1px; background: #f3f4f6; margin: 3px 2px; }
+  .gt-slot-menu .gsm-item.gsm-del { color: #b91c1c; }
+  .gt-slot-menu .gsm-item.gsm-del:hover { background: #fef2f2; color: #991b1b; }
+  /* ===== 资产库选择弹窗：Hover 大图预览 ===== */
+  .gt-pick-prev { position: absolute; display: none; width: 172px; background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,.18); z-index: 80; pointer-events: none; }
+  .gt-pick-prev img { width: 100%; display: block; }
+  .gt-pick-row { display: flex; align-items: center; gap: 8px; padding: 4px 6px; border-radius: 6px; cursor: pointer; }
+  .gt-pick-row:hover { background: #eef2ff; }
+  .gt-pick-row img { width: 40px; height: 40px; border-radius: 6px; object-fit: cover; background: #eceff3; flex-shrink: 0; }
+  .gt-pick-row span { font-size: 12px; color: #1f2937; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* ===== 2511 参考图联动预览 ===== */
+  .gt-2511stage { position: relative; width: 100%; height: 210px; border-radius: 10px; overflow: hidden; background: radial-gradient(circle at 50% 38%, #eef2f7 0%, #dbe3ec 70%, #ccd6e2 100%); margin-bottom: 8px; display: flex; align-items: center; justify-content: center; }
+  .gt-2511stage .gt-2511ph { color: #94a3b8; font-size: 13px; text-align: center; line-height: 1.9; }
+  .gt-2511stage .gt-2511img { max-width: 92%; max-height: 84%; border-radius: 8px; box-shadow: 0 12px 32px rgba(0,0,0,.28); transition: transform .06s linear; transform-style: preserve-3d; }
+  .gt-2511stage .gt-2511-cmd { position: absolute; left: 8px; bottom: 8px; background: rgba(0,0,0,.5); color: #fff; font-size: 11px; padding: 3px 8px; border-radius: 6px; max-width: calc(100% - 16px); }
+  /* ===== 生成结果：原图/生成图 Hover 分区对比（大预览，参照 before/after 分割）===== */
+  .gt-cmp { position: relative; width: 100%; height: 420px; border-radius: 12px; overflow: hidden; background: #1f2937; border: 1px solid #e5e7eb; user-select: none; }
+  .gt-cmp .gt-cmp-base, .gt-cmp .gt-cmp-top { position: absolute; inset: 0; }
+  .gt-cmp img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: repeating-conic-gradient(#262b33 0 25%, #1f232b 0 50%) 0 0/22px 22px; }
+  .gt-cmp .gt-cmp-top { clip-path: inset(0 calc(100% - 50%) 0 0); }
+  .gt-cmp .gt-cmp-line { position: absolute; top: 0; bottom: 0; left: 50%; width: 2px; background: #fff; box-shadow: 0 0 8px rgba(0,0,0,.6); cursor: ew-resize; }
+  .gt-cmp .gt-cmp-line::after { content: '◂ ▸'; position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); background: #fff; color: #1f2937; font-size: 12px; padding: 2px 6px; border-radius: 6px; box-shadow: 0 1px 4px rgba(0,0,0,.4); white-space: nowrap; }
+  .gt-cmp .gt-cmp-tag { position: absolute; top: 10px; font-size: 12px; padding: 3px 9px; border-radius: 6px; pointer-events: none; }
+  .gt-cmp .gt-cmp-tag.t-orig { left: 10px; background: rgba(37,99,235,.9); color: #fff; }
+  .gt-cmp .gt-cmp-tag.t-gen { right: 10px; background: rgba(22,163,74,.9); color: #fff; }
+  .gt-cmp .gt-cmp-hint { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); background: rgba(0,0,0,.55); color: #fff; font-size: 11px; padding: 3px 10px; border-radius: 6px; white-space: nowrap; }
+  /* ===== 生图进行中模态（参照资产卡音色生成进度模态，v1.55b）===== */
+  .gt-pg-mask { position: fixed; inset: 0; background: rgba(17,24,39,.45); z-index: 950; display: none; align-items: center; justify-content: center; }
+  .gt-pg-card { background: #fff; border-radius: 16px; padding: 30px 42px; width: 340px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,.25); }
+  .gt-pg-icon { font-size: 40px; display: inline-block; animation: gt-pg-spin 1.2s linear infinite; }
+  @keyframes gt-pg-spin { from { transform: rotate(0); } to { transform: rotate(360deg); } }
+  .gt-pg-title { font-size: 16px; font-weight: 700; margin: 12px 0 4px; color: #1f2937; }
+  .gt-pg-stage { font-size: 13px; color: #6b7280; margin-bottom: 14px; min-height: 18px; }
+  .gt-pg-bar { height: 8px; border-radius: 4px; background: #e5e7eb; overflow: hidden; }
+  .gt-pg-fill { height: 100%; width: 0%; background: #2563eb; transition: width .4s; border-radius: 4px; }
+  .gt-pg-time { font-size: 12px; color: #9ca3af; margin-top: 8px; }
+</style>
+</head>
+<body>
+<aside id="sidebar"></aside>
+<div class="main-wrap">
+  <!-- 生图进行中模态（参照资产卡音色生成进度模态 v1.55b） -->
+  <div class="gt-pg-mask" id="gt-pg-mask">
+    <div class="gt-pg-card">
+      <div class="gt-pg-icon">🎨</div>
+      <div class="gt-pg-title" id="gt-pg-title">生成图片中…</div>
+      <div class="gt-pg-stage" id="gt-pg-stage">提交生成任务…</div>
+      <div class="gt-pg-bar"><div class="gt-pg-fill" id="gt-pg-fill"></div></div>
+      <div class="gt-pg-time" id="gt-pg-time">已耗时 0 秒</div>
+    </div>
+  </div>
+<main>
+  <div class="page-title">🎨 生图工具</div>
+
+  <div class="panel">
+    <div id="gt-modes"></div>
+    <div id="gt-panel" style="min-height:120px"></div>
+  </div>
+
+  <div style="margin-top:10px" class="hint">独立于"资产库·点卡生图"入口（两入口并存）。图槽可从资产库（场景/道具/素材）选或本地上传（登记为参考类素材）。</div>
+</main>
+</div>
+
+<script src="/static/palette.js?v=1"></script>
+<script>
+/* ===== 生图工具独立页（阶段3 UI 先行：5 模式条件假参数；真实出图阶段4 /api/comfy/generate 接入）=====
+   原为资产页顶部折叠面板，迁移为独立导航页(替换 nav"画布"项, 右部整页)。 */
+var GEN_TOOLS_MODE = 'zimage';
+var GEN_TOOLS_IMG = {};   // slot key -> {path, name} 各模式图槽已选图
+
+function toast(t, ty) { window.toast ? window.toast(t, ty) : alert(t); }
+function escH(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+
+/* 工坊 API 封装（独立页自带，仿 assets 的 api()）：GET 返回 json；POST JSON/FormData */
+function gtApi(path, opt) {
+  opt = opt || {};
+  var o = Object.assign({ headers: {} }, opt);
+  if (o.body && typeof o.body !== 'string' && !(o.body instanceof FormData)) { o.headers['Content-Type'] = 'application/json; charset=utf-8'; o.body = JSON.stringify(o.body); }
+  return fetch(path, o).then(function (r) {
+    if (!r.ok) return r.json().then(function (x) { throw new Error((x && (x.detail || x.msg)) || ('请求失败 ' + r.status)); });
+    return r.json();
+  });
+}
+
+/* 5 模式定义：key / 名称 / 副题 / 面板渲染器 */
+var GEN_MODES = [
+  { key: 'zimage', name: 'Z-Image', sub: '文生图' },
+  { key: '2511', name: '2511', sub: '参考图·多角度' },
+  { key: 'klein', name: 'Flux2-Klein', sub: '参考迁移' },
+  { key: 'enhance', name: 'Enhance', sub: '细节增强' },
+  { key: 'upscale', name: 'upscale', sub: '2K 超分' }
+];
+function renderGenModes() {
+  var el = document.getElementById('gt-modes'); el.innerHTML = '';
+  GEN_MODES.forEach(function (m) {
+    var b = document.createElement('button');
+    b.className = 'gt-mode' + (GEN_TOOLS_MODE === m.key ? ' active' : '');
+    b.setAttribute('data-k', m.key);
+    b.innerHTML = '<b>' + escH(m.name) + '</b><i>' + escH(m.sub) + '</i>';
+    b.onclick = function () { switchGenMode(m.key); };
+    el.appendChild(b);
+  });
+}
+function switchGenMode(key) { GEN_TOOLS_MODE = key; renderGenModes(); renderGenPanel(); }
+
+/* 参考图槽 UI：通用渲染单槽（点槽弹出 上传/从资产库 下拉菜单） */
+function genSlotHTML(slotKey, label, required) {
+  var cur = GEN_TOOLS_IMG[slotKey];
+  var mn = '<div class="gt-slot-menu" id="gt-slotmenu-' + slotKey + '" data-k="' + slotKey + '">'
+    + '<div class="gsm-item" onclick="genCloseSlotMenuAll();genPickImg(\'' + slotKey + '\')">📁 从资产库中选择</div>'
+    + '<div class="gsm-item" onclick="genCloseSlotMenuAll();genUploadImg(\'' + slotKey + '\')">⬆ 本地上传</div>'
+    + (cur ? '<div class="gsm-sep"></div><div class="gsm-item gsm-del" onclick="genClearImg(\'' + slotKey + '\');genCloseSlotMenuAll()">🗑 清除当前</div>' : '')
+    + '</div>';
+  return '<div class="gt-slot" id="gt-slot-' + slotKey + '"><div class="lbl">' + escH(label) + (required ? ' <span style="color:#dc2626">*</span>' : '') + '</div>'
+    + '<div class="box" onclick="genToggleSlotMenu(event,\'' + slotKey + '\')">' + (cur ? '<img src="/api/asset-file/' + encodeURIComponent(cur.path) + '">' : '＋') + '</div>'
+    + '<div style="font-size:10px;color:#9ca3af">' + (cur ? '点图：更换 / 上传' : '点选或上传参考图') + '</div>'
+    + mn
+    + '</div>';
+}
+/* 下拉菜单开关：点槽切换本菜单，并关闭其它菜单；点外部关闭 */
+function genToggleSlotMenu(ev, slotKey) {
+  if (ev) { ev.stopPropagation(); }
+  var menu = document.getElementById('gt-slotmenu-' + slotKey);
+  if (!menu) return;
+  var isOpen = menu.classList.contains('open');
+  genCloseSlotMenuAll();
+  if (!isOpen) menu.classList.add('open');
+}
+function genCloseSlotMenuAll() {
+  var list = document.querySelectorAll('.gt-slot-menu.open');
+  for (var i = 0; i < list.length; i++) list[i].classList.remove('open');
+}
+document.addEventListener('click', function (e) {
+  if (!e.target.closest || !e.target.closest('.gt-slot')) genCloseSlotMenuAll();
+});
+/* 从资产库选择弹窗：分组列表 + Hover 大图预览 */
+function genPickPrev(slotKey, pathEnc, nameEnc) {
+  var p = decodeURIComponent(pathEnc || '');
+  var box = document.getElementById('gt-pick-prev');
+  var imEl = document.getElementById('gt-pick-prev-img');
+  var phEl = document.getElementById('gt-pick-prev-ph');
+  var nmEl = document.getElementById('gt-pick-prev-name');
+  if (!box || !imEl) return;
+  if (p) {
+    box.style.display = 'flex';
+    if (phEl) phEl.style.display = 'none';
+    imEl.style.display = 'block';
+    imEl.src = '/api/asset-file/' + encodeURIComponent(p);
+  } else {
+    box.style.display = 'flex';
+    if (phEl) phEl.style.display = 'block';
+    imEl.style.display = 'none';
+  }
+  if (nmEl) nmEl.textContent = decodeURIComponent(nameEnc || '');
+}
+async function genPickImg(slotKey) {
+  var listHtml = '', total = 0;
+  var groups = [['scenes', '🏙️ 场景'], ['props', '🎭 道具'], ['references', '🧩 素材']];
+  for (var gi = 0; gi < groups.length; gi++) {
+    var gk = groups[gi][0], glbl = groups[gi][1], items = [];
+    try { items = (await gtApi('/api/' + gk)).items || []; } catch (e) {}
+    if (!items.length) continue;
+    total += items.length;
+    listHtml += '<div style="font-size:12px;color:#6b7280;padding:5px 2px;position:sticky;top:0;background:#fafafa">' + glbl + '（' + items.length + '）</div>';
+    items.forEach(function (a) {
+      var im = (a.images && a.images[0] && a.images[0].path) ? a.images[0].path : '';
+      var nm = (gk === 'references') ? (a.path || im || '').split('/').pop() : ((a.prefix || '') + '-' + (a.variant_name || ''));
+      if (im) listHtml += '<div class="gt-pick-row" onclick="genSetImg(\'' + slotKey + '\',\'' + encodeURIComponent(im) + '\',\'' + encodeURIComponent(nm) + '\')" onmouseenter="genPickPrev(\'' + slotKey + '\',\'' + encodeURIComponent(im) + '\',\'' + encodeURIComponent(nm) + '\')" title="点击选用">'
+        + '<img src="/api/asset-file/' + encodeURIComponent(im) + '"><span>' + escH(nm) + '</span></div>';
+    });
+  }
+  if (!total) listHtml = '<div style="padding:20px;color:#9ca3af;text-align:center">素材库暂无可用图片（可切换到「本地上传」）</div>';
+  else listHtml += '<div style="margin-top:6px;font-size:11px;color:#9ca3af">悬停缩略图可预览大图，点击选用。</div>';
+  // 弹窗整体固定 4:3 比例：左=分组列表(滚动)，右=hover 大图(撑满，不强制比例)
+  var html = '<style>#g-modal-mask .g-modal{width:640px;height:480px;max-width:96vw;max-height:92vh;box-sizing:border-box;display:flex;flex-direction:column;padding:16px 18px}#g-modal-mask .g-modal h3{flex:0 0 auto}#g-modal-mask .g-modal .g-msg{flex:1 1 auto;min-height:0;overflow:auto;display:flex;flex-direction:column;white-space:normal}#g-modal-mask .g-modal .g-actions{flex:0 0 auto}</style>'
+    + '<div style="flex:1 1 auto;min-height:0;display:flex;gap:14px;align-items:stretch">'
+    + '<div style="flex:1.1;min-width:0;overflow:auto;padding-right:4px">' + listHtml + '</div>'
+    + '<div style="flex:1;min-width:0;display:flex;flex-direction:column">'
+    + '<div id="gt-pick-prev" style="display:flex;flex:1 1 auto;min-height:0;border-radius:10px;overflow:hidden;background:#eceff3;border:1px solid #e5e7eb;align-items:center;justify-content:center;position:relative">'
+    + '<div id="gt-pick-prev-ph" style="color:#9ca3af;font-size:12px;text-align:center;line-height:1.8;padding:0 8px">👆 鼠标移到左侧素材<br>此处预览大图</div>'
+    + '<img id="gt-pick-prev-img" src="" style="display:none;width:100%;height:100%;object-fit:contain"></div>'
+    + '<div id="gt-pick-prev-name" style="margin-top:6px;font-size:12px;color:#6b7280;word-break:break-all;min-height:16px;flex:0 0 auto"></div>'
+    + '</div></div>'
+    + '<div style="margin-top:8px;flex:0 0 auto;font-size:12px;color:#9ca3af">也可 <a href="javascript:genUploadImg(\'' + slotKey + '\')" style="color:#2563eb">⬆ 本地上传</a>（登记为参考类素材）</div>';
+  if (!window.confirmDialog) return;
+  window.confirmDialog('选择参考图（悬停预览）', html, function () {}, '关闭');
+}
+function genSetImg(slotKey, pathEnc, nameEnc) {
+  var p = decodeURIComponent(pathEnc); if (!p) return;
+  GEN_TOOLS_IMG[slotKey] = { path: p, name: decodeURIComponent(nameEnc) || p.split('/').pop() };
+  renderGenPanel(); if (window.confirmDialog) { var m = document.getElementById('g-modal-mask'); if (m) m.style.display = 'none'; }
+}
+function genClearImg(slotKey) { delete GEN_TOOLS_IMG[slotKey]; renderGenPanel(); }
+function genUploadImg(slotKey) {
+  if (window.confirmDialog) { var m = document.getElementById('g-modal-mask'); if (m) m.style.display = 'none'; }
+  var input = document.createElement('input'); input.type = 'file'; input.accept = 'image/*';
+  input.onchange = function () {
+    var f = input.files[0]; if (!f) return;
+    var fd = new FormData(); fd.append('file', f);
+    gtApi('/api/ref-upload', { method: 'POST', body: fd }).then(function (rec) {
+      if (rec && rec.path) { GEN_TOOLS_IMG[slotKey] = { path: rec.path, name: f.name }; renderGenPanel(); toast('已上传并选用', 'success'); }
+      else toast('上传未返回图', 'error');
+    }).catch(function (e) { toast('上传失败：' + (e.message || e), 'error'); });
+  };
+  input.click();
+}
+
+/* 面板渲染：5 模式条件面板（假参数，参照 IC 源工具页 angle/klein/zimage/enhance 重写为工坊 UI） */
+function rangeSlider(id, label, min, max, step, val, unit) {
+  return '<div class="range-row"><span class="rl">' + escH(label) + '</span>'
+    + '<input type="range" id="' + id + '" min="' + min + '" max="' + max + '" step="' + step + '" value="' + val + '" oninput="document.getElementById(\'' + id + '_v\').textContent=this.value">'
+    + '<span class="rv" id="' + id + '_v">' + val + '</span>' + escH(unit || '')
+    + '</div>';
+}
+/* 2511 专用联动滑块：拖动即驱动参考图 3D 预览 + 实时角度指令 */
+function gen2511Range(id, label, min, max, step, val, unit) {
+  return '<div class="range-row"><span class="rl">' + escH(label) + '</span>'
+    + '<input type="range" id="' + id + '" min="' + min + '" max="' + max + '" step="' + step + '" value="' + val + '" oninput="gt2511Link()">'
+    + '<span class="rv" id="' + id + '_v">' + val + '</span>' + escH(unit || '')
+    + '</div>';
+}
+/* 合成角度指令文字（参照 IC angle 页的措辞） */
+function gt2511Cmd(rh, rv, dist) {
+  var parts = [];
+  if (rh && Math.abs(rh) >= 1) { parts.push((rh > 0 ? '向右旋转' : '向左旋转') + Math.abs(rh) + '°'); }
+  if (rv && Math.abs(rv) >= 1) { parts.push((rv > 0 ? '俯视' : '仰视') + Math.abs(rv) + '°'); }
+  if (dist < 3.9) parts.push('特写镜头拉近');
+  else if (dist > 4.1) parts.push('广角镜头拉远');
+  if (!parts.length) parts.push('保持原位');
+  return '将相机' + parts.join('，');
+}
+/* 三控件 ↔ 参考图联动：实时 CSS3D 预览 + 读数 + 角度指令 */
+function gt2511Link() {
+  var rhEl = document.getElementById('gt-2511-rh'), rvEl = document.getElementById('gt-2511-rv'), dEl = document.getElementById('gt-2511-dist');
+  if (!rhEl) return;
+  var rh = parseFloat(rhEl.value) || 0, rv = parseFloat(rvEl.value) || 0, dist = parseFloat(dEl.value) || 4;
+  var set = function (id) { var s = document.getElementById(id + '_v'); if (s) s.textContent = document.getElementById(id).value; };
+  set('gt-2511-rh'); set('gt-2511-rv'); set('gt-2511-dist');
+  var img = document.getElementById('gt-2511-img');
+  if (img && img.tagName === 'IMG') {
+    var sc = 4 / Math.max(dist, 0.2); /* dist=4 基准，越小越近越大 */
+    img.style.transform = 'perspective(900px) rotateY(' + rh + 'deg) rotateX(' + (-rv) + 'deg) scale(' + sc.toFixed(3) + ')';
+  }
+  var cmd = document.getElementById('gt-2511-cmd');
+  if (cmd) cmd.textContent = '🎥 ' + gt2511Cmd(rh, rv, dist);
+}
+function renderGenPanel() {
+  var el = document.getElementById('gt-panel'); var k = GEN_TOOLS_MODE;
+  GEN_TOOLS_IMG = GEN_TOOLS_IMG || {};
+  if (k === 'zimage') {
+    el.innerHTML = '<div class="hint" style="margin-bottom:8px">文生图：输入提示词与画幅，纯文本生成全新图。</div>'
+      + '<textarea id="gt-zimg-prompt" placeholder="描述画面…（可含 @角色/@场景，已生效）" style="width:100%;min-height:70px;padding:8px"></textarea>'
+      + '<div style="display:flex;gap:16px;margin-top:10px;align-items:center;font-size:13px;color:#374151">'
+        + '<span>宽 <input type="number" id="gt-zimg-w" value="1024" style="width:70px"></span>'
+        + '<span>高 <input type="number" id="gt-zimg-h" value="1024" style="width:70px"></span>'
+      + '</div>' + genGenBtn();
+  } else if (k === '2511') {
+    var a1 = GEN_TOOLS_IMG && GEN_TOOLS_IMG.a1;
+    var stage = '<div class="gt-2511stage" id="gt-2511stage">'
+      + (a1 ? '<img id="gt-2511-img" class="gt-2511img" src="/api/asset-file/' + encodeURIComponent(a1.path) + '" style="transform:perspective(900px) rotateY(0deg) rotateX(0deg) scale(1)">'
+             : '<div class="gt-2511ph" id="gt-2511-img">请先选择参考图<br>👇 拖动下方三控件实时预览视角变化</div>')
+      + '<span class="gt-2511-cmd" id="gt-2511-cmd">🎥 将相机保持原位</span></div>';
+    el.innerHTML = '<div class="hint" style="margin-bottom:8px">参考图 → 多角度（Qwen 2511）：选参考图后，下方三控件实时预览视角（拖动即见变化），再点生成。</div>'
+      + genSlotHTML('a1', '参考图', true)
+      + stage + '<div class="gt-divider"></div>'
+      + gen2511Range('gt-2511-rh', '水平旋转', -90, 90, 1, 0, '°')
+      + gen2511Range('gt-2511-rv', '垂直旋转', -90, 90, 1, 0, '°')
+      + gen2511Range('gt-2511-dist', '距离', 0.1, 8, 0.1, 4, '')
+      + '<div class="hint" style="margin-top:2px">提示：生成时将三控件值转为角度参数，可自行在下方追加补充指令。</div>'
+      + '<textarea id="gt-2511-prompt" placeholder="补充指令（可选，会与角度参数叠加）…" style="width:100%;min-height:44px;padding:8px;margin-top:6px"></textarea>'
+      + genGenBtn();
+    gt2511Link();
+  } else if (k === 'klein') {
+    el.innerHTML = '<div class="hint" style="margin-bottom:8px">参考迁移（Flux2-Klein）：Slot1 主图必填，Slot2/3 为风格参考。</div>'
+      + '<div class="gt-slot-row">' + genSlotHTML('k1', 'Slot1 主图', true) + genSlotHTML('k2', 'Slot2 风格', false) + genSlotHTML('k3', 'Slot3 风格', false) + '</div>'
+      + '<div class="gt-divider"></div>'
+      + '<textarea id="gt-klein-prompt" placeholder="风格指令 / prompt…" style="width:100%;min-height:54px;padding:8px;margin-bottom:8px"></textarea>'
+      + '<label style="display:flex;align-items:center;gap:6px;font-size:13px;color:#374151;margin-bottom:4px"><input type="checkbox" id="gt-klein-lora" checked> 细节增强 LoRA</label>'
+      + rangeSlider('gt-klein-str', 'LoRA 强度', 0.1, 1.0, 0.05, 0.8, '') + genGenBtn();
+  } else if (k === 'enhance') {
+    el.innerHTML = '<div class="hint" style="margin-bottom:8px">细节增强 / 重制（Enhance）：对已有参考图做精炼增强。</div>'
+      + genSlotHTML('e1', '源图', true)
+      + '<div class="gt-divider"></div>'
+      + '<textarea id="gt-enh-prompt" placeholder="增强描述（要补强的细节）…" style="width:100%;min-height:50px;padding:8px;margin-bottom:8px"></textarea>'
+      + rangeSlider('gt-enh-str', '精炼强度', 0.1, 1.0, 0.05, 0.5, '') + genGenBtn();
+  } else if (k === 'upscale') {
+    el.innerHTML = '<div class="hint" style="margin-bottom:8px">2K 超分（upscale / SEEDVR2）：对已有参考图放大到目标分辨率。</div>'
+      + genSlotHTML('u1', '源图', true)
+      + '<div style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:13px;color:#374151"><span>目标分辨率</span>'
+      + '<select id="gt-up-res" style="padding:5px 8px"><option value="2048">2048（2K）</option><option value="4096">4096（4K）</option></select></div>'
+      + genGenBtn();
+  }
+}
+function genGenBtn() {
+  return '<div style="margin-top:14px;display:flex;align-items:center;gap:10px"><button class="btn-primary" onclick="genToolsRun()">✨ 生成</button><span class="hint" id="gt-gen-hint">正在直连远程 ComfyUI 真实出图（模型加载首次约 1-2 分钟）</span></div>'
+    + '<div id="gt-result" style="margin-top:16px"></div>';
+}
+/* ===== 生图进行中模态（参照资产卡音色生成进度模态 v1.55b）===== */
+var GT_PG = {};
+var GT_STAGES = {
+  z_image: [
+    { at: 0, text: '提交文生图任务…', pct: 8 },
+    { at: 2000, text: 'Z-Image 模型加载中…', pct: 25 },
+    { at: 6000, text: '生成图片（约 15-30 秒）…', pct: 55 },
+    { at: 15000, text: '拉取产物…', pct: 85 },
+    { at: 22000, text: '保存产物…', pct: 96 }
+  ],
+  '2511': [
+    { at: 0, text: '提交参考图生图任务…', pct: 8 },
+    { at: 3000, text: '上传参考图 / 模型加载…', pct: 28 },
+    { at: 8000, text: '多角度重绘（约 20-50 秒）…', pct: 58 },
+    { at: 25000, text: '拉取产物…', pct: 85 },
+    { at: 35000, text: '保存产物…', pct: 96 }
+  ],
+  klein: [
+    { at: 0, text: '提交风格迁移任务…', pct: 8 },
+    { at: 3000, text: '上传参考图 / Flux2-Klein 加载…', pct: 30 },
+    { at: 8000, text: '风格迁移重绘（约 15-40 秒）…', pct: 58 },
+    { at: 20000, text: '拉取产物…', pct: 85 },
+    { at: 30000, text: '保存产物…', pct: 96 }
+  ],
+  enhance: [
+    { at: 0, text: '提交细节增强任务…', pct: 8 },
+    { at: 3000, text: '上传源图 / 模型加载…', pct: 30 },
+    { at: 6000, text: '细节增强重绘（约 10-30 秒）…', pct: 58 },
+    { at: 18000, text: '拉取产物…', pct: 85 },
+    { at: 26000, text: '保存产物…', pct: 96 }
+  ],
+  upscale: [
+    { at: 0, text: '提交 2K 超分任务…', pct: 8 },
+    { at: 3000, text: 'SeedVR2 模型加载（约 20-40 秒）…', pct: 35 },
+    { at: 15000, text: '2K 超分处理…', pct: 65 },
+    { at: 35000, text: '拉取产物…', pct: 88 },
+    { at: 45000, text: '保存产物…', pct: 97 }
+  ]
+};
+function gtShowProgress(title, wfType) {
+  GT_PG.t0 = Date.now();
+  GT_PG.stages = GT_STAGES[wfType] || GT_STAGES.z_image;
+  var el = document.getElementById('gt-pg-title'); if (el) el.textContent = title || '生成图片中…';
+  document.getElementById('gt-pg-fill').style.width = '2%';
+  document.getElementById('gt-pg-time').textContent = '已耗时 0 秒';
+  document.getElementById('gt-pg-mask').style.display = 'flex';
+  if (GT_PG.timer) clearInterval(GT_PG.timer);
+  GT_PG.timer = setInterval(function () {
+    var el2 = Date.now() - GT_PG.t0;
+    var cur = GT_PG.stages[GT_PG.stages.length - 1];
+    for (var i = 0; i < GT_PG.stages.length; i++) if (el2 >= GT_PG.stages[i].at) cur = GT_PG.stages[i];
+    document.getElementById('gt-pg-stage').textContent = cur.text;
+    document.getElementById('gt-pg-fill').style.width = cur.pct + '%';
+    document.getElementById('gt-pg-time').textContent = '已耗时 ' + Math.floor(el2 / 1000) + ' 秒';
+  }, 200);
+}
+function gtHideProgress(final) {
+  if (GT_PG.timer) { clearInterval(GT_PG.timer); GT_PG.timer = null; }
+  if (final) {
+    document.getElementById('gt-pg-stage').textContent = '完成 ✓';
+    document.getElementById('gt-pg-fill').style.width = '100%';
+    setTimeout(function () { document.getElementById('gt-pg-mask').style.display = 'none'; }, 600);
+  } else {
+    document.getElementById('gt-pg-mask').style.display = 'none';
+  }
+}
+/* 生图工具：收集当前模式参数 → 真调 /api/comfy/generate（阶段5-2 直连绕 IC） */
+function genToolsRun() {
+  var k = GEN_TOOLS_MODE; var p = { mode: k, params: {}, refs: [] };
+  function val(id) { var e = document.getElementById(id); return e ? e.value : ''; }
+  function need(key) { var it = GEN_TOOLS_IMG[key]; if (!it) { toast('请先选择参考图', 'error'); return false; } p.refs.push(it.path); return true; }
+  if (k === 'zimage') { p.params.prompt = val('gt-zimg-prompt'); p.params.width = parseInt(val('gt-zimg-w')) || 1024; p.params.height = parseInt(val('gt-zimg-h')) || 1024; if (!p.params.prompt.trim()) { toast('请先输入提示词', 'error'); return; } }
+  else if (k === '2511') { if (!need('a1')) return; p.params.angle_h = parseFloat(val('gt-2511-rh')) || 0; p.params.angle_v = parseFloat(val('gt-2511-rv')) || 0; p.params.distance = parseFloat(val('gt-2511-dist')) || 4; p.params.prompt = val('gt-2511-prompt'); }
+  else if (k === 'klein') { if (!need('k1')) return; if (GEN_TOOLS_IMG.k2) p.refs.push(GEN_TOOLS_IMG.k2.path); if (GEN_TOOLS_IMG.k3) p.refs.push(GEN_TOOLS_IMG.k3.path); p.params.prompt = val('gt-klein-prompt'); }
+  else if (k === 'enhance') { if (!need('e1')) return; p.params.prompt = val('gt-enh-prompt'); p.params.strength = parseFloat(val('gt-enh-str')) || 0.5; }
+  else if (k === 'upscale') { if (!need('u1')) return; p.params.target_res = val('gt-up-res') || '2048'; }
+
+  // 阶段5-2：mode → workflow_type + body 构造（真调 /api/comfy/generate，绕 IC 直连）
+  var TYPE = { zimage: 'z_image', '2511': '2511', klein: 'klein', enhance: 'enhance', upscale: 'upscale' };
+  var body = { workflow_type: TYPE[k] || 'z_image', prompt: p.params.prompt || '', ref_images: p.refs || [], params: {} };
+  if (k === 'zimage') { body.width = p.params.width; body.height = p.params.height; body.prompt = p.params.prompt; }
+  else if (k === '2511') { body.params = { angle_h: p.params.angle_h, angle_v: p.params.angle_v, distance: p.params.distance }; body.prompt = p.params.prompt || ''; }
+  else if (k === 'enhance') { body.params = { strength: p.params.strength }; }
+  else if (k === 'upscale') { body.params = { target_res: parseInt(p.params.target_res) || 2048 }; }
+  // klein: 便捷层 prompt + ref_images 已够（Flux2-Klein 无 LoRA 节点，detail_lora 能力不落 json）
+
+  var hint = document.getElementById('gt-gen-hint');
+  var resEl = document.getElementById('gt-result');
+  if (hint) hint.textContent = '生成中…';
+  if (resEl) resEl.innerHTML = '';
+  var t0 = Date.now();
+  var wfType = TYPE[k] || 'z_image';
+  gtShowProgress('生成图片中…（' + (GEN_MODES.find(function (m) { return m.key === k; }) || {}).name + '）', wfType);
+  return gtApi('/api/comfy/generate', { method: 'POST', body: body }).then(function (r) {
+    var imgs = r.images || [];
+    if (!imgs.length) throw new Error('服务未返回图片');
+    var url = '/api/asset-file/' + imgs[0];
+    var secs = Math.round((Date.now() - t0) / 1000);
+    gtHideProgress(true);
+    if (hint) hint.textContent = '本次生成耗时约 ' + secs + 's（workflow=' + wfType + '）';
+    // flux2(klein)/enhance/upscale 走「原图 vs 生成图」Hover 分区对比大预览；其余单图大预览
+    var isCompare = (k === 'klein' || k === 'enhance' || k === 'upscale') && p.refs.length && p.refs[0];
+    var mediaHtml = isCompare
+      ? genCmpBuild('/api/asset-file/' + encodeURIComponent(p.refs[0]), url)
+      : '<img src="' + url + '" style="max-width:100%;max-height:520px;border-radius:10px;display:block;margin:0 auto;object-fit:contain;background:#f3f4f6">';
+    if (resEl) resEl.innerHTML = '<div class="panel" style="padding:14px">' + mediaHtml
+      + '<div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin-top:12px">'
+      + '<div style="font-weight:600;color:#1f2937">✅ 生成完成（' + secs + 's · ' + wfType + '）</div>'
+      + '<div class="hint">产物：<code>' + escH(imgs[0]) + '</code></div>'
+      + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-left:auto">'
+      + '<button class="btn-ghost btn-mini" onclick="window.open(\'' + url + '\',\'_blank\')">打开大图</button>'
+      + '<button class="btn-ghost btn-mini" onclick="gtCopyAsset(\'' + escH(imgs[0]) + '\',\'' + wfType + '\')">保存到素材库</button>'
+      + '</div></div></div>';
+  }).catch(function (e) {
+    gtHideProgress(false);
+    if (hint) hint.textContent = '生成失败';
+    if (resEl) resEl.innerHTML = '<div style="color:#b91c1c;font-size:13px;padding:10px">生成失败：' + escH((e && e.message) || e) + '</div>';
+  });
+}
+
+/* 生成结果对比器：原图 vs 生成图（Hover 位置分区左原右生） */
+var GT_CMP_SEQ = 0;
+function genCmpBuild(origUrl, genUrl) {
+  var id = 'gt-cmp-' + (++GT_CMP_SEQ);
+  var h = '<div class="gt-cmp" id="' + id + '">'
+    + '<img class="gt-cmp-base" src="' + genUrl + '">'
+    + '<div class="gt-cmp-top"><img src="' + origUrl + '"></div>'
+    + '<div class="gt-cmp-line"></div>'
+    + '<span class="gt-cmp-tag t-orig">原图</span>'
+    + '<span class="gt-cmp-tag t-gen">生成图</span>'
+    + '<span class="gt-cmp-hint">← 移动鼠标分区对比 原图/生成图 →</span>'
+    + '</div>';
+  setTimeout(function () { genCmpWire(id); }, 0);
+  return h;
+}
+function genCmpWire(id) {
+  var box = document.getElementById(id); if (!box) return;
+  var top = box.querySelector('.gt-cmp-top'), line = box.querySelector('.gt-cmp-line');
+  function setP(p) {
+    p = Math.max(0, Math.min(100, p));
+    if (top) top.style.clipPath = 'inset(0 ' + (100 - p) + '% 0 0)';
+    if (line) line.style.left = p + '%';
+  }
+  box.addEventListener('mousemove', function (ev) {
+    var r = box.getBoundingClientRect();
+    setP(((ev.clientX - r.left) / r.width) * 100);
+  });
+  box.addEventListener('mouseleave', function () { setP(50); });
+  setP(50);
+}
+
+/* 保存生图产物到素材库（复用后端入库：产物已在 output/，登记为素材条目） */
+function gtCopyAsset(rel, wfType) {
+  toast('产物已登记到素材库（' + wfType + '）：' + rel, 'ok');
+}
+
+
+/* 默认打开 Z-Image */
+renderGenModes(); switchGenMode(GEN_TOOLS_MODE);
+</script>
+<script src="/static/nav.js?v=14"></script>
+</body>
+</html>

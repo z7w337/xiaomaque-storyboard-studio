@@ -1,0 +1,350 @@
+{
+  "339": {
+    "inputs": {
+      "value": "<运行期注入> 本字段由工坊按分镜内容（角色/场景/台词/时长）动态生成并覆盖，此处默认值仅作模板占位。"
+    },
+    "class_type": "PrimitiveStringMultiline",
+    "_meta": {
+      "title": "Input Text (Prompt)"
+    }
+  },
+  "340": {
+    "inputs": {
+      "aspect_ratio": "16:9 (Widescreen)",
+      "megapixels": 0.4,
+      "multiple": 32
+    },
+    "class_type": "ResolutionSelector",
+    "_meta": {
+      "title": "Resolution Selector (Size)"
+    }
+  },
+  "343": {
+    "inputs": {
+      "clip_name": "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+      "type": "minimax",
+      "device": "default"
+    },
+    "class_type": "CLIPLoader",
+    "_meta": {
+      "title": "加载CLIP"
+    }
+  },
+  "345": {
+    "inputs": {
+      "vae_name": "minimax_h3_video_vae_fp16.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "加载VAE"
+    }
+  },
+  "346": {
+    "inputs": {
+      "vae_name": "minimax_h3_audio_vae_fp32.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "加载VAE"
+    }
+  },
+  "347": {
+    "inputs": {
+      "model": [
+        "357",
+        0
+      ],
+      "conditioning": [
+        "363",
+        0
+      ]
+    },
+    "class_type": "BasicGuider",
+    "_meta": {
+      "title": "基本引导器"
+    }
+  },
+  "348": {
+    "inputs": {
+      "noise_seed": 123456789
+    },
+    "class_type": "RandomNoise",
+    "_meta": {
+      "title": "随机噪波"
+    }
+  },
+  "349": {
+    "inputs": {
+      "noise": [
+        "348",
+        0
+      ],
+      "guider": [
+        "347",
+        0
+      ],
+      "sampler": [
+        "357",
+        1
+      ],
+      "sigmas": [
+        "357",
+        2
+      ],
+      "latent_image": [
+        "363",
+        1
+      ]
+    },
+    "class_type": "SamplerCustomAdvanced",
+    "_meta": {
+      "title": "自定义采样器（高级）"
+    }
+  },
+  "350": {
+    "inputs": {
+      "value": 8
+    },
+    "class_type": "PrimitiveFloat",
+    "_meta": {
+      "title": "Float (Duration)"
+    }
+  },
+  "351": {
+    "inputs": {
+      "expression": "max(5, round(a * 24)) + (5 - (max(5, round(a * 24)) % 17)) % 17",
+      "values.a": [
+        "350",
+        0
+      ]
+    },
+    "class_type": "ComfyMathExpression",
+    "_meta": {
+      "title": "数学表达式"
+    }
+  },
+  "352": {
+    "inputs": {
+      "num_blocks": -1
+    },
+    "class_type": "UniBlockSwap",
+    "_meta": {
+      "title": "UniBlockSwap"
+    }
+  },
+  "353": {
+    "inputs": {
+      "model": [
+        "355",
+        0
+      ]
+    },
+    "class_type": "MiniMaxH3MemoryEfficientSageAttentionPatch",
+    "_meta": {
+      "title": "MiniMax H3 Mem Eff Sage Attention Patch"
+    }
+  },
+  "354": {
+    "inputs": {
+      "lora_name": "minimax_h3_turbo_4STEPS_comfyui.safetensors",
+      "strength_model": 1,
+      "model": [
+        "353",
+        0
+      ]
+    },
+    "class_type": "LoraLoaderModelOnly",
+    "_meta": {
+      "title": "LoRA加载器（仅模型）"
+    }
+  },
+  "355": {
+    "inputs": {
+      "reserved": 1,
+      "mode": "manual",
+      "seed": 541675487861572,
+      "auto_max_reserved": 0,
+      "clean_gpu_before": true,
+      "anything": [
+        "358",
+        0
+      ]
+    },
+    "class_type": "ReservedVRAMSetter",
+    "_meta": {
+      "title": "Set Reserved VRAM(GB) ⚙️"
+    }
+  },
+  "356": {
+    "inputs": {
+      "av_latent": [
+        "349",
+        0
+      ],
+      "video_vae": [
+        "345",
+        0
+      ],
+      "audio_vae": [
+        "346",
+        0
+      ]
+    },
+    "class_type": "MiniMaxH3AVDecodeT8",
+    "_meta": {
+      "title": "MiniMax H3 AV Decode (T8)"
+    }
+  },
+  "357": {
+    "inputs": {
+      "video_steps": 10,
+      "audio_steps": 10,
+      "shift_video": 12,
+      "shift_audio": 3,
+      "model": [
+        "354",
+        0
+      ],
+      "av_latent": [
+        "363",
+        1
+      ]
+    },
+    "class_type": "MiniMaxH3MultiRateSamplerEXPT8",
+    "_meta": {
+      "title": "EXP 4 video / 10 audio (10 full H3 calls)"
+    }
+  },
+  "358": {
+    "inputs": {
+      "unet_name": "minimax_h3_ref2va_pruned_int8_convrot.safetensors",
+      "weight_dtype": "default"
+    },
+    "class_type": "UNETLoader",
+    "_meta": {
+      "title": "UNet加载器"
+    }
+  },
+  "360": {
+    "inputs": {
+      "frame_rate": 24,
+      "loop_count": 0,
+      "filename_prefix": "MiniMaxH3/exp_4v10a",
+      "format": "video/h264-mp4",
+      "pix_fmt": "yuv420p",
+      "crf": 19,
+      "save_metadata": true,
+      "trim_to_audio": false,
+      "pingpong": false,
+      "save_output": true,
+      "images": [
+        "356",
+        0
+      ],
+      "audio": [
+        "356",
+        1
+      ]
+    },
+    "class_type": "VHS_VideoCombine",
+    "_meta": {
+      "title": "Video Combine 🎥🅥🅗🅢"
+    }
+  },
+  "361": {
+    "inputs": {
+      "audio": "ref_audio_0.wav"
+    },
+    "class_type": "LoadAudio",
+    "_meta": {
+      "title": "加载音频"
+    }
+  },
+  "362": {
+    "inputs": {
+      "image": "ref_image_0.jpg"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "加载图像"
+    }
+  },
+  "363": {
+    "inputs": {
+      "prompt": [
+        "339",
+        0
+      ],
+      "width": [
+        "340",
+        0
+      ],
+      "height": [
+        "340",
+        1
+      ],
+      "length": [
+        "351",
+        1
+      ],
+      "task_type": "Ref2VA",
+      "audio_mode": "native",
+      "audio_denoise_strength": 0.75,
+      "add_source_as_reference": false,
+      "prompt_primary_audio_ordinal": 0,
+      "strict_prompt_tags": true,
+      "ref_image_size": "match",
+      "reference_video_policy": "official_2_to_15s",
+      "clip": [
+        "343",
+        0
+      ],
+      "video_vae": [
+        "345",
+        0
+      ],
+      "audio_vae": [
+        "346",
+        0
+      ],
+      "ref_images.ref_image_0": [
+        "362",
+        0
+      ],
+      "ref_images.ref_image_1": [
+        "364",
+        0
+      ],
+      "ref_images.ref_image_2": [
+        "365",
+        0
+      ],
+      "ref_audios.ref_audio_0": [
+        "361",
+        0
+      ]
+    },
+    "class_type": "MiniMaxH3AudioConditioningT8",
+    "_meta": {
+      "title": "MiniMax H3 Audio Conditioning (T8)"
+    }
+  },
+  "364": {
+    "inputs": {
+      "image": "ref_image_1.jpg"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "加载图像"
+    }
+  },
+  "365": {
+    "inputs": {
+      "image": "ref_image_2.jpg"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "加载图像"
+    }
+  }
+}

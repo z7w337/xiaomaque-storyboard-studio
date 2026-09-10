@@ -1,0 +1,661 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>小麻雀剧本分镜工坊 - 剧本大纲页</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "Microsoft YaHei", "PingFang SC", sans-serif; background: #f5f6f8; color: #333; display: flex; min-height: 100vh; }
+  .main-wrap { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  main { max-width: 1080px; margin: 18px auto; padding: 0 18px; width: 100%; }
+  .panel { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; margin-bottom: 14px; }
+  button { padding: 8px 16px; border: none; border-radius: 8px; cursor: pointer; font-size: 13px; }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  .btn-primary { background: #2563eb; color: #fff; }
+  .btn-primary:hover { background: #1d4ed8; }
+  .btn-ghost { background: #f3f4f6; color: #374151; border: 1px solid #e5e7eb; }
+  .btn-ghost:hover { background: #e5e7eb; }
+  .btn-danger { background: #fee2e2; color: #dc2626; }
+  .btn-mini { padding: 4px 10px; font-size: 12px; border-radius: 6px; }
+  .btn-ai { background: #7c3aed; color: #fff; }
+  .btn-ai:hover { background: #6d28d9; }
+  a.btn-ghost { display: inline-flex; align-items: center; text-decoration: none; }
+  .file-btn { position: relative; display: inline-block; }
+  .file-btn input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .meta { font-size: 12px; color: #6b7280; margin: 8px 0; line-height: 1.8; }
+  .proj-name { font-size: 14px; font-weight: 600; color: #1f2937; margin-bottom: 6px; }
+  /* 页面顶部项目名（v1.30：项目内顶部显示当前项目名，各页统一） */
+  .page-title { font-size: 18px; font-weight: 700; color: #1f2937; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .page-title .sub { font-size: 12px; font-weight: 400; color: #9ca3af; }
+  /* 顶部工具栏 + 子页签（v1.35：下划线式） */
+  .toolbar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 10px 16px; margin-bottom: 12px; }
+  .tabs { display: flex; gap: 4px; }
+  .tab { padding: 8px 16px; font-size: 14px; color: #6b7280; cursor: pointer; border-bottom: 2px solid transparent; }
+  .tab.active { color: #2563eb; border-bottom-color: #2563eb; font-weight: 600; }
+  .toolbar .sp { flex: 1; }
+  .help-btn { width: 28px; height: 28px; border-radius: 50%; border: 1px solid #d1d5db; background: #fff; color: #6b7280; font-size: 14px; cursor: pointer; padding: 0; }
+  /* 引导条 */
+  .guide-bar { position: sticky; bottom: 14px; margin-top: 16px; background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 10px 16px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 4px 14px rgba(0,0,0,.08); }
+  .guide-bar .g-t { font-size: 13px; color: #6b7280; }
+  /* 剧本大纲 */
+  .summary-block { border: 1px solid #e5e7eb; border-radius: 10px; margin-bottom: 10px; overflow: hidden; background: #fafafa; }
+  .summary-block .sb-head { display: flex; align-items: center; gap: 8px; padding: 10px 12px; cursor: pointer; user-select: none; }
+  .summary-block .sb-head .arrow { color: #9ca3af; font-size: 11px; transition: transform .15s; }
+  .summary-block.open .sb-head .arrow { transform: rotate(90deg); }
+  .summary-block .sb-head b { font-size: 13px; }
+  .summary-block .sb-head .sb-hint { font-size: 11px; color: #9ca3af; }
+  .summary-block .sb-body { display: none; padding: 8px 12px 12px; border-top: 1px solid #f3f4f6; }
+  .summary-block.open .sb-body { display: block; }
+  .summary-block .sb-body .meta { margin: 0; white-space: pre-wrap; }
+  .ep-row { border: 1px solid #e5e7eb; border-radius: 10px; margin-bottom: 8px; overflow: hidden; }
+  .ep-row .ep-line { display: flex; align-items: center; gap: 8px; padding: 10px 12px; cursor: pointer; }
+  .ep-row .ep-line .arrow { color: #9ca3af; font-size: 11px; transition: transform .15s; }
+  .ep-row.open .ep-line .arrow { transform: rotate(90deg); }
+  .ep-row .ep-line .t { font-weight: 600; font-size: 13px; color: #2563eb; }
+  .ep-row .ep-line .t:hover { text-decoration: underline; }
+  .ep-row .ep-line .ops { margin-left: auto; display: flex; gap: 6px; }
+  .ep-summary { display: none; padding: 10px 12px; border-top: 1px solid #f3f4f6; }
+  .ep-row.open .ep-summary { display: block; }
+  .ep-summary textarea { width: 100%; min-height: 80px; border: 1px solid #d1d5db; border-radius: 8px; padding: 8px 10px; font-size: 13px; line-height: 1.6; font-family: inherit; resize: vertical; }
+  .ep-summary .row { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+  .ep-extract-btn { display: inline-flex; align-items: center; gap: 4px; }
+  .ep-extract-btn .dot { width: 7px; height: 7px; border-radius: 50%; background: #9ca3af; display: inline-block; }
+  .ep-extract-btn.enabled .dot { background: #16a34a; }
+  .land-tip { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; border-radius: 10px; padding: 10px 14px; font-size: 12px; margin-bottom: 12px; line-height: 1.7; }
+  /* 剧集视图（卡片式平铺） */
+  .eps-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .eps-head b { font-size: 14px; }
+  .eps-head .ops { display: flex; gap: 8px; }
+  .ep-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
+  .ep-card { border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden; background: #fff; cursor: pointer; position: relative; transition: box-shadow .15s; }
+  .ep-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,.1); }
+  .ep-card .thumb { width: 100%; aspect-ratio: 16/9; background: linear-gradient(135deg, #eef2f7, #dfe5ec); display: flex; align-items: center; justify-content: center; font-size: 13px; color: #9ca3af; }
+  .ep-card .card-m { padding: 10px 12px; }
+  .ep-card .card-m .t { font-size: 13px; font-weight: 600; color: #1f2937; }
+  .ep-card .card-m .meta2 { font-size: 11px; color: #9ca3af; margin-top: 4px; line-height: 1.7; }
+  .ep-card .st { position: absolute; top: 8px; left: 8px; background: rgba(17,24,39,.7); color: #fff; font-size: 11px; padding: 2px 8px; border-radius: 10px; }
+  .ep-card .menu-btn { position: absolute; top: 8px; right: 8px; width: 28px; height: 28px; border: none; border-radius: 50%; background: rgba(255,255,255,.92); color: #4b5563; cursor: pointer; display: none; align-items: center; justify-content: center; font-size: 15px; box-shadow: 0 1px 3px rgba(0,0,0,.15); }
+  .ep-card:hover .menu-btn { display: inline-flex; }
+  .ctx-menu { position: fixed; z-index: 400; background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; box-shadow: 0 6px 20px rgba(0,0,0,.15); min-width: 150px; padding: 4px; display: none; }
+  .ctx-menu .mi { padding: 8px 12px; font-size: 13px; color: #374151; border-radius: 6px; cursor: pointer; }
+  .ctx-menu .mi:hover { background: #f3f4f6; }
+  .ctx-menu .mi.danger { color: #dc2626; }
+  .empty { color: #9ca3af; text-align: center; padding: 20px 0; font-size: 13px; }
+  .no-proj { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 30px; text-align: center; color: #6b7280; }
+  /* toast / modal */
+  #toast { position: fixed; top: 14px; right: 16px; z-index: 300; display: none; padding: 10px 16px; border-radius: 8px; font-size: 13px; box-shadow: 0 4px 14px rgba(0,0,0,.18); max-width: 340px; }
+  .modal-mask { position: fixed; inset: 0; background: rgba(0,0,0,.4); display: none; align-items: center; justify-content: center; z-index: 200; }
+  .modal { background: #fff; border-radius: 12px; width: 480px; max-width: 92vw; padding: 18px; max-height: 84vh; overflow-y: auto; }
+  .modal.wide { width: 720px; }
+  .modal h2 { font-size: 15px; margin-bottom: 12px; }
+  .modal textarea { width: 100%; border: 1px solid #d1d5db; border-radius: 8px; padding: 10px; font-size: 12px; line-height: 1.6; font-family: Consolas, monospace; resize: vertical; }
+  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 14px; }
+  .cost-box { background: #f9fafb; border-radius: 10px; padding: 12px 14px; font-size: 13px; }
+  .cost-row { padding: 3px 0; color: #374151; }
+  .cost-total { border-top: 1px dashed #e5e7eb; margin-top: 6px; padding-top: 8px; color: #1f2937; }
+  .help-body { font-size: 13px; color: #4b5563; line-height: 1.9; }
+  .help-body b { color: #1f2937; }
+</style>
+</head>
+<body>
+<aside id="sidebar"></aside>
+<div class="main-wrap">
+<main>
+  <!-- 顶部工具栏：子页签 + 操作按钮（v1.35） -->
+  <div class="toolbar">
+    <div class="tabs">
+      <span class="tab active" id="tab-outline" onclick="switchView('outline')">剧本大纲</span>
+      <span class="tab" id="tab-episodes" onclick="switchView('episodes')">剧集</span>
+    </div>
+    <span class="sp"></span>
+    <a class="btn-ghost" id="btn-download" href="#" download title="导出 Project.script 为 .txt">⬇ 下载剧本</a>
+    <button class="help-btn" onclick="openHelp()" title="帮助">?</button>
+  </div>
+
+  <!-- 无项目提示 -->
+  <div class="no-proj" id="no-project" style="display:none">
+    未指定项目。请先到 <a href="/" style="color:#2563eb">工作台</a> 新建或选择项目。
+  </div>
+
+  <!-- 项目内内容 -->
+  <div id="in-project">
+    <div class="page-title" id="page-title"></div>
+    <div class="toolbar">
+      <span class="proj-name" id="proj-name"></span>
+      <span class="sp"></span>
+      <button class="btn-ai" id="btn-analyze" onclick="onAnalyzeClick()">✨ AI 拆解</button>
+      <button class="btn-ghost" onclick="extractMissingAssets()" title="扫描全剧本出场 @ 引用中、库内尚缺的资产，预览后一键批量建卡（不自动生成图；单张出图到资产库点生成）">📤 提取出场资产</button>
+      <button class="btn-danger btn-mini" onclick="cleanupDraft()" title="删除本次拆解/导入创建的全部资产（仅资产库资产，集/场结构保留）">🗑 删除本次拆解全部资产</button>
+    </div>
+    <div class="meta" id="script-hint" style="display:none;margin:0 0 12px"></div>
+    <div class="land-tip" id="land-tip" style="display:none"></div>
+
+    <!-- 剧本大纲视图 -->
+    <div class="panel" id="view-outline">
+      <div class="summary-block" id="summary-block" style="display:none">
+        <div class="sb-head" onclick="toggleSummary()">
+          <span class="arrow" id="summary-arrow">▶</span>
+          <b>📄 剧本摘要</b>
+          <span class="sb-hint">只读 · 以各集摘要为准，可重新生成</span>
+          <span style="flex:1"></span>
+          <button class="btn-ghost btn-mini" onclick="event.stopPropagation();regenerateSummary()">🔄 重新生成剧本摘要</button>
+        </div>
+        <div class="sb-body" id="summary-body">
+          <div class="meta" id="summary-text">（暂无剧本摘要）</div>
+        </div>
+      </div>
+      <div id="ep-list"></div>
+      <div style="margin-top:10px;display:flex;gap:8px">
+        <button class="btn-ghost btn-mini" id="btn-add-ep" onclick="addEpisode()">＋ 新增集</button>
+      </div>
+      <div class="guide-bar">
+        <span class="g-t">下一步：管理拆解产出的角色/场景/道具资产</span>
+        <a class="btn-primary" style="text-decoration:none" href="/assets.html">下一步 → 资产库</a>
+      </div>
+    </div>
+
+    <!-- 剧集视图 -->
+    <div class="panel" id="view-episodes" style="display:none">
+      <div class="eps-head">
+        <b>剧集</b>
+        <span class="ops">
+          <button class="btn-primary btn-mini" onclick="addEpisode()">＋ 新增一集</button>
+          <button class="btn-ghost btn-mini" disabled title="该功能将在【阶段 5·场页】实现，当前版本暂不提供">批量</button>
+        </span>
+      </div>
+      <div class="ep-grid" id="ep-grid"></div>
+    </div>
+  </div>
+</main>
+</div>
+
+<div id="toast"></div>
+<div class="ctx-menu" id="ctx-menu"></div>
+
+<!-- 帮助弹窗（v1.35） -->
+<div class="modal-mask" id="help-mask">
+  <div class="modal wide">
+    <h2>❓ 帮助</h2>
+    <div class="help-body">
+      <b>本页（剧本大纲）：</b>管理项目结构与拆解。项目须先由<b>工作台</b>新建（粘贴剧本 / 导入文件，自动识别专家文件或剧本、拆解后落地）生成。<br><br>
+      <b>AI 拆解：</b>本页顶部"✨ AI 拆解"（有成本预估确认），系统按剧本长度自适应——短剧本（<8000 字，设置页可配）整本一次拆解，长剧本按集分批——产出剧本大纲与资产草案并直接入库。拆解后可在各集卡"📤 提取本集资产"。<br><br>
+      <b>视频专家 JSON：</b>需在<b>工作台</b>"📋 获取提示词"复制标准提示词，粘贴给外部视频专家（如 updream），专家按约定输出 JSON 文件，再于工作台用"📂 导入文件"落地（免 AI 拆解，结构+资产直接落地）。
+    </div>
+    <div class="modal-actions"><button class="btn-ghost" onclick="closeModal('help-mask')">关闭</button></div>
+  </div>
+</div>
+
+<!-- 成本预估弹窗（4-3） -->
+<div class="modal-mask" id="cost-mask">
+  <div class="modal">
+    <h2>成本预估</h2>
+    <div class="cost-box">
+      <div class="cost-row">剧本字数：<b id="cost-chars">…</b> 字</div>
+      <div class="cost-row">使用模型：<b id="cost-model">…</b></div>
+      <div class="cost-row">预估 token：约 <b id="cost-tokens">…</b></div>
+      <div class="cost-row cost-total">预估费用：<b id="cost-total">…</b></div>
+      <div class="cost-row" style="color:#9ca3af;font-size:11px;padding-top:6px">* 本地估算，仅供参考，实际消耗以服务商官网收费为准</div>
+    </div>
+    <div id="analyze-progress" style="display:none;margin-top:10px;font-size:13px;color:#7c3aed;background:#f5f3ff;border:1px solid #ddd6fe;border-radius:8px;padding:8px 12px;height:200px;overflow-y:auto"></div>
+    <div class="modal-actions">
+      <button class="btn-ghost" id="cost-cancel" onclick="closeModal('cost-mask')">取消</button>
+      <button class="btn-primary" id="cost-confirm" onclick="confirmAnalyze()">确认开始拆解</button>
+    </div>
+  </div>
+</div>
+
+<!-- 提取本集资产成本预估弹窗（v1.42：同 AI 拆解模式——成本预估窗口，确定后同窗显示提取进度，不另开独立弹窗） -->
+<div class="modal-mask" id="extract-mask">
+  <div class="modal">
+    <h2>提取本集资产 · 成本预估</h2>
+    <div class="cost-box">
+      <div class="cost-row">集摘要字数：<b id="ex-chars">…</b> 字</div>
+      <div class="cost-row">使用模型：<b id="ex-model">…</b></div>
+      <div class="cost-row">预估 token：约 <b id="ex-tokens">…</b></div>
+      <div class="cost-row cost-total">预估费用：<b id="ex-total">…</b></div>
+      <div class="cost-row" style="color:#9ca3af;font-size:11px;padding-top:6px">* 本地估算，仅供参考，实际消耗以服务商官网收费为准</div>
+    </div>
+    <div id="extract-progress" style="display:none;margin-top:10px;font-size:13px;color:#7c3aed;background:#f5f3ff;border:1px solid #ddd6fe;border-radius:8px;padding:10px 12px;line-height:1.7;height:200px;overflow-y:auto">⏳ 正在提取本集资产（LLM 从该集摘要提取）…</div>
+    <div class="modal-actions">
+      <button class="btn-ghost" id="ex-cancel" onclick="closeModal('extract-mask')">取消</button>
+      <button class="btn-primary" id="ex-confirm" onclick="confirmExtract()">确认提取</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = '/api';
+let currentId = '';
+let projData = null;
+let assetCache = null; // {characters:[], scenes:[], props:[]}
+
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+function escAttr(s) { return String(s == null ? '' : s).replace(/'/g, "\\'").replace(/"/g, '&quot;'); }
+function toast(text, type) { window.toast ? window.toast(text, type) : (function(){ const el=document.getElementById('toast'); el.textContent=text; el.style.background=type==='success'?'#dcfce7':type==='error'?'#fee2e2':'#111827'; el.style.color=type==='success'?'#16a34a':type==='error'?'#dc2626':'#fff'; el.style.display='block'; clearTimeout(el._t); el._t=setTimeout(()=>{el.style.display='none';},3200); })(); }
+async function api(path, options) {
+  const resp = await fetch(API + path, options);
+  if (!resp.ok) { let d = '请求失败'; try { d = (await resp.json()).detail || d; } catch (e) {} throw new Error(d); }
+  return resp.json();
+}
+function jsonBody(method, body) { return { method, headers: { 'Content-Type': 'application/json; charset=utf-8' }, body: JSON.stringify(body) }; }
+
+// ---- 视图切换（v1.35：两子页签同页切换，不新增导航项） ----
+function switchView(v) {
+  document.getElementById('tab-outline').classList.toggle('active', v === 'outline');
+  document.getElementById('tab-episodes').classList.toggle('active', v === 'episodes');
+  document.getElementById('view-outline').style.display = v === 'outline' ? '' : 'none';
+  document.getElementById('view-episodes').style.display = v === 'episodes' ? '' : 'none';
+  try { history.replaceState(null, '', '?project=' + currentId + '&view=' + v); } catch (e) {}
+}
+
+// ---- 初始化：从 URL 读取项目（v1.41：无 URL 参数时用 localStorage 记住的当前项目，切出再回来不丢） ----
+(async function init() {
+  const params = new URLSearchParams(location.search);
+  let pid = params.get('project');
+  if (!pid) pid = localStorage.getItem('ss_current_project') || '';
+  if (!pid) { document.getElementById('no-project').style.display = ''; return; }
+  currentId = pid;
+  localStorage.setItem('ss_current_project', pid);
+  try {
+    await loadProject();
+    const view = params.get('view');
+    if (view === 'episodes') switchView('episodes');
+    else if (view === 'outline' || !view) switchView('outline');
+  } catch (e) { toast(e.message, 'error'); }
+})();
+
+async function loadProject() {
+  const p = await api('/projects/' + currentId);
+  projData = p;
+  // 顶部项目名（v1.30：项目内顶部显示当前项目名）+ 工具栏元信息
+  document.getElementById('page-title').innerHTML = '📄 ' + esc(p.name) + ' <span class="sub">' + esc(p.art_style || '未设画风') + ' · ' + esc(p.aspect_ratio || '16:9') + '</span>';
+  document.getElementById('proj-name').textContent = '剧本 ' + ((p.script || '').length) + ' 字';
+  document.getElementById('btn-download').href = API + '/projects/' + currentId + '/script/download';
+  // 剧本导入提示（v1.35：摘要页不显示原文正文，原文存 Project.script，可"下载剧本"查看）
+  const hint = document.getElementById('script-hint');
+  const len = (p.script || '').length;
+  if (len) {
+    hint.style.display = '';
+    hint.textContent = '📄 剧本原文已保存（' + len + ' 字，不在此页显示正文），可点上方"⬇ 下载剧本"查看。';
+  } else { hint.style.display = 'none'; }
+  // AI 拆解 disabled：script 空 且 无拆解产出（v1.35）
+  const hasScript = !!(p.script && p.script.trim());
+  const hasEpisodes = !!(p.episodes && p.episodes.length);
+  const btn = document.getElementById('btn-analyze');
+  btn.disabled = !hasScript && !hasEpisodes;
+  btn.title = (!hasScript && !hasEpisodes) ? '请先导入剧本' : '';
+  renderOutline(p);
+  renderEpisodes(p);
+}
+
+// ---- 剧本大纲视图 ----
+function renderOutline(p) {
+  const list = document.getElementById('ep-list');
+  const summaryBlock = document.getElementById('summary-block');
+  if (p.summary) {
+    summaryBlock.style.display = 'block';
+    document.getElementById('summary-text').textContent = p.summary;
+  } else { summaryBlock.style.display = 'none'; }
+  list.innerHTML = (p.episodes || []).map((ep, i) => {
+    const hasSummary = !!(ep.summary && ep.summary.trim());
+    return `
+      <div class="ep-row ${i === 0 ? 'open' : ''}">
+        <div class="ep-line" onclick="toggleEp(this)">
+          <span class="arrow">▶</span>
+          <span class="t" onclick="event.stopPropagation();openEpisode('${ep.id}')" title="点击进入该集场页；点行内箭头或空白处展开/收起摘要">${esc(ep.title || ('第 ' + (i + 1) + ' 集'))}</span>
+          <span class="ops">
+            <button class="btn-ghost btn-mini ep-extract-btn ${hasSummary ? 'enabled' : ''}" id="extract-${ep.id}"
+              ${hasSummary ? '' : 'disabled'}
+              title="${hasSummary ? '提取本集出场资产' : '修改剧情摘要后点亮，将提取本集出场资产'}"
+              onclick="event.stopPropagation();extractEpisodeAssets('${ep.id}')"><span class="dot"></span>📤 提取本集资产</button>
+            <button class="btn-ghost btn-mini" onclick="event.stopPropagation();renameEpisode('${ep.id}','${escAttr(ep.title || '')}')">改名</button>
+            <button class="btn-danger btn-mini" onclick="event.stopPropagation();deleteEpisode('${ep.id}')">删</button>
+          </span>
+        </div>
+        <div class="ep-summary">
+          <div class="meta">剧情摘要（可编辑 · AI 润色）</div>
+          <textarea id="sum-${ep.id}" oninput="onSummaryEdit('${ep.id}')" placeholder="本集剧情摘要……">${esc(ep.summary || '')}</textarea>
+          <div class="row">
+            <button class="btn-ghost btn-mini" onclick="saveEpisodeSummary('${ep.id}')">保存摘要</button>
+            <button class="btn-ghost btn-mini" onclick="event.stopPropagation();optimizeEpisodeSummary('${ep.id}')">✨ AI 润色</button>
+          </div>
+        </div>
+      </div>`;
+  }).join('') || '<div class="empty">暂无集。有剧本原文可点"✨ AI 拆解"生成；无剧本请到工作台导入剧本/专家文件（导入即自动拆解并进入本页）。</div>';
+}
+
+async function renderEpisodes(p) {
+  const grid = document.getElementById('ep-grid');
+  const eps = p.episodes || [];
+  if (!eps.length) { grid.innerHTML = '<div class="empty" style="grid-column:1/-1">暂无集。可在本页点"✨ AI 拆解"生成，或到工作台导入剧本/专家文件（导入即自动拆解）。</div>'; return; }
+  if (!assetCache) {
+    assetCache = {};
+    for (const kind of ['characters', 'scenes', 'props']) {
+      try { assetCache[kind] = (await api('/' + kind)).items || []; } catch (e) { assetCache[kind] = []; }
+    }
+  }
+  grid.innerHTML = eps.map((ep, i) => {
+    const scenes = ep.scenes || [];
+    const segCount = scenes.reduce((n, sc) => n + countSegs(sc.text || ''), 0);
+    const roles = countKind(ep.id, 'characters');
+    const scen = countKind(ep.id, 'scenes');
+    const done = scenes.filter(s => (s.status || '待生成') === '已生成' || (s.status || '待生成') === '已确认').length;
+    const status = scenes.length ? (done === scenes.length ? '已生成' : '待生成') : '待生成';
+    return `
+      <div class="ep-card" id="epc-${ep.id}" onclick="openEpisode('${ep.id}')" oncontextmenu="showEpMenu(event,'${ep.id}')">
+        <div class="thumb">${scenes.length ? scenes.length + ' 场' : '待生成'}</div>
+        <span class="st">${esc(status)}</span>
+        <button class="menu-btn" onclick="showEpMenu(event,'${ep.id}')">⋯</button>
+        <div class="card-m">
+          <div class="t">${esc(ep.title || ('第 ' + (i + 1) + ' 集'))}</div>
+          <div class="meta2">角色 ${roles} · 场景 ${scen} · 场文本段 ${segCount}</div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function countSegs(text) {
+  if (!text) return 0;
+  return text.split('\n').filter(l => /^镜\s*\d+\s*[:：]/.test(l.trim())).length;
+}
+function countKind(epId, kind) {
+  return (assetCache[kind] || []).filter(it => ((it.scopes && it.scopes.episodes) || []).includes(epId)).length;
+}
+
+function openEpisode(epId) {
+  // v1.36：点剧集卡 → 进入该集第一个场的场页（scene.html 骨架：场标题+场文本只读+场序列条切换）
+  location.href = '/scene.html?project=' + currentId + '&episode=' + epId;
+}
+
+// ---- 剧集卡统一操作菜单（三点=右键，v1.33） ----
+let menuEpId = null;
+function showEpMenu(e, epId) {
+  e.preventDefault(); e.stopPropagation();
+  menuEpId = epId;
+  const menu = document.getElementById('ctx-menu');
+  menu.innerHTML = `
+    <div class="mi" onclick="editEpisodeInfo()">编辑集信息</div>
+    <div class="mi" onclick="duplicateEpisode()">创建副本</div>
+    <div class="mi danger" onclick="deleteEpisodeMenu()">删除</div>`;
+  menu.style.display = 'block';
+  menu.style.left = Math.min(e.clientX, window.innerWidth - 160) + 'px';
+  menu.style.top = Math.min(e.clientY, window.innerHeight - 140) + 'px';
+}
+document.addEventListener('click', function (e) { if (!e.target.closest('.ctx-menu')) document.getElementById('ctx-menu').style.display = 'none'; });
+
+async function editEpisodeInfo() {
+  const ep = (projData.episodes || []).find(x => x.id === menuEpId);
+  if (!ep) return;
+  // v1.42：弃用原生 prompt，统一页面内自定义模态
+  window.promptDialog('编辑集信息', ep.title || '', function (val) {
+    const t = (val || '').trim();
+    if (!t) return;
+    api('/projects/' + currentId + '/episodes/' + menuEpId, jsonBody('PUT', { title: t })).then(() => { toast('已保存', 'success'); loadProject(); })
+      .catch(e => { toast(e.message, 'error'); });
+  }, '集标题');
+}
+async function duplicateEpisode() {
+  try { await api('/projects/' + currentId + '/episodes/' + menuEpId + '/duplicate', jsonBody('POST', {})); toast('已创建副本', 'success'); loadProject(); }
+  catch (e) { toast(e.message, 'error'); }
+}
+async function deleteEpisodeMenu() {
+  window.confirmDialog('删除集', '删除该集及其全部场次？此操作不可撤销。', function () {
+    api('/projects/' + currentId + '/episodes/' + menuEpId, { method: 'DELETE' }).then(() => { toast('集已删除', 'success'); loadProject(); })
+      .catch(e => { toast(e.message, 'error'); });
+  });
+}
+
+// ---- 集摘要 CRUD（大纲视图） ----
+function toggleEp(row) { row.closest('.ep-row').classList.toggle('open'); }
+function toggleSummary() { document.getElementById('summary-block').classList.toggle('open'); }
+function onSummaryEdit(epId) {
+  const ta = document.getElementById('sum-' + epId);
+  const btn = document.getElementById('extract-' + epId);
+  if (btn && ta.value.trim()) { btn.disabled = false; btn.classList.add('enabled'); }
+}
+async function saveEpisodeSummary(epId) {
+  const text = document.getElementById('sum-' + epId).value;
+  try { await api('/projects/' + currentId + '/episodes/' + epId, jsonBody('PUT', { summary: text })); toast('摘要已保存', 'success'); loadProject(); }
+  catch (e) { toast(e.message, 'error'); }
+}
+// 集摘要 AI 润色（4-6 通用能力补接：剧本大纲集摘要"可编辑 + AI 润色"定稿；v1.43 成本确认类统一模式——成本弹窗→同窗进度→同窗汇总）
+async function optimizeEpisodeSummary(epId) {
+  const ta = document.getElementById('sum-' + epId);
+  const text = (ta.value || '').trim();
+  if (!text) { toast('请先输入本集剧情摘要', 'error'); return; }
+  try {
+    const est = await api('/optimize-prompt/estimate', jsonBody('POST', { text: text }));
+    window.costRunDialog({
+      title: 'AI 润色剧情摘要',
+      est: est,
+      confirmText: '开始润色',
+      run: async (progress) => {
+        let acc = '';
+        progress('⏳ 正在润色摘要（LLM）…');
+        const r = await window.streamLLM('optimize_prompt', { text: text }, (d) => { acc += d; progress('⏳ ' + esc(acc)); });
+        ta.value = r.optimized || text;
+        onSummaryEdit(epId);   // 摘要已变更：点亮"提取本集资产"按钮
+        return { summary: '✅ 摘要已润色（' + (r.optimized || text).length + ' 字），可继续编辑后保存' };
+      }
+    });
+  } catch (e) { toast(e.message, 'error'); }
+}
+async function renameEpisode(epId, oldTitle) {
+  window.promptDialog('集标题', oldTitle, function (val) {
+    const t = (val || '').trim();
+    if (!t) return;
+    api('/projects/' + currentId + '/episodes/' + epId, jsonBody('PUT', { title: t })).then(() => { loadProject(); })
+      .catch(e => { toast(e.message, 'error'); });
+  }, '集标题');
+}
+async function deleteEpisode(epId) {
+  window.confirmDialog('删除集', '删除该集及其全部场次？此操作不可撤销。', function () {
+    api('/projects/' + currentId + '/episodes/' + epId, { method: 'DELETE' }).then(() => { toast('集已删除', 'success'); loadProject(); })
+      .catch(e => { toast(e.message, 'error'); });
+  });
+}
+async function addEpisode() {
+  if (!currentId) { toast('请先选择项目', 'error'); return; }
+  const def = '第 ' + ((projData && projData.episodes ? projData.episodes.length : 0) + 1) + ' 集';
+  window.promptDialog('新增集', def, function (val) {
+    const t = (val || '').trim();
+    if (!t) return;
+    api('/projects/' + currentId + '/episodes', jsonBody('POST', { title: t })).then(() => { toast('集已新增', 'success'); loadProject(); })
+      .catch(e => { toast(e.message, 'error'); });
+  }, '集标题');
+}
+
+// ---- 提取本集资产（v1.38：LLM 从该集当前摘要文本提取并直接入库；v1.42：同 AI 拆解模式——
+//      成本预估弹窗，确定后同窗显示提取进度，不另开独立弹窗） ----
+let extractEpId = '';
+async function extractEpisodeAssets(epId) {
+  if (!currentId) { toast('请先选择项目', 'error'); return; }
+  extractEpId = epId;
+  const confirmBtn = document.getElementById('ex-confirm');
+  confirmBtn.disabled = true;
+  confirmBtn.textContent = '预估中…';
+  document.getElementById('extract-mask').style.display = 'flex';
+  document.getElementById('extract-progress').style.display = 'none';
+  try {
+    const est = await api('/projects/' + currentId + '/episodes/' + epId + '/extract-assets/estimate', jsonBody('POST', {}));
+    document.getElementById('ex-chars').textContent = (est.chars || 0).toLocaleString();
+    document.getElementById('ex-model').textContent = est.model_name || est.model || '未命名模型';
+    document.getElementById('ex-tokens').textContent = '约 ' + (est.tokens || 0).toLocaleString();
+    document.getElementById('ex-total').textContent = '¥' + ((est.cost || 0).toFixed(4));
+  } catch (e) { toast(e.message, 'error'); document.getElementById('extract-mask').style.display = 'none'; }
+  finally { confirmBtn.disabled = false; confirmBtn.textContent = '确认提取'; }
+}
+async function confirmExtract() {
+  const confirmBtn = document.getElementById('ex-confirm');
+  const cancelBtn = document.getElementById('ex-cancel');
+  const progressEl = document.getElementById('extract-progress');
+  confirmBtn.disabled = true;
+  cancelBtn.disabled = true;
+  progressEl.style.display = '';
+  progressEl.textContent = '⏳ 正在提取本集资产（LLM 从该集摘要提取）…';
+  const btn = document.querySelector(`#extract-${extractEpId}`);
+  if (btn) btn.disabled = true;
+  try {
+    // v1.51：流式提取（SSE），同窗逐步显示 LLM 生成内容
+    let acc = '';
+    const r = await window.streamLLM('extract_assets', { pid: currentId, eid: extractEpId }, (d) => {
+      acc += d;
+      const tail = acc.split('\n').slice(-2).join('\n');
+      progressEl.innerHTML = '⏳ 正在提取本集资产…<br><span style="font-weight:400;color:#6b7280;font-size:11px">' + esc(tail) + '</span>';
+    });
+    const ex = r.extracted || {};
+    const n = (ex.characters || 0) + (ex.scenes || 0) + (ex.props || 0);
+    if (n) {
+      progressEl.innerHTML = '✅ 已提取并入库：角色 ' + (ex.characters || 0) + ' · 场景 ' + (ex.scenes || 0) + ' · 道具 ' + (ex.props || 0) + (r.skipped ? '；' + r.skipped + ' 项跳过（已存在）' : '');
+      toast('已提取并入库：角色 ' + (ex.characters || 0) + ' · 场景 ' + (ex.scenes || 0) + ' · 道具 ' + (ex.props || 0), 'success');
+    } else {
+      progressEl.innerHTML = 'ℹ️ 未提取到新资产（同名同变体可能均已存在，跳过 ' + (r.skipped || 0) + ' 项）';
+      toast('未提取到新资产（同名同变体可能均已存在，跳过 ' + (r.skipped || 0) + ' 项）', 'info');
+    }
+  } catch (e) {
+    progressEl.textContent = '❌ ' + e.message;
+    toast(e.message, 'error');
+  }
+  finally {
+    confirmBtn.disabled = false;
+    cancelBtn.disabled = false;
+    confirmBtn.textContent = '确认提取';
+    if (btn) btn.disabled = false;
+  }
+}
+
+// ---- 批量提取出场资产（批3-2 B1/B6：聚合全剧本出场 @ 引用中库内缺失资产 → 预览 → 一键建卡） ----
+const KIND_LABEL = { characters: '角色', scenes: '场景', props: '道具' };
+async function extractMissingAssets() {
+  if (!currentId) { toast('请先选择项目', 'error'); return; }
+  let agg;
+  try { agg = await api('/projects/' + currentId + '/asset-extract/aggregate', jsonBody('POST', { mode: 'full' })); }
+  catch (e) { toast('聚合失败：' + e.message, 'error'); return; }
+  const miss = agg.missing || [];
+  if (!miss.length) {
+    window.confirmDialog('提取出场资产', '✅ 该剧本出场引用中**无库内缺失资产**（<b>' + (agg.scene_count || 0) + '</b> 场引用均已入库）。无需建卡。', function () {}, '关闭');
+    return;
+  }
+  // 组确认列表：按 kind 分组显示 名称-变体 + 来源场数
+  const byKind = {};
+  for (const m of miss) { (byKind[m.kind] = byKind[m.kind] || []).push(m); }
+  let rows = '';
+  for (const k of ['characters', 'scenes', 'props']) {
+    const arr = byKind[k];
+    if (!arr || !arr.length) continue;
+    rows += '<div style="margin-top:6px;font-weight:600;color:#374151">' + (KIND_LABEL[k] || k) + '（' + arr.length + '）</div>';
+    for (const m of arr) {
+      rows += '<div style="padding:2px 0 2px 8px;border-left:2px solid #e5e7eb;margin-left:4px">' + esc(m.name) +
+        ' <span style="color:#9ca3af;font-size:11px">· 出场 ' + (m.scenes || []).length + ' 场</span></div>';
+    }
+  }
+  const head = '<div style="margin-bottom:4px">扫描到 <b>' + miss.length + '</b> 个出场引用资产库内缺失（建卡后可到资产库为其生成图）。</div>';
+  window.confirmDialog('批量建卡 · 将创建 ' + miss.length + ' 张卡',
+    head + '<div style="max-height:300px;overflow:auto;background:#f9fafb;border:1px solid #f3f4f6;border-radius:8px;padding:6px 10px">' + rows + '</div>',
+    async function () {
+      try {
+        const r = await api('/projects/' + currentId + '/asset-extract/cards', jsonBody('POST', { mode: 'full' }));
+        const c = r.created || [], s = r.skipped || [];
+        let msg = '✅ 已建卡 ' + c.length + ' 张';
+        if (s.length) msg += '；跳过 ' + s.length + '（已存在）';
+        toast(msg, 'success');
+        window.confirmDialog('批量建卡完成', msg + '。<div style="margin-top:6px;color:#6b7280;font-size:12px">点击「下一步 → 资产库」为每张卡生成图片/音频。' + (s.length ? '<br>跳过项：' + s.map(x => esc(x.name || '')).join('、') : '') + '</div>', function () {}, '关闭');
+      } catch (e) { toast('建卡失败：' + e.message, 'error'); }
+    }, '确认建卡');
+}
+
+// ---- 删除本次拆解全部资产（v1.30 ⑤ / v1.31：导入资产一并清理，e9d3554 修复；v1.40 ② 只删资产保留集场） ----
+async function cleanupDraft() {
+  if (!currentId) { toast('请先选择项目', 'error'); return; }
+  window.confirmDialog('删除本次拆解全部资产', '删除本次拆解/导入创建的全部资产（全局资产库条目）？集/场结构保留。此操作不可撤销。', function () {
+    api('/projects/' + currentId + '/drafts/cleanup', { method: 'POST' }).then(r => {
+      const rm = r.removed || {};
+      toast('已删除：角色 ' + (rm.characters || 0) + ' · 场景 ' + (rm.scenes || 0) + ' · 道具 ' + (rm.props || 0) + '（集/场结构保留）', 'success');
+      document.getElementById('land-tip').style.display = 'none';
+      loadProject();
+    }).catch(e => { toast(e.message, 'error'); });
+  });
+}
+
+// ---- 重新生成剧本摘要（v1.31；v1.43 成本确认类统一模式；v1.51 流式同窗显示生成内容） ----
+function regenerateSummary() {
+  if (!currentId) { toast('请先选择项目', 'error'); return; }
+  api('/projects/' + currentId + '/summary/estimate', jsonBody('POST', {}))
+    .then(est => {
+      window.costRunDialog({
+        title: '重新生成剧本摘要',
+        est: est,
+        confirmText: '开始生成',
+        run: async (progress) => {
+          let acc = '';
+          progress('⏳ 正在重新生成剧本摘要（LLM 以各集摘要汇总）…');
+          const r = await window.streamLLM('summarize', { pid: currentId }, (d) => { acc += d; progress('⏳ ' + esc(acc)); });
+          loadProject();
+          return { summary: '✅ 剧本摘要已重新生成（只读区已更新）' + (r.fallback ? '（本地拼接兜底）' : '') };
+        }
+      });
+    })
+    .catch(e => { if (e && e.message) toast(e.message, 'error'); });
+}
+
+// ---- 帮助弹窗 ----
+function openHelp() { document.getElementById('help-mask').style.display = 'flex'; }
+function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+// ---- AI 拆解（4-3：成本预估 → 确认 → 拆解 → apply 落地） ----
+function onAnalyzeClick() {
+  if (!currentId) { toast('请先选择项目，再拆解', 'error'); return; }
+  const confirmBtn = document.getElementById('cost-confirm');
+  confirmBtn.disabled = true;
+  confirmBtn.textContent = '预估中…';
+  document.getElementById('cost-mask').style.display = 'flex';
+  api('/projects/' + currentId + '/analyze-cost', jsonBody('POST', {}))
+    .then(est => {
+      document.getElementById('cost-chars').textContent = (est.chars || 0).toLocaleString();
+      document.getElementById('cost-model').textContent = est.model_name || est.model || '未命名模型';
+      document.getElementById('cost-tokens').textContent = '约 ' + (est.tokens || 0).toLocaleString();
+      document.getElementById('cost-total').textContent = '¥' + ((est.cost || 0).toFixed(4));
+    })
+    .catch(e => { toast(e.message, 'error'); document.getElementById('cost-mask').style.display = 'none'; })
+    .finally(() => { confirmBtn.disabled = false; confirmBtn.textContent = '确认开始拆解'; });
+}
+async function confirmAnalyze() {
+  const confirmBtn = document.getElementById('cost-confirm');
+  const progressEl = document.getElementById('analyze-progress');
+  confirmBtn.disabled = true;
+  confirmBtn.textContent = '拆解中…';
+  progressEl.style.display = '';
+  progressEl.textContent = '⏳ 正在拆解…';
+  let acc = '';
+  try {
+    // v1.51：流式拆解（SSE），成本弹窗同窗逐步显示 LLM 生成内容；完成后 apply 落地（原轮询 drafts 逻辑保留兜底）
+    const draft = await window.streamLLM('analyze', { pid: currentId }, (d) => {
+      acc += d;
+      const tail = acc.split('\n').slice(-3).join('\n');
+      progressEl.innerHTML = '⏳ 正在拆解…<br><span style="font-weight:400;color:#6b7280;font-size:11px">' + esc(tail) + '</span>';
+    });
+    const mode = draft.mode === 'whole' ? '整本一次拆解' : (draft.mode === 'batch' ? '按集分批拆解' : '');
+    const eps = draft.episodes || [];
+    const ok = eps.filter(e => e.status === 'ok').length;
+    const errs = eps.filter(e => e.status === 'error');
+    if (!ok) { throw new Error('全部集拆解失败' + (errs[0] && errs[0].error ? '：' + errs[0].error : '')); }
+    const applied = await api('/projects/' + currentId + '/drafts/apply', { method: 'POST' });
+    const a = applied.applied || {};
+    // 完成后：关闭成本弹窗，落地汇总（v1.31 land-tip 定稿：三产出直接落地汇总）+ toast
+    document.getElementById('cost-mask').style.display = 'none';
+    const landTip = document.getElementById('land-tip');
+    landTip.style.display = 'block';
+    landTip.innerHTML =
+      '✅ 拆解已完成（' + (mode || '') + '）并直接落地：<b>角色 ' + (a.characters || 0) + '</b> · <b>场景 ' + (a.scenes || 0) + '</b> · <b>道具 ' + (a.props || 0) + '</b> → 全局资产库（"未生成"状态，可去资产库补图）；<b>' + (a.episodes || 0) + ' 集 ' + (a.scenes_count || 0) + ' 场</b> → 项目结构（场文本，状态"待生成"）' +
+      (errs.length ? '；<b style="color:#dc2626">' + errs.length + ' 集失败</b>（可在后续步骤重试）' : '');
+    toast('拆解完成：' + ok + '/' + eps.length + ' 集成功，三产出已落地', 'success');
+    loadProject();
+  } catch (e) { progressEl.textContent = '❌ ' + e.message; toast(e.message, 'error'); }
+  finally { confirmBtn.disabled = false; confirmBtn.textContent = '确认开始拆解'; }
+}
+</script>
+<script src="/static/nav.js?v=14"></script>
+</body>
+</html>
+

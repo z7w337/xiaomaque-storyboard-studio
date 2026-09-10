@@ -1,0 +1,211 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>小麻雀剧本分镜工坊 - 设置</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "Microsoft YaHei", "PingFang SC", sans-serif; background: #f5f6f8; color: #333; display: flex; min-height: 100vh; }
+  .main-wrap { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  main { max-width: 1000px; margin: 20px auto; padding: 0 16px; }
+  .sec { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; margin-bottom: 14px; overflow: hidden; }
+  .sec-head { display: flex; align-items: center; gap: 8px; padding: 13px 16px; cursor: pointer; user-select: none; }
+  .sec-head .arrow { transition: transform .15s; color: #9ca3af; font-size: 12px; }
+  .sec.open .sec-head .arrow { transform: rotate(90deg); }
+  .sec-head h2 { font-size: 15px; flex: 1; }
+  .sec-head .hint { font-size: 12px; color: #9ca3af; }
+  .sec-body { display: none; padding: 4px 16px 16px; border-top: 1px solid #f3f4f6; }
+  .sec.open .sec-body { display: block; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { padding: 8px 6px; border-bottom: 1px solid #f3f4f6; text-align: left; vertical-align: middle; }
+  th { color: #6b7280; font-weight: 500; font-size: 12px; }
+  input, select { padding: 6px 9px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 13px; width: 100%; box-sizing: border-box; }
+  td input[type=text], td input[type=password], td input[type=number], td select { min-width: 0; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
+  .row .lbl { font-size: 13px; color: #6b7280; width: 110px; flex: none; }
+  .row input { flex: 1; min-width: 120px; }
+  .row select { flex: 1; min-width: 120px; }
+  .btn { padding: 7px 16px; border: none; border-radius: 8px; cursor: pointer; font-size: 13px; white-space: nowrap; }
+  .btn-primary { background: #2563eb; color: #fff; }
+  .btn-ghost { background: #f3f4f6; color: #374151; border: 1px solid #e5e7eb; }
+  .btn-danger { background: #fee2e2; color: #dc2626; }
+  .btn-mini { padding: 4px 10px; font-size: 12px; border-radius: 6px; white-space: nowrap; }
+  .tip { font-size: 12px; color: #9ca3af; margin-top: 6px; }
+  .bar { display: flex; justify-content: flex-end; gap: 10px; margin-top: 14px; }
+  .placeholder { background: #f9fafb; color: #9ca3af; border: 1px dashed #d1d5db; cursor: not-allowed; }
+  .empty { color: #9ca3af; font-size: 13px; padding: 20px 0; text-align: center; }
+</style>
+</head>
+<body>
+<aside id="sidebar"></aside>
+<div class="main-wrap">
+<main>
+
+  <div class="sec open" id="sec-llm">
+    <div class="sec-head" onclick="toggleSec('sec-llm')">
+      <span class="arrow">▶</span>
+      <h2>LLM 模型列表</h2>
+      <span class="hint">拆解 / AI 优化 / 智能推荐使用</span>
+    </div>
+    <div class="sec-body">
+      <div class="row" style="justify-content:flex-end">
+        <span style="font-size:12px;color:#9ca3af;margin-right:auto">用预置模板新建模型（Key 由您填写）</span>
+        <select id="tpl" style="flex:none;width:230px" onchange="applyTemplate()">
+          <option value="">— 选择模板（选择即新建） —</option>
+          <option value="qwen_small">⓪ Modelscope Qwen 小·快（默认档，v1.51）</option>
+          <option value="qwen">① Modelscope Qwen（免费/低成本档）</option>
+          <option value="openai">② 通用 OpenAI 兼容（付费档）</option>
+          <option value="blank">③ 空模板（自填）</option>
+        </select>
+        <button class="btn btn-ghost btn-mini" onclick="applyTemplate()">新建</button>
+      </div>
+      <table id="model-table">
+        <thead><tr><th style="width:110px" title="模型名称，用于识别">名称</th><th style="width:170px" title="OpenAI 兼容的接口地址">API 地址</th><th style="width:130px" title="实际调用的模型标识">模型名</th><th style="width:150px" title="API 密钥，仅本机保存、不显示明文">Key</th><th style="width:70px" title="温度越高，输出越随机多样；越低越稳定保守">温度</th><th style="width:90px" title="每千 token 费用，用于拆解/生成前成本预估。免费模型填 0；按量计费模型请填服务商官网公布的实际单价（元/千token），预估仅供参考，以官网为准">单价(¥/千token)</th><th style="width:70px" title="勾选后，拆解与生成默认使用该模型">默认</th><th style="width:40px"></th></tr></thead>
+        <tbody id="model-tbody"></tbody>
+      </table>
+      <div style="margin-top:10px;display:flex;gap:8px;align-items:center">
+        <button class="btn btn-ghost btn-mini" onclick="addRow()">＋ 添加模型</button>
+        <span class="tip">模块不内置 Key，由您填写；与 Infinite Canvas 的 Key 互不访问。温度：越高输出越随机，越低越稳定。单价：免费模型填 0；按量计费模型请按服务商官网实际单价填写，费用预估仅供参考、以官网为准</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec" id="sec-provider">
+    <div class="sec-head" onclick="toggleSec('sec-provider')">
+      <span class="arrow">▶</span>
+      <h2>默认生成平台（生图 / 视频）</h2>
+      <span class="hint">平台与模型两级联动</span>
+    </div>
+    <div class="sec-body">
+      <div class="row"><span class="lbl">生图平台</span><select><option value="">comfyui（已配置）</option><option value="">modelscope（未配置，置灰）</option><option value="">即梦（未配置，置灰）</option><option value="">RunningHub（未配置，置灰）</option></select><span class="lbl" style="width:60px">模型</span><select><option value="">Seedream 5.0 Pro</option></select></div>
+      <div class="row"><span class="lbl">视频平台</span><select><option value="">comfyui（H3 本地工作流）</option></select><span class="lbl" style="width:60px">模型</span><select><option value="">自定义工作流</option></select></div>
+      <div class="tip">平台列表经 Infinite Canvas 动态拉取（未配置的平台置灰）；模型在选平台后列出；记忆上次选择</div>
+    </div>
+  </div>
+
+  <div class="sec" id="sec-other">
+    <div class="sec-head" onclick="toggleSec('sec-other')">
+      <span class="arrow">▶</span>
+      <h2>其他设置</h2>
+      <span class="hint">路径 / 监听 / 副本</span>
+    </div>
+    <div class="sec-body">
+      <div class="row"><span class="lbl">资产库路径</span><input id="set-shared"></div>
+      <div class="row"><span class="lbl">Infinite Canvas 路径</span><input id="set-ic"></div>
+      <div class="row"><span class="tip" style="flex:1;color:#9ca3af;font-size:12px">IC 服务默认随生图自动拉起（6-7，IC 未运行时点生成会自动启动）；如需手动停止：任务管理器 → 结束占用 3000 端口的 python 进程（或到 Infinite Canvas 目录关掉其服务窗口）。</span></div>
+      <div class="row"><span class="lbl">监听地址</span><select id="set-listen" style="flex:0 0 180px"><option value="127.0.0.1">仅本机 127.0.0.1</option><option value="0.0.0.0">局域网 0.0.0.0（⚠️ 局域网可见）</option></select></div>
+      <div class="row"><span class="lbl">保护性副本</span><select id="set-protect" style="flex:0 0 180px"><option value="off">关闭</option><option value="on">开启（每次登记留存副本）</option></select></div>
+      <div class="row"><span class="lbl">拆解阈值(字)</span><input id="set-threshold" type="number" min="500" max="50000" style="flex:0 0 160px"><span class="tip" style="flex:1">v1.37 自适应拆解：剧本字数小于该阈值时整本一次拆解（成本最低），否则按集分批（防截断、单批失败只重跑该集）。默认 8000</span></div>
+      <div class="row"><span class="lbl">ComfyUI 地址</span><input id="set-comfyui" style="flex:0 0 280px" placeholder="http://&lt;comfyui-ip&gt;:8188"><span class="tip" style="flex:1">收尾A② 音色样本 + 场视频直连的 ComfyUI 服务地址（H3 本地工作流）；留空回退默认占位</span></div>
+    </div>
+  </div>
+
+  <div class="bar">
+    <button class="btn btn-primary" onclick="saveSettings()">保存设置</button>
+  </div>
+</main>
+<div id="inline-tip" style="position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:200;display:none;padding:8px 14px;border-radius:8px;font-size:13px;box-shadow:0 2px 10px rgba(0,0,0,.18)"></div>
+
+<script>
+const API = '/api';
+let models = [];
+
+function esc(s) { return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+function tip(text, type) {
+  // v1.42：信息通知统一用全局悬浮 toast（nav.js window.toast），不再用 Inline
+  if (window.toast) { window.toast(text, type); return; }
+  const el = document.getElementById('inline-tip');
+  el.textContent = text;
+  el.style.background = type === 'success' ? '#dcfce7' : '#fee2e2';
+  el.style.color = type === 'success' ? '#16a34a' : '#dc2626';
+  el.style.display = 'block';
+  clearTimeout(el._t);
+  el._t = setTimeout(() => { el.style.display = 'none'; }, 3200);
+}
+async function api(path, options) {
+  const resp = await fetch(API + path, options);
+  if (!resp.ok) { let d = '请求失败'; try { d = (await resp.json()).detail || d; } catch (e) {} throw new Error(d); }
+  return resp.json();
+}
+function jsonBody(method, body) { return { method, headers: { 'Content-Type': 'application/json; charset=utf-8' }, body: JSON.stringify(body) }; }
+
+function toggleSec(id) { document.getElementById(id).classList.toggle('open'); }
+
+function renderRows() {
+  const tb = document.getElementById('model-tbody');
+  tb.innerHTML = models.map((m, i) => `
+    <tr>
+      <td><input value="${esc(m.name || '')}" placeholder="名称" data-k="name"></td>
+      <td><input value="${esc(m.base_url || '')}" placeholder="API 地址" data-k="base_url"></td>
+      <td><input value="${esc(m.model || '')}" placeholder="模型名" data-k="model"></td>
+      <td style="white-space:nowrap">
+        <input type="password" value="${esc(m.api_key || '')}" placeholder="Key" data-k="api_key" style="width:110px">
+        ${m.api_key ? '<span style="color:#16a34a;font-size:11px;margin-left:4px" title="已配置 Key（保存后沿用；留空保存不覆盖）">✓ 已配置</span>' : ''}
+        ${m.key_url ? `<a href="${esc(m.key_url)}" target="_blank" title="获取 Key" style="font-size:12px;color:#2563eb;margin-left:6px;text-decoration:none">获取 Key ↗</a>` : ''}
+      </td>
+      <td><input type="number" value="${m.temperature ?? 0.7}" step="0.1" data-k="temperature"></td>
+      <td><input type="number" value="${m.price_per_1k ?? 0}" step="0.01" data-k="price_per_1k"></td>
+      <td style="text-align:center"><input type="radio" name="def" ${m.is_default ? 'checked' : ''}></td>
+      <td><button class="btn btn-danger btn-mini" onclick="removeRow(${i})">删</button></td>
+    </tr>`).join('') || '<tr><td colspan="8" class="empty">暂无模型，请添加或从预置模板新建</td></tr>';
+}
+function addRow() {
+  models.push({ id: 'm_' + Date.now().toString(36), name: '', base_url: '', model: '', api_key: '', temperature: 0.7, price_per_1k: 0, is_default: models.length === 0 });
+  renderRows();
+}
+function removeRow(i) { models.splice(i, 1); renderRows(); }
+
+async function loadSettings() {
+  try {
+    const s = await api('/settings');
+    models = (s.llm_models || []).map(m => ({ ...m }));
+    renderRows();
+    document.getElementById('set-shared').value = s.shared_assets_path || '';
+    document.getElementById('set-ic').value = s.ic_path || '';
+    document.getElementById('set-listen').value = s.listen || '127.0.0.1';
+    document.getElementById('set-protect').value = s.protect_copy ? 'on' : 'off';
+    document.getElementById('set-threshold').value = s.analyze_threshold || 8000;
+    document.getElementById('set-comfyui').value = s.comfyui_url || '';
+  } catch (e) { tip(e.message, 'error'); }
+}
+async function saveSettings() {
+  // 收集表格
+  const rows = [...document.querySelectorAll('#model-tbody tr')];
+  models = rows.map((tr, i) => {
+    const m = models[i] || { id: 'm_' + Date.now().toString(36) + '_' + i };
+    tr.querySelectorAll('input[data-k]').forEach(inp => { m[inp.dataset.k] = inp.type === 'number' ? parseFloat(inp.value) || 0 : inp.value; });
+    m.is_default = tr.querySelector('input[name=def]').checked;
+    return m;
+  });
+  try {
+    await api('/settings', jsonBody('PUT', {
+      llm_models: models,
+      ic_path: document.getElementById('set-ic').value.trim(),
+      listen: document.getElementById('set-listen').value,
+      protect_copy: document.getElementById('set-protect').value === 'on',
+      analyze_threshold: parseInt(document.getElementById('set-threshold').value) || 8000
+      , comfyui_url: document.getElementById('set-comfyui').value.trim()
+    }));
+    tip('设置已保存', 'success');
+  } catch (e) { tip(e.message, 'error'); }
+}
+async function applyTemplate() {
+  const tpl = document.getElementById('tpl').value;
+  if (!tpl) { tip('请先选择模板', 'error'); return; }
+  try {
+    const s = await api('/settings/apply-template', jsonBody('POST', { template: tpl }));
+    models = (s.llm_models || []).map(m => ({ ...m }));
+    renderRows();
+    document.getElementById('tpl').value = '';
+    tip('已用模板新建模型（请填写 Key）', 'success');
+  } catch (e) { tip(e.message, 'error'); }
+}
+
+loadSettings();
+</script>
+</div>
+<script src="/static/nav.js?v=14"></script>
+</body>
+</html>
+

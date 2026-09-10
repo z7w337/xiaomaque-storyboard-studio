@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>小麻雀剧本分镜工坊 - 高斯泼溅 3D</title>
+<style>
+  /* ===== 页面骨架（与工坊各页一致：侧栏 nav.js + 主区）===== */
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "Microsoft YaHei", "PingFang SC", sans-serif; background: #f5f6f8; color: #333; display: flex; min-height: 100vh; }
+  .main-wrap { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  main { max-width: 1180px; margin: 18px auto; padding: 0 18px; width: 100%; }
+  button { padding: 8px 16px; border: none; border-radius: 8px; cursor: pointer; font-size: 13px; }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  .btn-primary { background: #2563eb; color: #fff; }
+  .btn-primary:hover { background: #1d4ed8; }
+  /* SHARP 生成进行中模态（参照生图工具 gt-pg 同款） */
+  .gs-pg-mask { position: fixed; inset: 0; background: rgba(17,24,39,.45); z-index: 960; display: none; align-items: center; justify-content: center; }
+  .gs-pg-card { background: #fff; border-radius: 16px; padding: 30px 42px; width: 360px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,.25); }
+  .gs-pg-icon { font-size: 42px; display: inline-block; animation: gs-pg-spin 1.2s linear infinite; }
+  @keyframes gs-pg-spin { from { transform: rotate(0); } to { transform: rotate(360deg); } }
+  .gs-pg-title { font-size: 16px; font-weight: 700; margin: 12px 0 4px; color: #1f2937; }
+  .gs-pg-stage { font-size: 13px; color: #6b7280; margin-bottom: 14px; min-height: 18px; }
+  .gs-pg-bar { height: 8px; border-radius: 4px; background: #e5e7eb; overflow: hidden; }
+  .gs-pg-fill { height: 100%; width: 0%; background: #2563eb; transition: width .4s; border-radius: 4px; }
+  .gs-pg-time { font-size: 12px; color: #9ca3af; margin-top: 8px; }
+  .btn-ghost { background: #f3f4f6; color: #374151; border: 1px solid #e5e7eb; }
+  .btn-ghost:hover { background: #e5e7eb; }
+  .btn-mini { padding: 4px 10px; font-size: 12px; border-radius: 6px; }
+  .panel { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; }
+  .page-title { font-size: 18px; font-weight: 700; color: #1f2937; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
+  .page-title .sub { font-size: 12px; font-weight: 400; color: #9ca3af; }
+  .banner { font-size: 12px; color: #9a3412; background: #fff7ed; border: 1px solid #fed7aa; border-radius: 8px; padding: 6px 12px; margin: 8px 0 14px; line-height: 1.7; }
+
+  /* ===== 布局：左参数区 + 右预览区 ===== */
+  .gs-layout { display: grid; grid-template-columns: 300px 1fr; gap: 16px; align-items: stretch; grid-auto-rows: 1fr; min-height: calc(100vh - 200px); }  /* 等高：数据行撑满可视高度，预览区随左栏尽量大 */
+  .gs-params { align-self: start; }                                   /* 左栏以内容高为准，不强行拉高 */
+  @media (max-width: 900px) { .gs-layout { grid-template-columns: 1fr; } }
+  .gs-params { display: flex; flex-direction: column; gap: 16px; }
+
+  /* 参数区各块 */
+  .blk-t { font-size: 12px; font-weight: 600; color: #374151; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+  .blk-t .n { color: #9ca3af; font-weight: 400; }
+  /* 参考图槽 */
+  .gs-imgslot { border: 2px dashed #d1d5db; border-radius: 10px; aspect-ratio: 1/1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; color: #9ca3af; font-size: 12px; background: #fafafa; cursor: pointer; position: relative; overflow: hidden; }
+  .gs-imgslot.has img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .gs-imgslot .big-ic { font-size: 30px; }
+  .gs-srcrow { display: flex; gap: 8px; margin-top: 8px; }
+  .gs-srcrow button { flex: 1; }
+
+  /* 参数区 / 布局 */
+  .gs-field { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13px; color: #374151; }
+  .gs-field label { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+  .gs-field input[type=number] { width: 84px; padding: 6px 8px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 13px; text-align: right; }
+  .gs-gen { width: 100%; padding: 10px; font-size: 14px; }
+  .gs-note { font-size: 11px; color: #9ca3af; line-height: 1.6; }
+
+  /* 预览区 */
+  .gs-preview { position: relative; background: #111827; border-radius: 12px; overflow: hidden; min-height: 460px; display: flex; flex-direction: column; }
+  .gs-pvhead { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: rgba(17,24,39,.6); color: #d1d5db; font-size: 12px; flex-wrap: wrap; }
+  .gs-pvhead .fname { color: #9ca3af; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .gs-canvas-area { flex: 1; position: relative; min-height: 400px; display: flex; align-items: center; justify-content: center; }
+  #gs-stage { position: absolute; inset: 0; width: 100%; height: 100%; }
+  #gs-canvas { display: block; width: 100%; height: 100%; }
+  .gs-empty { text-align: center; color: #6b7280; padding: 30px; font-size: 13px; line-height: 1.9; }
+  .gs-empty .e-ic { font-size: 40px; margin-bottom: 8px; }
+  .gs-empty .sub { font-size: 12px; color: #9ca3af; }
+  /* 3D 预览功能条（Scale 实时/重置/保存占位/复制占位） */
+  .gs-funcbar { display: flex; align-items: center; gap: 12px; padding: 8px 12px; background: rgba(17,24,39,.85); color: #e5e7eb; font-size: 13px; flex-wrap: wrap; }
+  .gs-funcbar label { opacity: .75; }
+  .gs-funcbar input[type=number] { width: 64px; background: #333; color: #e5e7eb; border: 1px solid #555; padding: 4px 6px; border-radius: 4px; }
+  .gs-funcbar .fb-btn { background: #2563eb; color: #fff; border: 0; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 12px; }
+  .gs-funcbar .fb-btn:hover { background: #1d4ed8; }
+  .gs-funcbar .fb-btn.ghost { background: #374151; }
+  .gs-funcbar .fb-btn.ghost:hover { background: #4b5563; }
+  .gs-funcbar .hint { color: #6b7280; font-size: 11px; margin-left: auto; }
+
+  /* 适用边界 */
+  .gs-bound { display: flex; flex-wrap: wrap; gap: 6px; }
+  .gs-bound .ok, .gs-bound .no { font-size: 11px; padding: 3px 8px; border-radius: 999px; }
+  .gs-bound .ok { background: #dcfce7; color: #166534; }
+  .gs-bound .no { background: #fee2e2; color: #dc2626; }
+</style>
+</head>
+<body>
+<div class="gs-pg-mask" id="gs-pg-mask">
+  <div class="gs-pg-card">
+    <div class="gs-pg-icon">🧊</div>
+    <div class="gs-pg-title" id="gs-pg-title">SHARP 重建中…</div>
+    <div class="gs-pg-stage" id="gs-pg-stage">提交重建任务…</div>
+    <div class="gs-pg-bar"><div class="gs-pg-fill" id="gs-pg-fill"></div></div>
+    <div class="gs-pg-time" id="gs-pg-time">已耗时 0 秒</div>
+  </div>
+</div>
+<aside id="sidebar"></aside>
+<div class="main-wrap">
+<main>
+  <div class="page-title">🧊 高斯泼溅 3D</div>
+  <div class="banner" style="font-size:13.5px;font-weight:600;padding:10px 14px">🖱️ <b>左键拖动</b> 旋转视角 ｜ <b>中键拖动</b> 平移 ｜ <b>滚轮</b> 缩放远近</div>
+
+  <div class="gs-layout">
+    <!-- ===== 左：参数区 ===== -->
+    <div class="gs-params">
+      <div class="panel">
+        <div class="blk-t">参考图 <span class="n">（场景/道具/静物单图，勿用人物）</span></div>
+        <div class="gs-imgslot" id="imgSlot" onclick="gsPickSource()">
+          <img id="slotPreview" style="display:none" alt="">
+          <div id="slotEmpty" style="display:flex;flex-direction:column;align-items:center;gap:8px">
+            <div class="big-ic">🖼️</div>
+            <div>点击选择参考图</div>
+          </div>
+        </div>
+        <div class="gs-srcrow">
+          <button class="btn-ghost" onclick="gsPickAsset()">🗂 从资产库选择</button>
+          <button class="btn-ghost" onclick="gsUpload()">⬆ 上传</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="blk-t">.ply 查看器 / 生成</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <button class="btn-ghost" onclick="gsUploadPly()" title="直接上传本地 .ply 文件并 3D 显示，不经远程生成">📂 上传本地 .ply 查看</button>
+          <button class="btn-primary gs-gen" id="gsGenBtn" onclick="gsGenerate()">✨ 生成（SHARP 重建）</button>
+        </div>
+        <div id="gsLastRow" style="display:none;margin-top:8px;align-items:center;gap:8px;flex-wrap:wrap">
+          <button class="btn-ghost btn-mini" onclick="gsReloadLast()">↻ 重新预览上次 .ply</button>
+          <span class="hint" id="gsLastName" style="font-size:11px"></span>
+        </div>
+        <div class="gs-note" style="margin-top:10px">① <b>上传本地 .ply</b>：选本地高斯泼溅文件直接 3D 显示（本机秒开，适合查看已有 ply，无需生成）。② 生成：调 SHARP 重建场景图；首次跨机拉 ply 慢，会<b>缓存到本地</b>后秒开。</div>
+      </div>
+
+      <div class="panel">
+        <div class="blk-t">适用边界</div>
+        <div class="gs-bound">
+          <span class="ok">✅ 场景</span><span class="ok">✅ 道具</span><span class="ok">✅ 静物</span>
+          <span class="no">❌ 人物（侧脸/背面崩）</span><span class="no">❌ 360°</span><span class="no">❌ 视频</span>
+        </div>
+        <div class="gs-note" style="margin-top:8px">旋转 ±90° 内正常（单图固有）；跨机加载 ply 约 2-5 分钟。</div>
+      </div>
+    </div>
+
+    <!-- ===== 右：3D 预览区 ===== -->
+    <div class="panel gs-preview">
+      <div class="gs-pvhead">
+        <span>🧊 3D 预览</span>
+        <span class="fname" id="gsFname">未加载 .ply</span>
+      </div>
+      <div class="gs-canvas-area">
+        <!-- 阶段 4 起：#gs-stage 内挂 gsplat viewer（Scale/重置已实现，见 gsplat-preview） -->
+        <div id="gs-stage"></div>
+        <div class="gs-empty" id="gsEmpty">
+          <div class="e-ic">🧊</div>
+          <div>尚无 3D 点云可预览</div>
+          <div class="sub">在左侧选择参考图并生成后，此处加载 SHARP 重建的 .ply（阶段 4-5 接通）</div>
+        </div>
+      </div>
+      <!-- 3D 预览功能条（生成后转发内嵌 viewer 工具栏操作；Scale/重置/保存/复制由 viewer 实现） -->
+      <div class="gs-funcbar" id="gsFuncBar">
+        <button class="fb-btn ghost" onclick="gsViewerProxy('reset')">↺ 重置视角</button>
+        <button class="fb-btn" onclick="gsViewerProxy('save')">💾 保存</button>
+        <button class="fb-btn" onclick="gsViewerProxy('copy')">📋 复制到剪贴板</button>
+        <span class="hint" id="gsFuncHint">先生成 3D 后可用；左键旋转 / 中键平移 / 滚轮缩放</span>
+      </div>
+    </div>
+  </div>
+</main>
+</div>
+
+<script src="/static/palette.js?v=1"></script>
+<script>
+/* ===== 高斯泼溅页（阶段 3 UI 先行占位）=====
+   当前：参考图槽/生成/3D 预览为界面占位，真实 GS（SHARP→ply→3D预览）阶段4-5接入。
+   Scale 实时已按 gsplat-preview viewer.html(20:44) 落地：改 splat.data.scales → remove+add 强传 buffer + 100ms 防抖。
+   生成尺度由预览 Scale 控制；SHARP 相机内参按模型默认，不暴露。 */
+var _gsRef = '';   // 当前参考图相对路径
+
+function toast(t, ty) { window.toast ? window.toast(t, ty) : alert(t); }
+function gsApi(url, opt) { opt = opt || {}; var o = Object.assign({ headers: {} }, opt); if (o.body && typeof o.body !== 'string' && !(o.body instanceof FormData)) { o.headers['Content-Type'] = 'application/json; charset=utf-8'; o.body = JSON.stringify(o.body); } return fetch(url, o).then(function (r) { if (!r.ok) return r.json().then(function (x) { throw new Error((x && (x.detail || x.msg)) || ('请求失败 ' + r.status)); }); return r.json(); }); }
+
+/* 参考图：从资产库选择场景/道具图（复用资产接口） */
+function gsSetRef(path, name) {
+  _gsRef = path || '';
+  var slot = document.getElementById('slotPreview'), empty = document.getElementById('slotEmpty');
+  if (_gsRef) {
+    slot.src = '/api/asset-file/' + encodeURIComponent(_gsRef);
+    slot.style.display = 'block'; empty.style.display = 'none';
+    document.getElementById('gsFname').textContent = '参考图: ' + (name || _gsRef.split('/').pop());
+  } else { slot.style.display = 'none'; empty.style.display = 'flex'; }
+}
+/* 资产库选择弹窗：分组列表 + 右栏 Hover 大图预览（参照 gentools 体验） */
+function gsPickPrev(pathEnc, nameEnc) {
+  var p = decodeURIComponent(pathEnc || '');
+  var box = document.getElementById('gs-pick-prev'), imEl = document.getElementById('gs-pick-prev-img');
+  var phEl = document.getElementById('gs-pick-prev-ph'), nmEl = document.getElementById('gs-pick-prev-name');
+  if (!box || !imEl) return;
+  if (p) { box.style.display = 'flex'; if (phEl) phEl.style.display = 'none'; imEl.style.display = 'block'; imEl.src = '/api/asset-file/' + encodeURIComponent(p); }
+  else { box.style.display = 'flex'; if (phEl) phEl.style.display = 'block'; imEl.style.display = 'none'; }
+  if (nmEl) nmEl.textContent = decodeURIComponent(nameEnc || '');
+}
+async function gsPickAsset() {
+  var kinds = [['scenes', '🏙️ 场景'], ['props', '🎭 道具'], ['references', '🧩 素材']];
+  var listHtml = '';
+  for (var ki = 0; ki < kinds.length; ki++) {
+    var k = kinds[ki][0], lbl = kinds[ki][1], items = [];
+    try { items = (await gsApi('/api/' + k)).items || []; } catch (e) {}
+    listHtml += '<div style="font-size:12px;color:#6b7280;padding:6px 4px;position:sticky;top:0;background:#fafafa">' + lbl + '（' + items.length + '）</div>';
+    var rows = items.map(function (a) {
+      var im = (a.images && a.images[0] && a.images[0].path) ? a.images[0].path : '';
+      var nm = (k === 'references') ? (a.path || im || '').split('/').pop() : ((a.prefix || '') + '-' + (a.variant_name || ''));
+      if (!im) return '';
+      return '<div style="display:flex;align-items:center;gap:8px;padding:5px 6px;border-radius:8px;cursor:pointer" onclick="gsPickRef(\'' + encodeURIComponent(im) + '\',\'' + encodeURIComponent(nm) + '\')" onmouseenter="gsPickPrev(\'' + encodeURIComponent(im) + '\',\'' + encodeURIComponent(nm) + '\')" title="悬停预览，点击选用">'
+        + '<img src="/api/asset-file/' + encodeURIComponent(im) + '" style="width:40px;height:40px;border-radius:6px;object-fit:cover;background:#eceff3">'
+        + '<span style="font-size:12px;color:#1f2937">' + escH(nm) + '</span></div>';
+    }).join('');
+    if (!rows) listHtml += '<div style="color:#9ca3af;font-size:12px;padding:6px">暂无可用图片</div>';
+    else listHtml += rows;
+  }
+  var html = '<style>#g-modal-mask .g-modal{width:640px;height:480px;max-width:96vw;max-height:92vh;box-sizing:border-box;display:flex;flex-direction:column;padding:16px 18px}#g-modal-mask .g-modal h3{flex:0 0 auto}#g-modal-mask .g-modal .g-msg{flex:1 1 auto;min-height:0;overflow:auto;display:flex;flex-direction:column;white-space:normal}#g-modal-mask .g-modal .g-actions{flex:0 0 auto}</style>'
+    + '<div style="flex:1 1 auto;min-height:0;display:flex;gap:14px;align-items:stretch">'
+    + '<div style="flex:1.1;min-width:0;overflow:auto;padding-right:4px">' + listHtml + '</div>'
+    + '<div style="flex:1;min-width:0;display:flex;flex-direction:column">'
+    + '<div id="gs-pick-prev" style="display:flex;flex:1 1 auto;min-height:0;border-radius:10px;overflow:hidden;background:#eceff3;border:1px solid #e5e7eb;align-items:center;justify-content:center;position:relative">'
+    + '<div id="gs-pick-prev-ph" style="color:#9ca3af;font-size:12px;text-align:center;line-height:1.8">👆 鼠标移到左侧素材<br>此处预览大图</div>'
+    + '<img id="gs-pick-prev-img" src="" style="display:none;width:100%;height:100%;object-fit:contain"></div>'
+    + '<div id="gs-pick-prev-name" style="margin-top:6px;font-size:12px;color:#6b7280;word-break:break-all;min-height:16px;flex:0 0 auto"></div>'
+    + '</div></div>'
+    + '<div style="margin-top:8px;flex:0 0 auto;font-size:12px;color:#9ca3af">也可 <a href="javascript:gsUpload()" style="color:#2563eb">⬆ 本地上传</a>（参考图，单张）</div>';
+  if (!window.confirmDialog) return;
+  window.confirmDialog('选择 GS 参考图（悬停预览）', html, function () {}, '关闭');
+}
+function gsPickRef(pathEnc, nameEnc) {
+  // 选中即关闭资产库弹窗
+  if (window.confirmDialog) { var m = document.getElementById('g-modal-mask'); if (m) m.style.display = 'none'; }
+  gsSetRef(decodeURIComponent(pathEnc), decodeURIComponent(nameEnc));
+  toast('已选参考图：' + decodeURIComponent(nameEnc), 'success');
+}
+function escH(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+function gsUpload() {
+  var input = document.createElement('input'); input.type = 'file'; input.accept = 'image/*';
+  input.onchange = function () {
+    var f = input.files[0]; if (!f) return;
+    var fd = new FormData(); fd.append('file', f);
+    gsApi('/api/ref-upload', { method: 'POST', body: fd }).then(function (rec) {
+      if (rec && rec.path) { gsSetRef(rec.path, f.name); toast('已上传并选用参考图', 'success'); }
+      else toast('上传未返回路径', 'error');
+    }).catch(function (e) { toast('上传失败：' + (e.message || e), 'error'); });
+  };
+  input.click();
+}
+function gsPickSource() { gsPickAsset(); }
+
+/* ===== 生成（阶段5-4 真机：调 /api/gsplat/generate → SHARP → .ply → 内嵌 3D 预览）===== */
+var _gsPly = '';            // 当前生成的 ply 文件名
+/* ===== SHARP 生成进行中模态（参照生图工具 gt-pg 同款：遮罩+转圈+阶段文字+进度+计时）===== */
+var GS_PG = {};
+var GS_STAGES = [
+  { at: 0, text: '提交 SHARP 重建任务…', pct: 6 },
+  { at: 2500, text: '上传参考图 / 解析场景…', pct: 18 },
+  { at: 8000, text: 'SHARP 模型加载（首次较慢）…', pct: 40 },
+  { at: 20000, text: '高斯泼溅重建点云…', pct: 68 },
+  { at: 45000, text: '输出 .ply / 落盘远程…', pct: 86 },
+  { at: 65000, text: '正在回传文件信息…', pct: 96 }
+];
+function gsShowProgress(title) {
+  GS_PG.t0 = Date.now();
+  var el = document.getElementById('gs-pg-title'); if (el) el.textContent = title || 'SHARP 重建中…';
+  document.getElementById('gs-pg-fill').style.width = '3%';
+  document.getElementById('gs-pg-time').textContent = '已耗时 0 秒';
+  document.getElementById('gs-pg-stage').textContent = GS_STAGES[0].text;
+  document.getElementById('gs-pg-mask').style.display = 'flex';
+  if (GS_PG.timer) clearInterval(GS_PG.timer);
+  GS_PG.timer = setInterval(function () {
+    var el2 = Date.now() - GS_PG.t0;
+    var cur = GS_STAGES[GS_STAGES.length - 1];
+    for (var i = 0; i < GS_STAGES.length; i++) if (el2 >= GS_STAGES[i].at) cur = GS_STAGES[i];
+    document.getElementById('gs-pg-stage').textContent = cur.text;
+    document.getElementById('gs-pg-fill').style.width = cur.pct + '%';
+    document.getElementById('gs-pg-time').textContent = '已耗时 ' + Math.floor(el2 / 1000) + ' 秒';
+  }, 200);
+}
+function gsHideProgress(final) {
+  if (GS_PG.timer) { clearInterval(GS_PG.timer); GS_PG.timer = null; }
+  var mask = document.getElementById('gs-pg-mask');
+  if (!mask) return;
+  if (final) {
+    document.getElementById('gs-pg-stage').textContent = '完成 ✓';
+    document.getElementById('gs-pg-fill').style.width = '100%';
+    setTimeout(function () { mask.style.display = 'none'; }, 600);
+  } else {
+    mask.style.display = 'none';
+  }
+}
+function gsGenerate() {
+  if (!_gsRef) { toast('请先选择参考图', 'error'); return; }
+  var btn = document.getElementById('gsGenBtn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ SHARP 重建中…'; }
+  var t0 = Date.now();
+  gsShowProgress('SHARP 重建中…（单图→3D 点云）');
+  gsApi('/api/gsplat/generate', { method: 'POST', body: { ref_image: _gsRef, focal_length_mm: 30.0 } })
+    .then(function (r) {
+      var ply = (r && r.ply) || '';
+      if (!ply) throw new Error('服务未返回 .ply');
+      gsHideProgress(true);
+      var secs = Math.round((Date.now() - t0) / 1000);
+      gsLoadPreview(ply, r.url || ('/api/gsplat/ply/' + ply));
+      gsRememberPly(ply);
+      toast('SHARP 重建完成（' + secs + 's）：' + ply, 'success');
+    })
+    .catch(function (e) {
+      gsHideProgress(false);
+      toast('生成失败：' + (e.message || e), 'error');
+    })
+    .finally(function () {
+      if (btn) { btn.disabled = false; btn.textContent = '✨ 生成（SHARP 重建）'; }
+    });
+}
+/* 上传本地 .ply → 3D 显示（.ply 查看器：本机上传秒开，不经远程生成/拉取） */
+function gsUploadPly() {
+  var input = document.createElement('input');
+  input.type = 'file'; input.accept = '.ply';
+  input.onchange = function () {
+    var f = input.files && input.files[0];
+    if (!f) return;
+    if (!/\.ply$/i.test(f.name)) { toast('请选择 .ply 文件', 'error'); return; }
+    var fd = new FormData();
+    fd.append('file', f, f.name);
+    var btn = document.getElementById('gsGenBtn');
+    toast('正在上传本地 .ply…', 'info');
+    fetch('/api/gsplat/upload', { method: 'POST', body: fd })
+      .then(function (r) { if (!r.ok) return r.json().then(function (x) { throw new Error((x && (x.detail || x.msg)) || ('HTTP ' + r.status)); }); return r.json(); })
+      .then(function (j) {
+        var ply = j.ply || ''; if (!ply) throw new Error('上传后未返回 ply');
+        gsLoadPreview(ply, j.url || ('/api/gsplat/ply/' + ply));
+        gsRememberPly(ply);
+        toast('已加载本地 .ply：' + f.name, 'success');
+      })
+      .catch(function (e) { toast('上传失败：' + (e.message || e), 'error'); });
+  };
+  input.click();
+}
+/* 记住最近一次生成的 .ply → 供"重新预览"（不重新生成/拉取慢链路；ply 首次拉后工坊本地缓存，重预览秒开） */
+function gsRememberPly(ply) {
+  if (!ply) return;
+  try { localStorage.setItem('gs_last_ply', ply); } catch (e) {}
+  var row = document.getElementById('gsLastRow');
+  var nm = document.getElementById('gsLastName');
+  if (row) row.style.display = 'flex';
+  if (nm) nm.textContent = '上次: ' + ply;
+}
+function gsReloadLast() {
+  var ply = '';
+  try { ply = localStorage.getItem('gs_last_ply') || ''; } catch (e) {}
+  if (!ply) { toast('暂无已生成的 .ply（请先生成一次）', 'error'); return; }
+  gsLoadPreview(ply, '/api/gsplat/ply/' + ply);
+  toast('正在加载上次 .ply：' + ply, 'info');
+}
+/* 页面加载时若有上次 ply 记录则显示入口（不自动加载，避免重拉） */
+function gsInitLast() {
+  var ply = '';
+  try { ply = localStorage.getItem('gs_last_ply') || ''; } catch (e) {}
+  if (ply) gsRememberPly(ply);
+}
+/* 加载 3D 预览：预览区切换为 iframe 内嵌 gsplat-viewer（含 Scale/重置/保存/复制工具栏） */
+function gsLoadPreview(ply, viewUrl) {
+  _gsPly = ply;
+  document.getElementById('gsEmpty').style.display = 'none';
+  document.getElementById('gsFname').textContent = '.ply: ' + ply;
+  var stage = document.getElementById('gs-stage');
+  stage.innerHTML = '';
+  var fr = document.createElement('iframe');
+  fr.src = '/api/gsplat/viewer?toolbar=0&file=' + encodeURIComponent(ply);
+  fr.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;border:0;border-radius:12px;background:#1a1a1a';
+  fr.setAttribute('allow', 'clipboard-write');
+  stage.appendChild(fr);
+  // 外层功能条可用（转发 viewer 操作）；更新提示
+  var fb = document.getElementById('gsFuncBar');
+  if (fb) { fb.style.display = 'flex'; }
+  var h = document.getElementById('gsFuncHint');
+  if (h) h.textContent = '3D 已加载 · 预览区顶部工具栏亦可用（Scale 实时/重置/保存/复制）';
+}
+/* 外层功能条 → 转发给内嵌 gsplat-viewer（iframe 同源 127.0.0.1:3100，可调 contentWindow） */
+function gsViewerProxy(cmd) {
+  var fr = document.querySelector('#gs-stage iframe');
+  var win = fr && fr.contentWindow;
+  if (!fr || !win) { toast('请先生成 3D 预览', 'error'); return; }
+  var map = { reset: 'resetView', save: 'saveShot', copy: 'copyShot' };
+  var fn = map[cmd];
+  if (fn && typeof win[fn] === 'function') win[fn]();
+  else toast('预览区尚未就绪', 'error');
+}
+
+/* ===== 3D 预览功能条说明 =====
+   生成后预览区为内嵌 gsplat-viewer（gsplat-viewer.html），其顶部工具栏已实现：
+   Scale 实时(baseScales×系数+remove/add 强传 buffer+100ms 防抖) / 重置视角(重建 OrbitControls) /
+   保存(截图→/api/gsplat/save 入素材区参考类) / 复制(截图→剪贴板 ClipboardItem)。 */
+
+gsInitLast();   // 页面加载：若上次有 .ply 记录则显示"重新预览"入口
+</script>
+<script src="/static/nav.js?v=14"></script>
+</body>
+</html>

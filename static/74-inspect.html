@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>小麻雀剧本分镜工坊 · 阶段7-4 整体联调 · 用户目检清单</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "Microsoft YaHei", "PingFang SC", sans-serif; background: #f5f6f8; color: #1f2937; min-height: 100vh; padding: 24px 16px; }
+  .wrap { max-width: 960px; margin: 0 auto; }
+  .head h1 { font-size: 18px; font-weight: 600; }
+  .head .hint { font-size: 12px; color: #6b7280; margin-top: 4px; }
+  .memo { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 13px 15px; margin: 14px 0 16px; font-size: 13px; color: #374151; line-height: 1.8; }
+  .memo b { color: #2563eb; }
+  .item { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 14px; margin-bottom: 12px; }
+  .item.fail { border-color: #fca5a5; }
+  .item-head { display: flex; align-items: flex-start; gap: 10px; }
+  .item-idx { width: 24px; height: 24px; border-radius: 50%; background: #eef2ff; color: #2563eb; font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; flex: none; margin-top: 1px; }
+  .item-main { flex: 1; min-width: 0; }
+  .item-title { font-size: 14px; font-weight: 500; line-height: 1.4; }
+  .item-desc { font-size: 12px; color: #6b7280; margin-top: 4px; line-height: 1.7; white-space: pre-line; }
+  .item-actions { display: flex; align-items: center; gap: 8px; flex: none; }
+  .btn-v { border: none; border-radius: 8px; padding: 7px 13px; font-size: 13px; cursor: pointer; min-width: 64px; }
+  .btn-pass { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+  .btn-fail { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+  .btn-pass.on { background: #16a34a; color: #fff; }
+  .btn-fail.on { background: #dc2626; color: #fff; }
+  .media { margin-top: 10px; }
+  .media video, .media img, .media audio { max-width: 100%; border-radius: 8px; border: 1px solid #e5e7eb; display: block; }
+  .item-opinion { margin-top: 10px; }
+  .item-opinion textarea { width: 100%; min-height: 44px; border: 1px solid #d1d5db; border-radius: 8px; padding: 8px 10px; font-size: 13px; font-family: inherit; resize: vertical; }
+  .item-opinion textarea.hint-fail { border-color: #fca5a5; }
+  .opinion-label { font-size: 12px; color: #6b7280; margin-bottom: 4px; }
+  .footer { margin-top: 20px; display: flex; justify-content: flex-end; gap: 10px; align-items: center; position: sticky; bottom: 0; background: #f5f6f8; padding: 10px 0; }
+  .prog { font-size: 13px; color: #374151; margin-right: auto; }
+  .prog b { color: #2563eb; }
+  .btn-primary { background: #2563eb; color: #fff; border: none; border-radius: 8px; padding: 10px 22px; font-size: 14px; cursor: pointer; }
+  .toast { position: fixed; top: 18px; right: 18px; background: #111827; color: #fff; padding: 10px 16px; border-radius: 8px; font-size: 13px; box-shadow: 0 4px 12px rgba(0,0,0,.2); opacity: 0; transform: translateY(-8px); transition: all .25s; pointer-events: none; z-index: 999; }
+  .toast.show { opacity: 1; transform: translateY(0); }
+  .modal-mask { position: fixed; inset: 0; background: rgba(0,0,0,.4); display: none; align-items: center; justify-content: center; z-index: 1000; }
+  .modal-mask.show { display: flex; }
+  .modal { background: #fff; border-radius: 12px; padding: 20px; width: 92%; max-width: 680px; box-shadow: 0 10px 30px rgba(0,0,0,.2); }
+  .modal h3 { font-size: 15px; font-weight: 600; margin-bottom: 10px; }
+  .modal pre { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px; font-size: 12px; max-height: 320px; overflow: auto; white-space: pre-wrap; word-break: break-all; }
+  .m-actions { margin-top: 12px; display: flex; justify-content: flex-end; gap: 10px; }
+  .m-ghost { background: #f3f4f6; color: #374151; border: 1px solid #e5e7eb; border-radius: 8px; padding: 8px 16px; font-size: 13px; cursor: pointer; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="head">
+    <h1>阶段 7-4 整体联调 · 用户目检清单</h1>
+    <div class="hint">机制二：逐项 通过/不通过 → 意见（不通过必填）→ 统一提交（回执复制回对话即完成留痕）。可随时提交，未检项按"—"计。</div>
+  </div>
+
+  <div class="memo">
+    <b>冒烟载体</b>：新建项目「&lt;测试项目&gt;」（&lt;project-id&gt;，微型剧本，用于同载体可比）<br>
+    <b>链路 10 环节已全过（API 层）</b>：建项目 → modelscope 真拆解（一次成功）→ apply 落地（4 卡+1集1场）→ 画布 @ 引用 → IC 生成阿澈纯立绘+场景主图并绑定 → 中性干音色生成 → 视频 v1 5s succeeded(120s) → 视频 v2 4s succeeded(95s) → mp4 ftyp 完整性核验 → 版本切换 v2→v1→v2→v1→v2 全通过。<b>全站 8 页面 0 JS 错误</b>（含真实渲染 sanity check）。<br>
+    <b>红线遵守</b>：基线 afb933a 未回退（HEAD=2d6bac5）；生成前双保险+清显存惯例已执行；无代码改动（仅文档+本目检页）。
+  </div>
+
+  <div class="item">
+    <div class="item-head">
+      <span class="item-idx">1</span>
+      <div class="item-main">
+        <div class="item-title">🎬 视频 v1 · 5s 中景固定镜头（seed=123456789，与 7-3 v7 同参数可比）</div>
+        <div class="item-desc">判据：①只有一个阿澈 ②场景=巷口杂货铺（暖黄灯光货架） ③风格=日系治愈动漫 ④台词「叔叔给你挑颗最甜的糖」口型正常 ⑤无乱语 ⑥台词前无"黄昏时分"旁白被念出 ⑦无"好，别留对"多字 ⑧无背景音回声 ⑨开头无人声外杂音</div>
+        <div class="media"><video controls preload="metadata" src="/api/asset-file/video/sc_1b888f88d744/sc_20260907_090145_55e8813fc152.mp4"></video></div>
+      </div>
+      <div class="item-actions">
+        <button class="btn-v btn-pass" data-item="1" data-v="pass">通过</button>
+        <button class="btn-v btn-fail" data-item="1" data-v="fail">不通过</button>
+      </div>
+    </div>
+    <div class="item-opinion"><div class="opinion-label">意见（不通过必填）</div><textarea placeholder="如不通过请描述：哪个判据不通过、具体现象"></textarea></div>
+  </div>
+
+  <div class="item">
+    <div class="item-head">
+      <span class="item-idx">2</span>
+      <div class="item-main">
+        <div class="item-title">🎬 视频 v2 · 4s 特写缓推（第二版本，供版本切换验证）</div>
+        <div class="item-desc">判据：同上 9 项；台词为「给你挑颗最甜的糖」（特写文本）；画面为阿澈举糖盒面向镜头</div>
+        <div class="media"><video controls preload="metadata" src="/api/asset-file/video/sc_1b888f88d744/sc_20260907_090319_499d6f661b12.mp4"></video></div>
+      </div>
+      <div class="item-actions">
+        <button class="btn-v btn-pass" data-item="2" data-v="pass">通过</button>
+        <button class="btn-v btn-fail" data-item="2" data-v="fail">不通过</button>
+      </div>
+    </div>
+    <div class="item-opinion"><div class="opinion-label">意见（不通过必填）</div><textarea placeholder="如不通过请描述"></textarea></div>
+  </div>
+
+  <div class="item">
+    <div class="item-head">
+      <span class="item-idx">3</span>
+      <div class="item-main">
+        <div class="item-title">🖼 阿澈主图 · 纯角色立绘（IC Z-Image 生成，防 H3 串扰）</div>
+        <div class="item-desc">判据：纯人物立绘、中性背景、无店铺/货架等场景元素（7-3 缺陷③教训：含场景会致两个阿澈）</div>
+        <div class="media"><img src="/api/asset-file/output/asset_1788742515_0ac9b6268a.png" style="max-width:420px"></div>
+      </div>
+      <div class="item-actions">
+        <button class="btn-v btn-pass" data-item="3" data-v="pass">通过</button>
+        <button class="btn-v btn-fail" data-item="3" data-v="fail">不通过</button>
+      </div>
+    </div>
+    <div class="item-opinion"><div class="opinion-label">意见（不通过必填）</div><textarea placeholder="如不通过请描述"></textarea></div>
+  </div>
+
+  <div class="item">
+    <div class="item-head">
+      <span class="item-idx">4</span>
+      <div class="item-main">
+        <div class="item-title">🖼 场景主图 · 巷口杂货铺（IC Z-Image 生成）</div>
+        <div class="item-desc">判据：杂货铺内景、暖黄灯光、货架整齐、干净无人（7-3 教训：场景图不应有人）</div>
+        <div class="media"><img src="/api/asset-file/output/asset_1788742584_7ae6a8de43.png" style="max-width:420px"></div>
+      </div>
+      <div class="item-actions">
+        <button class="btn-v btn-pass" data-item="4" data-v="pass">通过</button>
+        <button class="btn-v btn-fail" data-item="4" data-v="fail">不通过</button>
+      </div>
+    </div>
+    <div class="item-opinion"><div class="opinion-label">意见（不通过必填）</div><textarea placeholder="如不通过请描述"></textarea></div>
+  </div>
+
+  <div class="item">
+    <div class="item-head">
+      <span class="item-idx">5</span>
+      <div class="item-main">
+        <div class="item-title">🔊 阿澈音色样本试听 · 中性干音（Qwen3-TTS VoiceDesign）</div>
+        <div class="item-desc">判据：内容为「一二三四五，今天的天气很好…」中性句，与成片台词零撞车（7-3 缺陷④教训：撞车致回声）；温和清澈年轻男声</div>
+        <div class="media"><audio controls preload="metadata" src="/api/asset-file/audio/voice_samples/ch_82576346ab9f_20260907T085607.flac"></audio></div>
+      </div>
+      <div class="item-actions">
+        <button class="btn-v btn-pass" data-item="5" data-v="pass">通过</button>
+        <button class="btn-v btn-fail" data-item="5" data-v="fail">不通过</button>
+      </div>
+    </div>
+    <div class="item-opinion"><div class="opinion-label">意见（不通过必填）</div><textarea placeholder="如不通过请描述"></textarea></div>
+  </div>
+
+  <div class="item">
+    <div class="item-head">
+      <span class="item-idx">6</span>
+      <div class="item-main">
+        <div class="item-title">🔗 场页版本切换抽查（UI 层）</div>
+        <div class="item-desc">打开场页 → 找到目标项目第 1 场 → 版本 1/2 切换 → 画面随版本变化、当前版本正确高亮。API 层 4 轮切换已全过，此处抽查 UI 表现。</div>
+        <div class="media"><a href="/scene.html?project=&lt;project-id&gt;" target="_blank" style="color:#2563eb;font-size:13px">点击打开场页（新标签页）</a></div>
+      </div>
+      <div class="item-actions">
+        <button class="btn-v btn-pass" data-item="6" data-v="pass">通过</button>
+        <button class="btn-v btn-fail" data-item="6" data-v="fail">不通过</button>
+      </div>
+    </div>
+    <div class="item-opinion"><div class="opinion-label">意见（不通过必填）</div><textarea placeholder="如不通过请描述"></textarea></div>
+  </div>
+
+  <div class="footer">
+    <span class="prog">通过 <b id="cntPass">0</b> / 不通过 <b id="cntFail" style="color:#dc2626">0</b> / 未检 <b id="cntNone">6</b>（共 6 项）</span>
+    <button class="btn-primary" id="submit">统一提交</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<div class="modal-mask" id="mask">
+  <div class="modal">
+    <h3>目检回执（复制下面全部文本，粘贴回对话即完成回传留痕）</h3>
+    <pre id="receipt"></pre>
+    <div class="m-actions">
+      <button class="m-ghost" id="copyBtn">复制回执</button>
+      <button class="m-ghost" id="closeBtn">关闭</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var state = {};   // item -> {v: 'pass'|'fail'|null}
+  var boxes = document.querySelectorAll('.item');
+  var titles = [];
+  boxes.forEach(function (b, i) { titles[i + 1] = b.querySelector('.item-title').textContent.trim(); });
+  function toast(msg) {
+    var t = document.getElementById('toast');
+    t.textContent = msg; t.classList.add('show');
+    setTimeout(function () { t.classList.remove('show'); }, 1800);
+  }
+  document.querySelectorAll('.btn-v').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var i = btn.dataset.item, v = btn.dataset.v;
+      state[i] = state[i] || { v: null };
+      if (state[i].v === v) { state[i].v = null; } else { state[i].v = v; }
+      var item = btn.closest('.item');
+      item.classList.remove('fail');
+      var ta = item.querySelector('textarea'); ta.classList.remove('hint-fail');
+      document.querySelectorAll('.btn-v[data-item="' + i + '"]').forEach(function (b) { b.classList.remove('on'); });
+      if (state[i].v === 'pass') { btn.classList.add('on'); }
+      if (state[i].v === 'fail') { btn.classList.add('on'); item.classList.add('fail'); ta.classList.add('hint-fail'); }
+      refresh();
+    });
+  });
+  function refresh() {
+    var p = 0, f = 0, n = 0;
+    for (var i = 1; i <= 6; i++) {
+      var v = (state[i] || {}).v;
+      if (v === 'pass') p++; else if (v === 'fail') f++; else n++;
+    }
+    document.getElementById('cntPass').textContent = p;
+    document.getElementById('cntFail').textContent = f;
+    document.getElementById('cntNone').textContent = n;
+  }
+  document.getElementById('submit').addEventListener('click', function () {
+    var lines = ['【7-4 目检回执】实施-13 · 2026-09-07', '（页面 v2：支持不通过/未检，不通过项意见必填）'];
+    var bad = 0;
+    for (var i = 1; i <= 6; i++) {
+      var v = (state[i] || {}).v;
+      var op = boxes[i - 1].querySelector('textarea').value.trim();
+      var mark = v === 'pass' ? '✅ 通过' : (v === 'fail' ? '❌ 不通过' : '— 未检');
+      if (v === 'fail') bad++;
+      lines.push(i + '. ' + mark + ' ｜ ' + titles[i].split('（')[0] + (op ? (' ｜ 意见：' + op) : ''));
+    }
+    if (bad > 0 && document.getElementById('cntFail').textContent !== '0') {
+      // 校验不通过项必须填意见
+      for (var j = 1; j <= 6; j++) {
+        if ((state[j] || {}).v === 'fail' && !boxes[j - 1].querySelector('textarea').value.trim()) {
+          toast('第 ' + j + ' 项标记不通过，请填写意见'); return;
+        }
+      }
+    }
+    lines.push('总结论：' + (bad > 0 ? (bad + ' 项不通过，待整改复检') : ((6 - parseInt(document.getElementById('cntNone').textContent)) === 0 ? '未检' : '所检项全部通过')));
+    document.getElementById('receipt').textContent = lines.join('\n');
+    document.getElementById('mask').classList.add('show');
+    try { localStorage.setItem('inspect_7_4_receipt_v2', lines.join('\n')); } catch (e) {}
+  });
+  document.getElementById('copyBtn').addEventListener('click', function () {
+    var txt = document.getElementById('receipt').textContent;
+    if (navigator.clipboard) navigator.clipboard.writeText(txt);
+    this.textContent = '已复制';
+    var b = this; setTimeout(function () { b.textContent = '复制回执'; }, 1500);
+  });
+  document.getElementById('closeBtn').addEventListener('click', function () {
+    document.getElementById('mask').classList.remove('show');
+  });
+  refresh();
+})();
+</script>
+</body>
+</html>

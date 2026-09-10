@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>小麻雀剧本分镜工坊 · 走查 B4 复验（资产信息窗口音频合规提示）</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "Microsoft YaHei", "PingFang SC", sans-serif; background: #f5f6f8; color: #1f2937; min-height: 100vh; padding: 24px 16px; }
+  .wrap { max-width: 940px; margin: 0 auto; }
+  .head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; flex-wrap: wrap; gap: 10px; }
+  .head h1 { font-size: 18px; font-weight: 600; }
+  .head .hint { font-size: 12px; color: #6b7280; }
+  .back { background: #f3f4f6; color: #374151; border: 1px solid #e5e7eb; border-radius: 8px; padding: 7px 14px; font-size: 13px; cursor: pointer; }
+  .memo { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 13px 15px; margin-bottom: 16px; font-size: 13px; color: #374151; line-height: 1.75; }
+  .memo b { color: #2563eb; }
+  .memo .red { color: #dc2626; }
+  .memo .kv { display: block; margin-top: 4px; }
+  .group { margin: 18px 0 10px; display: flex; align-items: center; gap: 8px; }
+  .group .tag { background: #2563eb; color: #fff; border-radius: 6px; padding: 2px 9px; font-size: 12px; font-weight: 600; }
+  .group .gname { font-size: 15px; font-weight: 600; }
+  .item { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 13px 14px; margin-bottom: 10px; }
+  .item-head { display: flex; align-items: flex-start; gap: 10px; }
+  .item-idx { width: 24px; height: 24px; border-radius: 50%; background: #eef2ff; color: #2563eb; font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; flex: none; margin-top: 1px; }
+  .item-main { flex: 1; min-width: 0; }
+  .item-title { font-size: 14px; font-weight: 500; line-height: 1.4; }
+  .item-desc { font-size: 12px; color: #6b7280; margin-top: 4px; line-height: 1.6; white-space: pre-line; }
+  .item-actions { display: flex; align-items: center; gap: 8px; flex: none; flex-wrap: wrap; justify-content: flex-end; }
+  .btn-go { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; border-radius: 8px; padding: 6px 12px; font-size: 12px; cursor: pointer; text-decoration: none; white-space: nowrap; }
+  .btn-confirm { background: #2563eb; color: #fff; border: none; border-radius: 8px; padding: 7px 15px; font-size: 13px; cursor: pointer; flex: none; min-width: 76px; }
+  .btn-confirm.done { background: #16a34a; }
+  .item-opinion { margin-top: 10px; }
+  .item-opinion textarea { width: 100%; min-height: 46px; border: 1px solid #d1d5db; border-radius: 8px; padding: 8px 10px; font-size: 13px; font-family: inherit; resize: vertical; }
+  .item-opinion textarea:focus { outline: none; border-color: #2563eb; }
+  .opinion-label { font-size: 12px; color: #6b7280; margin-bottom: 4px; }
+  .footer { margin-top: 20px; display: flex; justify-content: flex-end; gap: 10px; align-items: center; position: sticky; bottom: 0; background: #f5f6f8; padding: 10px 0; }
+  .prog { font-size: 13px; color: #374151; margin-right: auto; }
+  .prog b { color: #2563eb; }
+  .btn-primary { background: #2563eb; color: #fff; border: none; border-radius: 8px; padding: 10px 22px; font-size: 14px; cursor: pointer; }
+  .btn-primary:disabled { background: #cbd5e1; cursor: not-allowed; }
+  .toast { position: fixed; top: 18px; right: 18px; background: #111827; color: #fff; padding: 10px 16px; border-radius: 8px; font-size: 13px; box-shadow: 0 4px 12px rgba(0,0,0,.2); opacity: 0; transform: translateY(-8px); transition: all .25s; pointer-events: none; z-index: 999; }
+  .toast.show { opacity: 1; transform: translateY(0); }
+  .modal-mask { position: fixed; inset: 0; background: rgba(0,0,0,.4); display: none; align-items: center; justify-content: center; z-index: 1000; }
+  .modal-mask.show { display: flex; }
+  .modal { background: #fff; border-radius: 12px; padding: 20px; width: 92%; max-width: 640px; box-shadow: 0 10px 30px rgba(0,0,0,.2); }
+  .modal h3 { font-size: 15px; font-weight: 600; margin-bottom: 10px; }
+  .modal pre { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px; font-size: 12px; max-height: 300px; overflow: auto; white-space: pre-wrap; word-break: break-all; }
+  .m-actions { margin-top: 12px; display: flex; justify-content: flex-end; gap: 10px; }
+  .m-ghost { background: #f3f4f6; color: #374151; border: 1px solid #e5e7eb; border-radius: 8px; padding: 8px 16px; font-size: 13px; cursor: pointer; }
+  .steps { background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 8px 11px; margin-top: 5px; font-size: 12.5px; line-height: 1.7; }
+  .steps b { color: #92400e; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="head">
+    <div>
+      <h1>走查 B4 复验 · 资产信息窗口（音频合规提示）</h1>
+      <div class="hint">机制二：逐项确认 → 意见可选 → 统一提交（结果本地留档可复制回传）</div>
+    </div>
+    <button class="back" onclick="location.href='/static/assets.html'">返回资产页</button>
+  </div>
+  <div class="memo">
+    <b>两个词先说清：</b><br>
+    <span class="kv">▪ <b>"弹层"</b> = 页面里弹出的一个窗口。你点开某张资产卡的「编辑/⋮元数据」后盖在页面上方那个白底大窗口，标题叫<b>「资产信息」</b>，就是一个弹层（本页要复验的对象）。</span>
+    <span class="kv">▪ <b>"音色卡"</b> = 这个「资产信息」窗口<b>右侧偏下的"音色"区块</b>（有「文本音色/音频音色/预置音色」三个小标签切换）。人物卡上传/绑定语音就在这。"音色卡"就是指这个区块。</span>
+    <span class="kv">▪ 本次修复：在"音色"区块顶部放一条<b>红底提示条</b>，把"为什么不能上传/保存、合格标准是什么"写清楚（不再只是一闪而过的右上角 toast）。</span>
+    <span class="red"><b>操作</b>：每项点【▶ 打开】进资产页，按下方步骤操作/观察，通过后点【确认】；下方可填意见；全部完成后点【统一提交】并复制汇总回传。</span>
+  </div>
+
+  <div class="group"><span class="tag">1</span><span class="gname">复验项</span></div>
+  <div id="list"></div>
+
+  <div class="footer">
+    <div class="prog">已确认 <b id="progNum">0</b> / <span id="progTot">0</span> 项</div>
+    <button class="btn-primary" id="submitBtn" onclick="submitAll()" disabled>统一提交</button>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<div class="modal-mask" id="mask">
+  <div class="modal">
+    <h3>✅ 已提交复验结果</h3>
+    <p style="font-size:12px;color:#6b7280;margin-bottom:8px;">汇总如下，可复制后回传给实施/规划留痕。</p>
+    <pre id="summary"></pre>
+    <div class="m-actions">
+      <button class="m-ghost" onclick="copySummary()">复制汇总</button>
+      <button class="btn-primary" onclick="closeModal()">关闭</button>
+    </div>
+  </div>
+</div>
+
+<script>
+var ASSET = '/static/assets.html?project=<project-id>'; // 收口整改 2026-09-11：占位符化（原为测试项目 id+名称，去敏感）
+var GROUPS = [{ name:'走查 B4 · 资产信息窗口音频合规提示（§十四 B4②）', items:[
+  { title:'B4-②a 上传超长音频 → 音色卡顶部出现红条', href:ASSET, steps:'1)【▶ 打开】进资产页 → 选「角色」标签 → 点开任意人物卡（如"小林"）右上「⋮ / 编辑」进「资产信息」窗口\n2) 切到「音频音色（上传绑定）」标签 → 点「📤 绑定已有音频」\n3) 选一段超过 15 秒的音频（如 3 分钟 mp3）上传\n4) 预期：右上角会出现 toast"音频上传失败"，同时「资产信息」窗口下方"音色"区块<b>顶部出现红底提示条</b>，写明"音频上传被拦截：所选音频不达标 + 原因（音频过长）+ 合格标准（单条 2~15 秒、采样率 ≥16kHz）"，并且自动切到「音频音色」页让你看到', what:'红条出现且写明"原因 + 合格标准（2~15 秒/≥16kHz）"（不是只有一闪而过的 toast）' },
+  { title:'B4-②b 卡里已带超长音条 → 保存时音色卡顶红条', href:ASSET, steps:'【真实前置说明】当前库里已无存量超长音条（B-a① 清了外卖大叔 203s、B-a④ 三库扫描 0 异常），且上传超长会被 B-a③ 直接拦截进不了卡，所以无法自然造出"卡里已带超长音条"来点保存。\n\n【判定依据（逻辑同源，可标通过）】②b 与 ②a 共用同一条红条构造(vaRenderAudioErrBar)；差异仅在错误来源=保存接口 validate_asset_on_save 而非上传接口。保存路径已用 mock(返回 400 detail.errors{"audios[0]":"音频过长…"}) 验证：→ 红条出现且含"音频[0]+原因+合格标准"+voice-card 红框+弹层保持打开。\n\n（可选真验）若你要真实点一次保存，我可临时注入一条超长音条到某测试卡 audios（指向 shared 下一段真实超长文件），你点【保存】看红条，完事我即删除该条——告诉我用哪张测试卡即可。', what:'保存被拦时音色卡顶部红条说清"哪条超长+原因+合格标准"，弹层不关闭' },
+  { title:'B4-① 资产信息窗口（弹层）在各尺寸下都不出界', href:ASSET, steps:'1)【▶ 打开】把浏览器窗口拉矮/拉窄（如缩到约 700×500），或先把资产页往下滚动一段再点开「资产信息」窗口\n2) 预期：窗口始终完整显示在屏幕内（居中、不跑到屏幕外、内容超高时窗口内部自己滚动），不遮挡操作', what:'窗口矮/窄/页面滚动时都完整在屏幕内、不出界' },
+  { title:'（可选理解项）toast 与红条的区别', href:ASSET, steps:'你在 B4-②a 上传超长音频后，会同时看到：右上角一闪而过的 toast（旧提醒）+ 音色区块顶部<b>停留可见的红条</b>（新提醒，含原因+合格标准）。红条关掉窗口即消失。', what:'确认能区分"一闪而过的提示"与"音色卡顶部停留的红条"' },
+]},{ name:'本次复验范围说明', items:[
+  { title:'（无需操作）上轮漏给目检清单的说明', href:ASSET, steps:'我上轮只给了裸链接、没做目检清单页，属流程漏做（规范 v1.8 机制二要求服务就绪+链接+清单页+回传），特此补上本清单页。', what:'知悉补做即可（不需确认按钮，此项可标通过）' },
+]}];
+var items=[]; GROUPS.forEach(function(g){ g.items.forEach(function(it){ it.gname=g.name; items.push(it); }); });
+var states=items.map(function(){ return {confirmed:false,opinion:''}; });
+var confirmedCount=0;
+var list=document.getElementById('list'); var html=''; var tot=0;
+GROUPS.forEach(function(g,gi){
+  html+='<div class="group"><span class="tag">'+(gi+1)+'</span><span class="gname">'+esc(g.name)+'</span></div>';
+  g.items.forEach(function(it,i){
+    var gid=items.indexOf(it);
+    html+='<div class="item"><div class="item-head"><span class="item-idx">'+(gi+1)+'.'+(i+1)+'</span>'+
+      '<div class="item-main"><div class="item-title">'+esc(it.title)+'</div>'+
+      (it.what?'<div class="item-desc"><b>判定标准：</b>'+esc(it.what)+'</div>':'')+
+      '<div class="steps"><b>操作步骤：</b>'+esc(it.steps).replace(/\n/g,'<br>')+'</div></div>'+
+      '<div class="item-actions"><a class="btn-go" href="'+esc(it.href)+'" target="_blank">▶ 打开</a>'+
+      '<button class="btn-confirm" id="conf'+gid+'" onclick="toggle('+gid+')">确认</button></div></div>'+
+      '<div class="item-opinion"><div class="opinion-label">该项意见 / 发现的问题（可留空）</div>'+
+      '<textarea id="op'+gid+'" oninput="states['+gid+'].opinion=this.value"></textarea></div></div>';
+    tot++;
+  });
+});
+list.innerHTML=html;
+document.getElementById('progTot').textContent=tot;
+function toggle(i){
+  states[i].confirmed=!states[i].confirmed;
+  var btn=document.getElementById('conf'+i);
+  if(states[i].confirmed){ btn.classList.add('done'); btn.textContent='✓ 已确认'; confirmedCount++; }
+  else { btn.classList.remove('done'); btn.textContent='确认'; confirmedCount--; }
+  document.getElementById('progNum').textContent=confirmedCount;
+  document.getElementById('submitBtn').disabled = confirmedCount===0;
+}
+function submitAll(){
+  var lines=[]; lines.push('【走查 B4 复验 · 资产信息窗口音频合规提示】'); lines.push('提交时间：'+new Date().toLocaleString('zh-CN')); lines.push('--------------------------------');
+  var cur='';
+  GROUPS.forEach(function(g){
+    if(g.name!==cur){ lines.push('◆ '+g.name); cur=g.name; }
+    g.items.forEach(function(it){
+      var idx=items.indexOf(it); var c=states[idx].confirmed?'✓ 已确认':'✗ 未确认';
+      var o=(states[idx].opinion||'').trim()?states[idx].opinion.trim():'（未填）';
+      lines.push('  - '+it.title+'  ['+c+']');
+      if(o!=='（未填）') lines.push('      意见：'+o);
+    });
+  });
+  lines.push('--------------------------------'); lines.push('已确认 '+confirmedCount+'/'+items.length+' 项'+(confirmedCount===items.length?'（全部通过 ✅）':'（有未确认项 ⚠️）'));
+  var summary=lines.join('\n');
+  try{ var rec={title:'走查B4复验',time:new Date().toISOString(),items:items.map(function(it,i){return{key:it.title,confirmed:states[i].confirmed,opinion:states[i].opinion};})}; localStorage.setItem('b4_inspect_'+Date.now(),JSON.stringify(rec)); localStorage.setItem('b4_inspect_last',JSON.stringify(rec)); }catch(e){}
+  document.getElementById('summary').textContent=summary;
+  document.getElementById('mask').classList.add('show'); toast('✅ 复验结果已提交，可复制汇总');
+}
+function copySummary(){ var el=document.getElementById('summary'); var txt=el.textContent;
+  if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(txt).then(function(){toast('已复制');},function(){fallbackCopy(txt);}); } else fallbackCopy(txt); }
+function fallbackCopy(txt){ var ta=document.createElement('textarea'); ta.value=txt; document.body.appendChild(ta); ta.select(); try{ document.execCommand('copy'); toast('已复制'); }catch(e){ toast('复制失败，请手动全选'); } document.body.removeChild(ta); }
+function closeModal(){ document.getElementById('mask').classList.remove('show'); }
+function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+var tEl=null;
+function toast(msg){ var el=document.getElementById('toast'); el.textContent=msg; el.classList.add('show'); clearTimeout(tEl); tEl=setTimeout(function(){el.classList.remove('show');},2400); }
+document.getElementById('mask').addEventListener('click',function(ev){ if(ev.target===this) closeModal(); });
+</script>
+</body>
+</html>

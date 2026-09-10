@@ -1,0 +1,28 @@
+# 小麻雀剧本分镜工坊 — 发布树 .gitignore
+# 说明：本文件为发布树专用（独立于原工作仓）。
+#       原仓 .gitignore 含 "LICENSE" 忽略行（豁免用），发布树**必须**放行 LICENSE，
+#       否则 Apache 2.0 许可文件不会进入版本库。
+
+# 嵌入式解释器与离线依赖包（可重建，不进版本库）
+python/
+packages/
+
+# 运行时缓存
+__pycache__/
+*.pyc
+.venv/
+
+# 运行时数据目录（启动时 main.py 自动创建；数据文件不属于代码回滚范围）
+data/
+handoff/outbox/
+
+# 启动日志与临时备份
+startup*.log
+*.bak_*
+commit_msg_*.txt
+
+# 编辑器 / 系统
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

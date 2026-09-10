@@ -1,0 +1,2459 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>小麻雀剧本分镜工坊 - 人物库/场景库/道具库</title>
+<script src="/static/palette.js?v=1"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { overflow-y: scroll; }
+  body { font-family: "Microsoft YaHei", "PingFang SC", sans-serif; background: #f5f6f8; color: #333; display: flex; min-height: 100vh; }
+  .main-wrap { flex: 1; min-width: 0; width: 100%; display: flex; flex-direction: column; }
+  main { max-width: 1280px; margin: 20px auto; padding: 0 16px; width: 100%; }
+  .tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+  .tab { padding: 8px 22px; border-radius: 8px; background: #e5e7eb; color: #374151; cursor: pointer; font-size: 14px; border: none; }
+  .tab.active { background: #2563eb; color: #fff; }
+  .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+  button { padding: 8px 16px; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; }
+  .btn-primary { background: #2563eb; color: #fff; }
+  .btn-primary:hover { background: #1d4ed8; }
+  .btn-ghost { background: #f3f4f6; color: #374151; border: 1px solid #e5e7eb; }
+  .btn-ghost:hover { background: #e5e7eb; }
+  .btn-danger { background: #fee2e2; color: #dc2626; }
+  .btn-danger:hover { background: #fecaca; }
+  .btn-mini { padding: 4px 10px; font-size: 12px; border-radius: 6px; }
+  #groups { display: grid !important; grid-template-columns: repeat(auto-fill, 150px) !important; gap: 14px; justify-content: start; }
+  /* v1.7 实施9: 覆盖 vendor .ac-thumb height:150px 固定,按 data-layout 设 3:4/16:9 */
+  #groups [data-layout="portrait"] .ac-thumb { height: auto !important; aspect-ratio: 3/4; }
+  #groups [data-layout="landscape"] { grid-column: span 2; }  /* v1.9 实施9: 场景卡宽加倍(span 2 列平铺, 150*2+gap≈314px) */
+  .group .cards [data-layout="landscape"] { grid-column: span 2; }
+  #groups [data-layout="landscape"] .ac-thumb { height: auto !important; aspect-ratio: 16/9; }
+  #groups [data-layout="portrait"] .asset-card { aspect-ratio: 3/4; }
+  #groups [data-layout="landscape"] .asset-card { aspect-ratio: 16/9; }
+  /* v2.0 实施9: 场景卡图撑满无白框(贴边+信息行紧凑小字) */
+  #groups [data-layout="landscape"] .asset-card { border: none; border-radius: 8px; background: #f3f4f6; padding: 0; overflow: hidden; }
+  #groups [data-layout="landscape"] .ac-thumb { border-radius: 0; margin-bottom: 0; background: #f3f4f6; }
+  #groups [data-layout="landscape"] .ac-body { padding: 4px 8px; font-size: 11px; }
+  /* v2.1 实施9: 所有卡无白框图撑满(人物/道具/参考/未分类, 与场景一致) */
+  #groups .asset-card { border: none; border-radius: 8px; background: #f3f4f6; padding: 0; overflow: hidden; }
+  #groups .ac-thumb { border-radius: 0; margin-bottom: 0; background: #f3f4f6; }
+  #groups .ac-body { padding: 4px 8px; font-size: 11px; }
+  .group { background: #e9ecef; border: 1px solid #e5e7eb; border-radius: 12px; padding: 10px; }
+  .group-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .group-head h3 { font-size: 14px; }
+  .group .cards { display: grid; grid-template-columns: repeat(auto-fill, 150px); gap: 10px; justify-content: start; }
+  /* v1.55b：音色样本胶囊徽章（Qwen3-TTS 产物 role=voice_sample，蓝底白字） */
+  .vs-badge { display: inline-block; background: #2563eb; color: #fff; border-radius: 10px; padding: 1px 8px; font-size: 11px; font-weight: 600; margin-right: 4px; vertical-align: middle; line-height: 16px; }
+  /* 6-13：资产保存校验——字段级阻断高亮（红框闪烁） */
+  .va-invalid { box-shadow: 0 0 0 3px rgba(220,38,38,.45); border-radius: 8px; animation: va-flash 1s ease-in-out 3; }
+  @keyframes va-flash { 0%,100% { box-shadow: 0 0 0 3px rgba(220,38,38,.45); } 50% { box-shadow: 0 0 0 6px rgba(220,38,38,.15); } }
+  .va-invalid-label { color: #dc2626 !important; font-weight: 700; }
+  /* §十四 B4②：音频阻断常驻错误红条（显示在音色卡顶部，明示哪条+原因+合格上限；保存可重复覆盖） */
+  .va-errbar { display: block; margin: 2px 0 8px; padding: 8px 10px; border-radius: 8px; background: #fef2f2; border: 1px solid #fca5a5; color: #b91c1c; font-size: 12.5px; line-height: 1.55; }
+  .va-errbar b { font-weight: 700; }
+  .va-errbar .va-sep { border-top: 1px dashed #fecaca; margin: 5px 0; }
+
+  /* v1.55b：文本音色区 Qwen3-TTS 生成框 */
+  .vs-sample-box { margin-top: 8px; border: 1px dashed #bfdbfe; border-radius: 8px; padding: 8px 10px; background: #eff6ff; }
+  .vs-sample-tip { font-size: 12px; color: #1d4ed8; margin-bottom: 6px; line-height: 1.6; }
+  /* v1.55b：生成进度模态（遮罩+卡片+阶段+进度条+计时） */
+  .vs-progress-card { background: #fff; border-radius: 16px; padding: 32px 40px; width: 340px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,.25); }
+  .vs-progress-icon { font-size: 40px; display: inline-block; animation: vs-spin 1.2s linear infinite; }
+  @keyframes vs-spin { from { transform: rotate(0); } to { transform: rotate(360deg); } }
+  .vs-progress-title { font-size: 16px; font-weight: 700; margin: 12px 0 4px; color: #1f2937; }
+  .vs-progress-stage { font-size: 13px; color: #6b7280; margin-bottom: 14px; }
+  .vs-progress-bar { height: 8px; border-radius: 4px; background: #e5e7eb; overflow: hidden; }
+  .vs-progress-fill { height: 100%; width: 0%; background: #2563eb; transition: width .4s; border-radius: 4px; }
+  .vs-progress-time { font-size: 12px; color: #9ca3af; margin-top: 8px; }
+  /* v1.55e：左区底部一行 = 左下"上传主图素材" + 右下"音色卡" */
+  .meta-left-bottom { display: flex; gap: 8px; margin-top: 10px; align-items: flex-start; justify-content: space-between; flex-shrink: 0; }
+  .meta-left-bottom .upload-drop { position: relative !important; flex: 0 0 auto; min-width: 0; display: inline-block; bottom: auto; left: auto; right: auto; background: transparent; z-index: auto; }  /* v1.55k+P0-1i：上传按钮左下角（不撑满不拉伸）；position:relative 使内部 .menu(absolute) 以按钮为锚弹出（nav.js 全局 .upload-drop absolute 规则已被本规则覆盖，修复菜单出界到图片区顶部的问题） */
+  #meta-voice-prev { width: 120px; flex-shrink: 0; }  /* v1.55h：音色卡固定 120px（不撑满） */
+  /* v1.55j：音色卡四角图标化——历史🕘左下 / 下载⬇右下（absolute 定位，纯图标） */
+  .mp-voice-card { display: flex; flex-direction: column; padding: 8px 6px; gap: 6px; min-height: 130px; border: 1px solid #93c5fd; border-radius: 10px; background: #e0ecff; box-shadow: 0 1px 3px rgba(37,99,235,.12); position: relative; }
+  .mp-voice-card.empty { color: #9ca3af; font-size: 11px; text-align: center; padding: 14px 6px; background: #f3f4f6; border-color: #e5e7eb; box-shadow: none; position: static; }
+  .mp-voice-head { display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 10px; }
+  .mp-voice-name { display: none; }
+  .mp-voice-cur { color: #16a34a; font-weight: 700; font-size: 9px; }
+  .mp-voice-body { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
+  .mp-voice-play { width: 36px; height: 36px; border-radius: 50%; border: none; background: #2563eb; color: #fff; font-size: 15px; cursor: pointer; line-height: 1; padding: 0; box-shadow: 0 2px 6px rgba(37,99,235,.35); }
+  .mp-voice-play.playing { background: #16a34a; box-shadow: 0 2px 6px rgba(22,163,74,.35); }
+  .mp-voice-mini { position: absolute; bottom: 5px; left: 5px; right: 5px; display: flex; justify-content: space-between; font-size: 13px; padding: 0; }
+  .mp-voice-mini button, .mp-voice-mini a { width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border-radius: 4px; color: #2563eb; border: none; background: none; cursor: pointer; text-decoration: none; font-size: 13px; padding: 0; line-height: 1; }
+  .mp-voice-mini button:hover, .mp-voice-mini a:hover { background: rgba(37,99,235,.12); }
+  /* v1.55e：音色历史弹窗（纯音频，平铺卡片，点击切换当前有效） */
+  .vh-grid { display: grid; grid-template-columns: 1fr; gap: 8px; max-height: 320px; overflow-y: auto; }
+  .vh-card { border: 1px solid #bfdbfe; background: #eff6ff; border-radius: 8px; padding: 8px 10px; cursor: pointer; }
+  .vh-card.cur { border-color: #2563eb; background: #dbeafe; }
+  .vh-card .vh-head { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+  .vh-card .vh-name { font-size: 12px; color: #1d4ed8; font-weight: 600; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .vh-card audio { width: 100%; height: 32px; }
+  /* v1.55e：三标签切换不抖动（音色卡内容区固定 min-height + 内部滚动） */
+  #voice-card .field { min-height: 300px; overflow-y: auto; }
+  /* v1.55e：标签内简版播放/暂停小圆钮（播放中其它按钮 disable，防多音频同播） */
+  .m-audios-sub .audio-item .sub-play { width: 22px; height: 22px; border-radius: 50%; border: none; background: #2563eb; color: #fff; font-size: 11px; cursor: pointer; flex-shrink: 0; line-height: 1; padding: 0; }
+  .m-audios-sub .audio-item .sub-play.playing { background: #16a34a; }
+  .m-audios-sub .audio-item .sub-play:disabled { background: #cbd5e1; cursor: not-allowed; }
+  /* v1.55k：左区 flex column——主图撑满剩余高度（无空白），底部行固定（上传左下+音色卡右下） */
+  .meta-left { display: flex; flex-direction: column; }
+  #meta-versions { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+  .mp-main-img { flex: 1; min-height: 220px; width: 100%; border-radius: 8px; overflow: hidden; position: relative; background: #f3f4f6; border: 1px solid #e5e7eb; }
+  .mp-main-img img { width: 100%; height: 100%; object-fit: cover; display: block; position: absolute; inset: 0; }
+  .mp-thumbs { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; flex-shrink: 0; }
+  .mp-thumb { width: 56px; height: 74px; border-radius: 6px; overflow: hidden; position: relative; cursor: pointer; border: 2px solid transparent; background: #f3f4f6; flex-shrink: 0; }
+  .mp-thumb.cur { border-color: #2563eb; }
+  .mp-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .mp-thumb .n { position: absolute; bottom: 0; right: 0; background: rgba(0,0,0,.6); color: #fff; font-size: 9px; padding: 0 3px; border-radius: 3px 0 0 0; line-height: 13px; }
+  .mp-ver-title { font-size: 12px; font-weight: 700; color: #374151; margin-bottom: 6px; flex-shrink: 0; }
+  .mp-versions .mp-ver-card { width: 100%; aspect-ratio: 3/4; position: relative; background: #f3f4f6; border-radius: 8px; overflow: hidden; border: 1px solid #e5e7eb; }
+  .mp-versions .mp-ver-card img { width: 100%; height: 100%; object-fit: cover; }
+  .mp-ver-badge { position: absolute; top: 6px; left: 6px; background: #2563eb; color: #fff; font-size: 10px; border-radius: 4px; padding: 1px 6px; }
+  .mp-ver-del { position: absolute; top: 4px; right: 4px; width: 18px; height: 18px; border: none; background: rgba(0,0,0,.4); color: #fff; border-radius: 50%; cursor: pointer; font-size: 12px; line-height: 1; }
+  .mp-ver-zoom { position: absolute; bottom: 4px; right: 4px; background: rgba(0,0,0,.5); color: #fff; border-radius: 4px; padding: 1px 6px; text-decoration: none; font-size: 11px; }
+  .ph-card { padding: 30px 12px; text-align: center; color: #9ca3af; display: flex; flex-direction: column; align-items: center; gap: 4px; height: 100%; justify-content: center; }
+  .ph-ic { font-size: 28px; }
+  /* v1.55d：三标签内简版音频列表（条目 + 🔊 + 下载 + 删除，无完整播放条） */
+  .m-audios-sub { margin-top: 6px; }
+  .m-audios-sub .audio-item { display: flex; align-items: center; gap: 6px; font-size: 12px; margin-bottom: 4px; padding: 4px 6px; background: #f9fafb; border-radius: 6px; }
+  .m-audios-sub .audio-item .fname { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #6b7280; }
+  .m-audios-sub .audio-item button, .m-audios-sub .audio-item a { color: #2563eb; border: none; background: none; cursor: pointer; text-decoration: none; font-size: 12px; padding: 0; white-space: nowrap; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, 150px); gap: 14px; justify-content: start; }
+  .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden; position: relative; box-shadow: 0 1px 3px rgba(0,0,0,.06); transition: box-shadow .15s; display: flex; flex-direction: column; min-width: 0; }
+  .card:hover { box-shadow: 0 4px 12px rgba(0,0,0,.1); }
+  .card-img { position: relative; width: 100%; flex: 1 1 auto; min-height: 180px; background: #f9fafb; display: flex; align-items: center; justify-content: center; cursor: pointer; overflow: hidden; }
+  .card-img img { width: 100%; height: 100%; object-fit: cover; }
+  .card-img .ph { color: #9ca3af; font-size: 12px; text-align: center; line-height: 1.5; }
+  /* 卡片四角统一（v1.4）：左上 :: 拖拽柄、右上角（上传选库）、右下 ⋯、点卡提示词 */
+  .card .dl { position:absolute; top:8px; left:8px; width:26px; height:26px; border-radius:6px; background:rgba(17,24,39,.65); color:#fff; border:none; font-size:13px; line-height:26px; cursor:grab; display:flex; align-items:center; justify-content:center; z-index:3; }
+  .card .dl:hover { background:rgba(17,24,39,.9); }
+  .card .dl:active { cursor:grabbing; }
+  .card.hidden-dl .dl { display:none; }
+  .card .crt { position:absolute; top:8px; right:8px; background:rgba(17,24,39,.65); color:#fff; border:none; border-radius:50%; width:26px; height:26px; font-size:13px; line-height:26px; cursor:pointer; display:flex; align-items:center; justify-content:center; z-index:3; }
+  .card .crt:hover { background:rgba(17,24,39,.9); }
+  .card-actions-menu { position:fixed; z-index:120; background:#fff; border:1px solid #e5e7eb; border-radius:8px; box-shadow:0 4px 16px rgba(0,0,0,.15); min-width:150px; display:none; }
+  .card-actions-menu div { padding:8px 14px; font-size:13px; cursor:pointer; }
+  .card-actions-menu div:hover { background:#f3f4f6; }
+  /* 归类选择器：扁平资产卡（图+名+四角·多选勾选） */
+  .ub-card { position:relative; border:1px solid #e5e7eb; border-radius:10px; padding:6px; cursor:pointer; background:#fff; transition:border-color .12s, box-shadow .12s; }
+  .ub-card:hover { box-shadow:0 2px 8px rgba(0,0,0,.08); }
+  .ub-card.sel { border-color:#2563eb; box-shadow:0 0 0 2px rgba(37,99,235,.15); }
+  .ub-thumb { position:relative; width:100%; aspect-ratio:1; border-radius:8px; background:#f9fafb; overflow:hidden; display:flex; align-items:center; justify-content:center; }
+  .ub-thumb img { width:100%; height:100%; object-fit:cover; }
+  .ub-thumb .ph { color:#9ca3af; font-size:11px; text-align:center; line-height:1.4; }
+  .ub-name { font-size:12px; color:#374151; margin-top:6px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .ub-check { position:absolute; top:8px; right:8px; width:20px; height:20px; border-radius:50%; background:#2563eb; color:#fff; font-size:12px; line-height:20px; text-align:center; }
+  .card .dl.dragging { opacity:.5; }
+  .card-body { padding: 10px 12px 8px; }
+  .card-title { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
+  .card-sub { font-size: 11px; color: #9ca3af; margin-bottom: 6px; }
+  .card-foot { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; border-top: 1px solid #f3f4f6; }
+  .dots { width: 26px; height: 26px; border-radius: 50%; background: #f3f4f6; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #6b7280; font-size: 16px; padding: 0; }
+  .dots:hover { background: #e5e7eb; }
+  .tag { font-size: 11px; background: #f3f4f6; border-radius: 10px; padding: 1px 8px; color: #6b7280; }
+  .tags { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 6px; }
+  .empty { color: #9ca3af; text-align: center; padding: 40px 0; }
+  .modal-mask { position: fixed; inset: 0; background: rgba(0,0,0,.4); display: none; align-items: center; justify-content: center; z-index: 50; }
+  .modal { background: #fff; border-radius: 10px; width: 720px; max-width: 96vw; max-height: 92vh; overflow: auto; padding: 18px; position: relative; }
+  .modal h2 { font-size: 16px; margin-bottom: 12px; }
+  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 14px; }
+  #inline-tip, #modal-tip { display: none; padding: 8px 14px; border-radius: 8px; font-size: 13px; }
+  #inline-tip { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 200; box-shadow: 0 2px 10px rgba(0,0,0,.18); margin: 0; }
+  #modal-tip { position: absolute; top: 12px; right: 14px; z-index: 10; max-width: 70%; box-shadow: 0 2px 8px rgba(0,0,0,.12); margin: 0; }
+  .ctx-menu { position: fixed; background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,.15); z-index: 100; min-width: 140px; display: none; }
+  .ctx-menu div { padding: 8px 14px; font-size: 13px; cursor: pointer; }
+  .ctx-menu div:hover { background: #f3f4f6; }
+  .ctx-menu div.danger { color: #dc2626; }
+  .meta-grid { display: grid; grid-template-columns: 1fr 1.4fr; gap: 18px; }
+  .meta-left .main-prev { position: relative; width: 100%; height: 240px; background: #f9fafb; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-bottom: 10px; overflow: hidden; border: 1px solid #e5e7eb; }
+  .meta-left .main-prev img { max-width: 100%; max-height: 100%; object-fit: contain; }
+  .meta-left .main-prev .ph { color: #9ca3af; font-size: 13px; }
+  .meta-left .main-tag { position: absolute; top: 8px; left: 8px; background: #2563eb; color: #fff; font-size: 11px; border-radius: 6px; padding: 2px 8px; }
+  .pv-icon { position: absolute; width: 26px; height: 26px; border-radius: 8px; background: rgba(17,24,39,.65); color: #fff; border: none; font-size: 15px; cursor: pointer; display: flex; align-items: center; justify-content: center; text-decoration: none; }
+  .pv-icon:hover { background: rgba(17,24,39,.9); }
+  .pv-icon.tl { top: 8px; right: 8px; }
+  .pv-icon.br { bottom: 8px; right: 8px; }
+  .field { margin-bottom: 10px; }
+  .field label { display: block; font-size: 13px; color: #6b7280; margin-bottom: 4px; }
+  .field input, .field textarea, .field select { width: 100%; padding: 7px 9px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 13px; font-family: inherit; }
+  .field textarea { min-height: 54px; resize: vertical; line-height: 1.5; }
+  .scope-bar { display: flex; gap: 6px; align-items: center; margin-bottom: 4px; }
+  .scope-search { flex: 1; min-width: 0; padding: 5px 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 12px; }
+  .scope-bar select { padding: 5px 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 12px; min-width: 150px; }
+  .scope-tag { display: inline-flex; align-items: center; gap: 4px; background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 12px; padding: 2px 8px; font-size: 12px; color: #374151; }
+  .scope-tag button { border: none; background: none; cursor: pointer; color: #9ca3af; font-size: 13px; padding: 0 2px; }
+  .scope-tag button:hover { color: #dc2626; }
+  .radio-row { display: flex; gap: 16px; align-items: center; font-size: 13px; }
+  .radio-row label { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
+  .vs-tabs { display: inline-flex; gap: 6px; background: #f3f4f6; border-radius: 10px; padding: 4px; }
+  .vs-tab { border: none; background: none; border-radius: 8px; padding: 6px 14px; font-size: 13px; color: #6b7280; cursor: pointer; }
+  .vs-tab.active { background: #fff; color: #111827; box-shadow: 0 1px 3px rgba(0,0,0,.12); font-weight: 600; }
+  .audio-item { display: inline-flex; align-items: center; gap: 4px; background: #f3f4f6; border-radius: 10px; padding: 2px 8px; font-size: 12px; margin: 0 6px 6px 0; }
+  .audio-item audio { height: 26px; }
+  .audio-item a { color: #2563eb; text-decoration: none; }
+  .placeholder-btn { background: #f9fafb; color: #9ca3af; border: 1px dashed #d1d5db; cursor: not-allowed; }
+  .opts { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .link-btn { background: none; border: none; color: #2563eb; font-size: 12px; cursor: pointer; padding: 0; text-decoration: underline; }
+  .upload-drop { position: relative; display: inline-block; }
+  .upload-drop .menu { position: absolute; bottom: 100%; left: 0; background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,.12); z-index: 40; display: none; min-width: 130px; }
+  .upload-drop .menu div { padding: 7px 12px; font-size: 12px; cursor: pointer; }
+  .upload-drop .menu div:hover { background: #f3f4f6; }
+</style>
+</head>
+<body>
+<aside id="sidebar"></aside>
+<div class="card-actions-menu" id="card-actions-menu">
+  <div onclick="cardUploadImage()">上传图片</div>
+  <div onclick="cardBindFromLibrary()">从资产库选择</div>
+</div>
+<div class="main-wrap">
+<main>
+  <div class="tabs">
+    <button class="tab active" id="tab-characters" onclick="switchTab('characters')">👤 人物库</button>
+    <button class="tab" id="tab-scenes" onclick="switchTab('scenes')">🏙️ 场景库</button>
+    <button class="tab" id="tab-props" onclick="switchTab('props')">🎭 道具库</button>
+    <button class="tab" id="tab-material" onclick="switchTab('material')">🧩 素材</button>
+  </div>
+  <div id="inline-tip"></div>
+  <div class="toolbar">
+    <span id="lib-meta" style="font-size:13px;color:#6b7280"></span>
+    <span style="font-size:12px;color:#9ca3af">同一名称可细分多个形象 / 视角 / 场景</span>
+    <button class="btn-ghost" onclick="openAudit()">🔍 资产库体检</button>
+    <button class="btn-primary" onclick="openMeta(null)">＋ 新建</button>
+  </div>
+  <!-- 第6批 item4：加载资产页自动跑体检 → 顶部轻量汇总（不弹窗）；计数核对自动修正静默入日志 -->
+  <div id="audit-summary" style="display:none;font-size:12px;line-height:1.6;padding:6px 12px;border-radius:8px;margin-bottom:8px"></div>
+  <div id="groups"><div class="empty">加载中……</div></div>
+</main>
+
+<!-- 统一提示词编辑器（生图/生视频共用）：由 static/prompt-editor.js 注入，复用参考《阶段6-统一提示词编辑器框架样板.md》 -->
+
+<!-- v1.55e：音色历史弹窗（纯音频，无图；平铺卡片，点击切换当前有效音色） -->
+<div id="vh-pop" style="position:fixed;z-index:510;display:none">
+  <div style="background:#fff;border:1px solid #bfdbfe;border-radius:14px;box-shadow:0 18px 44px rgba(0,0,0,.22);padding:14px 16px;width:420px;max-width:92vw;overflow:auto">
+    <h2 style="font-size:15px;font-weight:600;margin-bottom:8px">🎵 音色历史（点击卡片设为当前有效，保存后生效）</h2>
+    <div id="vh-list" class="vh-grid"></div>
+    <div class="modal-actions"><button class="btn-ghost" onclick="closeVoiceHist()">关闭</button></div>
+  </div>
+</div>
+
+<!-- 元数据编辑（双栏） -->
+<div class="modal-mask" id="meta-mask">
+  <div class="modal" style="width:980px">
+    <h2 id="meta-title">资产信息</h2>
+    <div class="meta-grid">
+      <div class="meta-left">
+        <!-- v1.55e：图版本卡片墙（多版本平铺，点击切换主图；renderMetaVersions 渲染） -->
+        <div class="mp-versions" id="meta-versions"></div>
+        <!-- v1.55e：左区底部一行 = 左下"上传主图素材" + 右下"音色卡" -->
+        <div class="meta-left-bottom">
+          <div class="upload-drop">
+            <button class="btn-ghost btn-mini" onclick="toggleDrop(this)">📤 上传主图素材 ▾</button>
+            <div class="menu"><div onclick="uploadImageMeta()">上传图片</div><div onclick="openAssetPicker('meta')">从资产库选择</div></div>
+          </div>
+          <div id="meta-voice-prev"></div>
+        </div>
+      </div>
+      <div class="meta-right">
+        <div class="mp-card">
+          <div class="mp-card-t">基本信息</div>
+          <div class="scope-bar" style="margin-top:2px;align-items:flex-start">
+            <div class="field" style="flex:1;margin-bottom:0"><label>名称</label><input id="m-prefix" list="prefix-list"><datalist id="prefix-list"></datalist></div>
+            <div class="field" style="flex:1;margin-bottom:0"><label id="m-variant-label">形象</label><input id="m-variant" placeholder="如：18岁-衬衫（不含名称前缀）"></div>
+          </div>
+        </div>
+        <div class="mp-card">
+          <div class="mp-card-t">归属 · 归属明细</div>
+          <div class="scope-bar" style="margin-top:2px">
+            <span style="font-size:12px;color:#6b7280">项目：</span>
+            <select id="sc-proj" onchange="onProjChange()" style="flex:1;min-width:0"></select>
+          </div>
+          <div id="ep-multi-list" class="ep-multi"></div>
+          <div class="scope-bar" style="margin-top:6px">
+            <button class="btn-primary btn-mini" onclick="addScopeGroup()">＋ 添加</button>
+            <button class="btn-mini btn-primary" onclick="aiRecommendScopes()" title="智能推荐（4-6 通用能力：规则+LLM 推荐归属，确认后生效）">✨ 智能推荐</button>
+          </div>
+          <div id="f-scopes" class="scope-groups"></div>
+        </div>
+        <div class="mp-card" id="voice-card">
+          <div class="mp-card-t">音色</div>
+          <div class="vs-tabs">
+            <button type="button" class="vs-tab active" data-v="text" onclick="setVoiceSrc('text')">文本音色</button>
+            <button type="button" class="vs-tab" data-v="audio" onclick="setVoiceSrc('audio')">音频音色（上传绑定）</button>
+            <button type="button" class="vs-tab" data-v="edge" onclick="setVoiceSrc('edge')">预置音色（edge-tts）</button>
+          </div>
+          <!-- v1.55h 文本音色：label 行左=声音描述 / 右=AI优化+生成音色样本；下=textarea -->
+          <div class="field" id="v-text">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+              <label style="margin-bottom:0">声音描述（文本音色）</label>
+              <div style="display:flex;gap:4px">
+                <button class="btn-ghost btn-mini" onclick="aiOptimizeVoice()">✨ AI 优化</button>
+                <button type="button" class="btn-primary btn-mini" id="btn-voice-sample" onclick="genVoiceSample()" title="🎙 Qwen3-TTS：把描述固化为真实声音（约 15 秒），视频配音时人物声音一致性更好，可作 H3 音色克隆">🎙 生成音色样本</button>
+              </div>
+            </div>
+            <textarea id="m-voice"></textarea>
+            <div id="vs-sample-status" style="display:none;margin-top:4px;font-size:12px;color:#2563eb"></div>
+            <div class="m-audios-sub" id="m-audios-text"></div>
+          </div>
+          <!-- v1.55d 音频音色（上传绑定）：绑定 + 简版列表 -->
+          <div class="field" id="v-audio" style="display:none">
+            <label>绑定已有音频（保存后作为该资产参考音频）</label>
+            <div class="scope-bar" style="margin-bottom:4px">
+              <button class="btn-ghost btn-mini" onclick="uploadAudioMeta()" style="flex:1">📤 绑定已有音频</button>
+            </div>
+            <div class="m-audios-sub" id="m-audios-audio"></div>
+          </div>
+          <!-- v1.55g 预置音色（Edge-TTS）→ 生成音色样本（与文本音色设计一致：生成后 chip 可试听/下载/删除） -->
+          <div class="field" id="v-edge" style="display:none">
+            <label>预置音色（Edge-TTS）→ 生成音色样本</label>
+            <div class="scope-bar" style="margin-bottom:4px">
+              <select id="tts-voice" style="flex:1;min-width:0"></select>
+              <button class="btn-ghost btn-mini" onclick="genTrial()">生成音色样本</button>
+            </div>
+            <div class="m-audios-sub" id="m-audios-edge"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="closeMeta()">取消</button>
+      <button class="btn-ghost" type="button" onclick="goCanvasEdit()" title="去画布编辑（阶段 6）">🎨 去画布编辑</button>
+      <button class="btn-primary" id="meta-save" onclick="saveMeta()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- v1.55b：音色样本生成进度模态（遮罩+阶段+进度条+计时，防止用户等待着急） -->
+<div class="modal-mask" id="vs-progress-mask" style="z-index:900;display:none">
+  <div class="vs-progress-card">
+    <div class="vs-progress-icon">⏳</div>
+    <div class="vs-progress-title" id="vs-progress-title">生成音色样本中…</div>
+    <div class="vs-progress-stage" id="vs-progress-stage">提交工作流…</div>
+    <div class="vs-progress-bar"><div class="vs-progress-fill" id="vs-progress-fill"></div></div>
+    <div class="vs-progress-time" id="vs-progress-time">已耗时 0 秒</div>
+  </div>
+</div>
+
+<!-- 资产库图片选择（分类 tab + 资产卡列表，统一选图体验；v1.57：从平铺全部图片改为分类级联式资产卡选择） -->
+<div class="modal-mask" id="picker-mask" style="z-index:730">
+  <div class="modal" style="width:680px">
+    <h2 id="picker-title">选择要绑定的图片</h2>
+    <div id="picker-tabs" class="ub-kind-tabs" style="display:none;gap:6px;margin-bottom:12px"></div>
+    <div id="picker-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;max-height:52vh;overflow:auto"></div>
+    <div class="modal-actions"><button class="btn-ghost" onclick="closePicker()">关闭</button></div>
+  </div>
+</div>
+
+<!-- 未分类归类选择器（级联：分类→资产卡片多选，v1.4） -->
+<div class="modal-mask" id="unassign-bind-mask">
+  <div class="modal" style="width:680px">
+    <h2>归类到资产</h2>
+    <div class="ub-kind-tabs" style="display:flex;gap:6px;margin-bottom:12px">
+      <button class="tab ub-kind active" data-kind="characters" onclick="ubShowKind('characters')">人物</button>
+      <button class="tab ub-kind" data-kind="scenes" onclick="ubShowKind('scenes')">场景</button>
+      <button class="tab ub-kind" data-kind="props" onclick="ubShowKind('props')">道具</button>
+    </div>
+    <div id="ub-asset-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;max-height:52vh;overflow:auto"></div>
+    <div id="ub-selected-tip" style="font-size:12px;color:#6b7280;margin-top:10px">已选 0 个资产</div>
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="closeUnassignedBind()">取消</button>
+      <button class="btn-primary" id="ub-submit" onclick="ubSubmitBind()" disabled>提交归类</button>
+    </div>
+  </div>
+</div>
+
+<!-- 右键菜单 -->
+<div class="ctx-menu" id="ctx-menu">
+  <div id="ctx-item-del" onclick="ctxDelete()">删除</div>
+  <div id="ctx-item-copy" onclick="ctxCopy()">复制图片</div>
+  <div id="ctx-item-dup" onclick="ctxDuplicate()">创建副本</div>
+</div>
+
+<!-- 统一提示词编辑器（卡片下方锚定 popover，内嵌共享组件 prompt-editor.js v3） -->
+<div id="pe-pop" style="position:fixed;z-index:500;display:none">
+  <div id="pe-root" style="background:#fff;border:1px solid #e5e7eb;border-radius:14px;box-shadow:0 18px 44px rgba(0,0,0,.22);padding:14px 16px 10px;width:720px;max-width:92vw;max-height:60vh;overflow:auto"></div>
+</div>
+
+<script>
+const API = '/api';
+const KINDS = {
+  characters: { label: '人物', variantLabel: '形象', idPrefix: 'ch_' },
+  scenes: { label: '场景', variantLabel: '视角', idPrefix: 'sc_' },
+  props: { label: '道具', variantLabel: '所在场景', idPrefix: 'pr_' }
+};
+let currentKind = 'characters';
+// v1.2 阶段2（IC工作流工坊化-素材标签合并）："参考类+未分类"UI 合并为"素材"标签(material)。
+//   底层数据结构不动——material 视图内参考类走 /references、未分类走 /assets/index/unclassified 各自照旧，
+//   删除逻辑各自保留。isRefKind()/apiKindOf() 把 material 视同 references 语义，收敛散落的 kind 判断，防 /material 404。
+function isRefKind(k) { k = k || currentKind; return k === 'reference' || k === 'unassigned' || k === 'material'; }
+function apiKindOf(k) { k = k || currentKind; return isRefKind(k) ? 'references' : k; }
+let peRefs = [];   // v1.53 参考类资产（@ 弹窗可选）
+let editingId = null;          // 元数据当前编辑资产
+let editingScopes = { projects: [], episodes: [], scenes: [] };   // v1.34 三层
+let scopeTree = [];
+let curProjId = '';   // v1.45/49 归属：当前项目（项目下拉始终可用）
+let pendingEpSelection = { all: false, eps: [] };   // v1.48：当前项目待添加的集选择（"＋添加"=项目+所选集一并入）
+let ttsVoices = [{ id: 'zh-CN-XiaoxiaoNeural', label: '晓晓' }];
+let ctxAsset = null;           // 右键目标
+let ctxKind = null;            // 右键目标分类（characters/scenes/props/reference）
+let _refPrevKind = null;       // openRefMeta 前 currentKind（关闭 meta 后恢复标签视图）
+let _refSeed = null;           // 裸图落地参考类：种子图相对路径（openRefMeta 用，保存 POST /api/references）
+
+function esc(s) { return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+function escAttr(s) { return String(s).replace(/'/g, "\\'"); }
+function tip(text, type) {
+  // v1.42：信息通知统一用全局悬浮 toast（nav.js window.toast），不再用 Inline（页面内嵌提示条）
+  if (window.toast) { window.toast(text, type); return; }
+  const el = document.getElementById('inline-tip');
+  el.textContent = text;
+  el.style.background = type === 'success' ? '#dcfce7' : '#fee2e2';
+  el.style.color = type === 'success' ? '#16a34a' : '#dc2626';
+  el.style.display = 'block';
+  clearTimeout(el._t);
+  el._t = setTimeout(() => { el.style.display = 'none'; }, 3200);
+}
+async function api(path, options) {
+  const resp = await fetch(API + path, options);
+  if (!resp.ok) { let d = '请求失败'; try { d = (await resp.json()).detail || d; } catch (e) {}
+    // 6-13：后端 fail-fast 校验的 400 detail 为 {msg, errors:{字段:[msg]}}，保留结构供字段级高亮
+    if (typeof d === 'object' && d !== null) { const e = new Error(d.msg || '资产未保存'); e.detail = d; throw e; }
+    throw new Error(d); }
+  const warnings = resp.headers.get('X-Asset-Warnings'); // 6-13：软提示经 header 附带
+  let data = null; try { data = await resp.json(); } catch (e) {}
+  if (warnings) { try { data = data || {}; data._warnings = JSON.parse(warnings); } catch (e) {} }
+  return data;
+}
+function jsonBody(method, body) { return { method, headers: { 'Content-Type': 'application/json; charset=utf-8' }, body: JSON.stringify(body) }; }
+
+async function getAsset(id) {
+  // reference/落地：端点用复数 references（currentKind 存单数 reference/unassigned）
+  const apiKind = isRefKind(currentKind) ? 'references' : currentKind;
+  return api('/' + apiKind + '/' + id);
+}
+
+function switchTab(kind) {
+  currentKind = kind;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + kind).classList.add('active');
+  load();
+}
+async function load() {
+  // 未分类标签：渲染未分类/未分配区（/api/assets/index/unassigned）
+  if (currentKind === 'unassigned') { renderUnassigned(); return; }
+  // 参考类标签（v1.53 参考类资产模型）：渲染参考引用类资产
+  if (currentKind === 'reference') { renderReferences(); return; }
+  // v1.2 阶段2：素材标签（material）= 参考类 + 未分类 混排（纯 UI 合并，数据/删除逻辑各自不变）
+  if (currentKind === 'material') { renderMaterial(); return; }
+  document.getElementById('lib-meta').textContent = KINDS[currentKind].label + '库';
+  document.getElementById('m-variant-label').textContent = KINDS[currentKind].variantLabel + (currentKind === 'characters' ? '（默认"基础形象"）' : '');
+  document.getElementById('voice-card').style.display = currentKind === 'characters' ? '' : 'none';
+  try {
+    const [data, stats] = await Promise.all([api('/' + currentKind), api('/ref-stats')]);
+    window.__refStats = stats || {};   // 批4-3：全局缓存出场引用统计（供禁删判断/卡片标注）
+    renderGroups(data.items, stats[currentKind] || {});
+  } catch (e) { tip(e.message, 'error'); }
+}
+// 批4-3：某资产是否被出场引用（命中任意在案场 → 不可删）。__refStats 未载时后端仍会 409 兜底。
+function isAssetReferenced(kind, id) {
+  const st = (window.__refStats || {})[kind] || {};
+  const hit = st[id];
+  return hit ? (hit.count || 0) : 0;
+}
+function scopeDetail(it, st) {
+  const sc = it.scopes || {};
+  return `归属：项目${(sc.projects || []).length} / 集${(sc.episodes || []).length} / 场次${(sc.scenes || []).length}；出场场次：${(st.scenes || []).map(s => s.scene).join('、')}`;
+}
+function renderGroups(items, stats) {
+  const el = document.getElementById('groups');
+  const valid = items.filter(it => it.prefix);
+  if (!valid.length) { el.innerHTML = '<div class="empty">暂无资产，点击"＋ 新建"创建。</div>'; return; }
+  const groups = {};
+  valid.forEach(it => { (groups[it.prefix] = groups[it.prefix] || []).push(it); });
+  const prefixes = Object.keys(groups).sort();
+  // 组与单卡同网格平铺：多卡前缀=组（按变体数跨列），单卡前缀=卡片直接占 1 格
+  // 生产化·批1：统一 AssetCard 组件（三卡种共用）
+  el.innerHTML = '';
+  prefixes.forEach(prefix => {
+    const list = groups[prefix];
+    if (list.length === 1) {
+      const slot = document.createElement('div');
+      el.appendChild(slot);
+      makeAssetCard(slot, list[0], stats[list[0].id] || { count: 0, scenes: [] });
+      return;
+    }
+    /* v2.2 实施9: 组内变体 1 行 N 列（修复 N=3 时 2+1 错位——.group padding+border 占 22px 导致 .cards auto-fill 150 装不下 N 列） */
+    const span = Math.min(Math.max(list.length, 2), 4);
+    const grp = document.createElement('div');
+    grp.className = 'group';
+    grp.style.gridColumn = 'span ' + span;
+    grp.innerHTML = `<div class="group-head"><h3>${esc(prefix)}</h3><button class="btn-ghost btn-mini" onclick="openMeta(null,'${escAttr(prefix)}')">＋ 新增变体</button></div><div class="cards"></div>`;
+    const cards = grp.querySelector('.cards');
+    cards.style.gridTemplateColumns = `repeat(${list.length}, minmax(0, 1fr))`;
+    list.forEach(it => {
+      const slot = document.createElement('div');
+      cards.appendChild(slot);
+      makeAssetCard(slot, it, stats[it.id] || { count: 0, scenes: [] });
+    });
+    el.appendChild(grp);
+  });
+}
+// 通用放大预览：点卡片左上 🔍 弹固定遮罩显示大图（1.2：资产库卡片左上拖拽改放大）
+function zoomPreview(path) {
+  if (!path) { tip('该资产暂无图片', 'error'); return; }
+  const u = '/api/asset-file/' + encodeURIComponent(path);
+  const m = document.createElement('div');
+  m.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:900;display:flex;align-items:center;justify-content:center;cursor:zoom-out';
+  m.innerHTML = '<img src="' + esc(u) + '" style="max-width:92vw;max-height:88vh;border-radius:10px;box-shadow:0 10px 40px rgba(0,0,0,.5)" onerror="this.style.display=\'none\';toast(\'图片加载失败\',\'error\')">';
+  m.onclick = function () { m.remove(); };
+  document.body.appendChild(m);
+}
+// 普通资产（人物/场景/道具）AssetCard 实例：取 images[0] 当前有效图；四角 = 左上🔍放大 / 右上(有图→历史 / 无图→上传选库) / 右下⋯元数据；点卡→提示词编辑器
+function makeAssetCard(slot, it, st) {
+  const cur = (it.images || [])[0];
+  const nImgs = (it.images || []).length;
+  // v1.55d：🎙 音色角标（audios 数>0 显示，含样本/试听/绑定音频）
+  const nAud = (it.audios || []).length;
+  const voiceMark = nAud ? ` 🎙${nAud}` : '';
+  // 批4-3：出场引用命中 → 不可删（红框禁删态）。引用数=0（含孤儿）→ 可删。
+  const refN = st.count || 0;
+  const locked = refN > 0;
+  const sceneTxt = (st.scenes || []).length ? ' · 出场场次：' + st.scenes.map(s => s.scene).join('、') : '';
+  // ④批4-3修复：锁定卡标记移至灰底白字条；主文字区(sub)显示引用/不可删，白字清晰可读
+  const sub = (locked ? '被 ' + refN + ' 场引用 · 不可删' : '✔ 无引用 · 可删除')
+    + `${it.prefix}${nImgs ? ' · ' + nImgs + ' 张图' : ''}${voiceMark}${sceneTxt}`;
+  const kindKey = currentKind === 'characters' ? 'character' : currentKind === 'scenes' ? 'scene' : 'prop';
+  /* v1.7 实施9: 按 kind 设 data-layout 驱动 3:4/16:9（CSS 覆盖 vendor 150px 固定） */
+  const layout = (currentKind === 'scenes') ? 'landscape' : 'portrait';
+  slot.setAttribute('data-layout', layout);
+  const ac = new window.AssetCard(slot, {
+    kind: kindKey,
+    data: {
+      id: it.id,
+      path: cur ? cur.path : '',
+      thumbnailUrl: cur ? '/api/asset-file/' + encodeURIComponent(cur.path) : '',
+      name: it.variant_name,
+      sub: sub,
+      full: it
+    },
+    icons: {
+      tl: { icon: '🔍', title: '放大预览大图', action: 'zoom' },   // 四角统一：左上=放大预览
+      tr: { icon: '⬆', title: '上传 / 从资产库选择', action: 'upload' },  // 右上=上传/选图
+      bl: { icon: '🔗', title: '查看引用/出场', action: 'view' },   // 左下=查看引用（B 批四角统一）
+      br: { icon: '⋯', title: '资产信息', action: 'meta' }         // 右下=元数据编辑
+    },
+    onClick: function (card) { openPrompt(card.data.id, card.el.querySelector('.ac-thumb')); },
+    onZoom: function (card) { zoomPreview(card.data.path); },
+    onView: function (card) { viewAssetRefs(card.data.full, st); },
+    onMeta: function (card) { openMeta(card.data.id); },
+    onUpload: function (card) { openCardActionsForCard(card); },
+    onDragStart: function () {},
+    onDragEnd: function () {}
+  });
+  // 批4-3：被引用卡片 → 红框禁删态（红字 + 红框，明显视觉提示）
+  if (ac.el) {
+    if (locked) ac.el.classList.add('ac-locked');
+    ac.el.setAttribute('data-ref', locked ? refN : '0');
+    // 普通资产卡保留右键菜单入口
+    ac.el.addEventListener('contextmenu', function (e) { showCtx(e, it.id); });
+  }
+}
+// 无图→上传/从库选择：卡片定位锚点弹出 card-actions-menu
+function openCardActionsForCard(card) {
+  closeCardActions();
+  const m = document.getElementById('card-actions-menu');
+  const r = (card.el || document.body).getBoundingClientRect();
+  m.style.display = 'block';
+  m.style.left = Math.min(r.right - 150, window.innerWidth - 170) + 'px';
+  m.style.top = Math.min(r.bottom + 6, window.innerHeight - 110) + 'px';
+  m.dataset.id = card.data.id;
+}
+
+// B 批四角统一·左下 🔗 查看引用：主三库资产 —— 显示该资产出场(被哪些场引用) + 主图物理图引用来源(含生成引用)
+function viewAssetRefs(asset, st) {
+  const nm = (asset.prefix || '') + '-' + (asset.variant_name || '');
+  const scenes = (st && st.scenes) || [];
+  let html = '';
+  if (scenes.length) {
+    html += '<div style="font-size:12px;color:#6b7280;padding:6px 12px;background:#f9fafb">出场引用（' + scenes.length + ' 个场）</div>' +
+      scenes.map(s => '<div style="padding:8px 12px;border-bottom:1px solid #f3f4f6;font-size:13px">🎬 ' + esc(s.scene || s.sid || '') + '</div>').join('');
+  } else {
+    html += '<div style="padding:12px;color:#9ca3af;font-size:13px">暂无出场引用（未在任何场被 @ / 出场）</div>';
+  }
+  // 主图物理图侧引用（含 ⚡ 生成引用）
+  const cur = (asset.images || [])[0];
+  if (cur && cur.path) {
+    try {
+      // 通过 /assets/index/unclassified 无法查；此处提示"引用来源见右下元数据/资产卡"足够（主三库被引用主要体现在出场，无需物理图明细）
+    } catch (e) {}
+  }
+  window.confirmDialog('出场/被引用（' + nm + '）', `<div style="max-height:280px;overflow:auto">${html}</div>`, function () {}, '关闭');
+}
+
+// ===== 未分类区（第四标签，v1.4，A：点击归类） =====
+async function renderUnassigned() {
+  document.getElementById('lib-meta').textContent = '未分类区';
+  const el = document.getElementById('groups');
+  let data;
+  try { data = await api('/assets/index/unclassified'); } catch (e) { el.innerHTML = '<div class="empty">加载失败：' + esc(e.message) + '</div>'; return; }
+  const items = (data.entries || []);
+  if (!items.length) { el.innerHTML = '<div class="empty">暂无未分类资产（新导入/上传且未挂到任何资产的图会出现在这里）</div>'; return; }
+  el.innerHTML = '';
+  items.forEach(e => {
+    const slot = document.createElement('div');
+    el.appendChild(slot);
+    makeUnassignedCard(slot, e);
+  });
+}
+function locateSceneLabel(sid) {
+  if (!sid || !scopeTree) return sid;
+  for (const p of scopeTree) {
+    for (const ep of (p.episodes || [])) {
+      const sc = (ep.scenes || []).find(s => s.id === sid);
+      if (sc) return (ep.title || '') + '-' + (sc.title || '');
+    }
+  }
+  return sid;
+}
+// 第6批 item1/3 + 目检①：未分类卡引用信息。sub=归属/截帧标注（引用计数由 asset-card 底部"引用计数：N"行显眼显示）
+function unassignedCardInfo(e) {
+  const cnt = e.ref_count || 0;
+  const ss = e.source_scene;
+  if (ss && ss.sid) {
+    return { sub: '🎬 场视频截帧 · ' + locateSceneLabel(ss.sid), locked: cnt > 0 };
+  }
+  if (cnt > 0) {
+    return { sub: '被 ' + cnt + ' 处引用', locked: true };
+  }
+  return { sub: '', locked: false };
+}
+function makeUnassignedCard(slot, e) {
+  const path = e.path || '';
+  const info = unassignedCardInfo(e);
+  slot.setAttribute('data-layout', 'portrait');  /* v2.1 实施9: 统一比例无白框 */
+  const ac = new window.AssetCard(slot, {
+    kind: 'unassigned',
+    data: { id: e.id || '', path: path, thumbnailUrl: '/api/asset-file/' + encodeURIComponent(path), name: path.split('/').pop(), sub: info.sub, ref_count: e.ref_count || 0, ref_sources: e.ref_sources || [], source_scene: e.source_scene },
+    icons: {
+      tl: { icon: '🔍', title: '放大预览大图', action: 'zoom' },   // 四角统一：左上=放大
+      // v1.3（用户 09-08 裁定）：素材标签卡片 ⬆ 上传暂不实现（等数据层改造批：素材=资产有 images[] 累积/切主图后统一给）。
+      //   当前 tr=null 无上传图标——换主图/加图走卡 ⋯ 元数据面板内"📤 上传主图素材 ▾"（openMeta/editingImages/saveMeta 体系）。
+      tr: null,
+      bl: { icon: '🔗', title: '查看引用/归属（含归类到资产）', action: 'view' },  // 左下=看引用（B 批四角统一）
+      br: { icon: '⋯', title: '资产信息 / 元数据编辑', action: 'meta' }   // 右下=元数据（去"落地参考类"内部术语）
+    },
+    onClick: function (card) { openUnassignedPrompt(card.data.path, card.el.querySelector('.ac-thumb')); },
+    onZoom: function (card) { zoomPreview(card.data.path); },
+    onView: function (card) { openUnassignedMeta(card.data); },   // 左下 🔗：引用来源 + 归类到资产按钮
+    onMeta: function (card) { openRefMeta(null, card.data.path); }   // 右下 ⋯：落地为参考类素材(openMeta 编辑)
+  });
+  // 第6批 item3：被引用（ref_count>0）未分类卡（截帧图等）灰底白字标"不可删"，统一右键菜单-删除
+  if (ac.el) {
+    if (info.locked) ac.el.classList.add('ac-ref-locked');
+    ac.el.addEventListener('contextmenu', function (ev) { showCtx(ev, path, 'unassigned'); });
+  }
+}
+// 第6批 item1：删除未分类图（ref_count>0 后端 409 拦并返回 ref_sources；=0 删物理+索引标记）
+async function delUnassigned(path) {
+  window.confirmDialog('删除未分类图', '<div style="line-height:1.7">确认删除该未分类图片？<br><span style="color:#9ca3af;font-size:12px">被引用（截帧图/素材被引用）时后端会拦截并提示引用来源。</span></div>', async function () {
+    try {
+      await api('/assets/unclassified?path=' + encodeURIComponent(path), { method: 'DELETE' });
+      tip('已删除未分类图', 'success');
+      afterMutate();
+    } catch (e) {
+      const d = e.detail || {};
+      if (d.ref_sources && d.ref_sources.length) {
+        const srcs = d.ref_sources.map(s => {
+          if (s.type === 'scene_video') return '🎬 场视频截帧 · ' + locateSceneLabel(s.sid);
+          if (s.type === 'asset') return '资产 ' + (s.kind || '') + '/' + (s.id || '');
+          if (s.type === 'generation') return '⚡ 生成引用 · ' + locateSceneLabel(s.sid || '') + (s.field === 'ref' ? '（作参考图生成）' : '');
+          return s.type || '';
+        });
+        window.confirmDialog('该图被引用，不可删除', '<div style="line-height:1.8">被 ' + (d.count || srcs.length) + ' 处引用：<br>' + srcs.join('<br>') + '</div>', function () {}, '知道了');
+      } else {
+        tip(e.message || e.detail?.msg || '删除失败', 'error');
+      }
+    }
+  }, '删除');
+}
+// ===== 参考类区（v1.53 参考类资产模型，kind=reference） =====
+async function renderReferences() {
+  document.getElementById('lib-meta').textContent = '参考类';
+  const el = document.getElementById('groups');
+  let data;
+  try { data = await api('/references'); } catch (e) { el.innerHTML = '<div class="empty">加载失败：' + esc(e.message) + '</div>'; return; }
+  const items = (data.items || []);
+  if (!items.length) { el.innerHTML = '<div class="empty">暂无参考类资产。可在统一提示词编辑器"＋→⬆ 本地上传参考图"时登记为参考类资产。</div>'; return; }
+  
+  // 批量操作控件（P1：zero 判定合并 assets_index 引用，防把"落地自截帧图、被场引用"的卡当可删批量删）
+  let batchControls = '';
+  const zeroCount = items.filter(r => refTotalCount(r) === 0).length;
+  if (zeroCount > 0) {
+    batchControls = `
+      <div style="margin-bottom:12px;padding:8px;background:#f3f4f6;border-radius:8px">
+        <span style="font-size:12px;color:#6b7280">选中 ${zeroCount} 个计数为0的参考类资产</span>
+        <button class="btn btn-danger btn-small" style="float:right" onclick="batchDeleteReferences()" id="batch-delete-btn">一键批量删除</button>
+      </div>
+    `;
+  }
+  
+  el.innerHTML = batchControls;
+  items.forEach(r => {
+    const slot = document.createElement('div');
+    el.appendChild(slot);
+    makeReferenceCard(slot, r);
+  });
+}
+// v1.2 阶段2（IC 工作流工坊化·素材标签合并）："素材"标签 = 参考类(/references) + 未分类(/assets/index/unclassified)
+//   混排同列展示。纯 UI 合并——两接口各自照旧、删除逻辑各自保留（参考类 delReference / 未分类 delUnassigned），
+//   仅卡片按"素材"统一呈现，不做来源大标签。删除后刷新走本函数保持视图一致。
+async function renderMaterial() {
+  document.getElementById('lib-meta').textContent = '素材区';
+  const el = document.getElementById('groups');
+  let refs, uncls;
+  try { [refs, uncls] = await Promise.all([
+      api('/references').catch(() => ({ items: [] })),
+      api('/assets/index/unclassified').catch(() => ({ entries: [] }))
+  ]); } catch (e) { el.innerHTML = '<div class="empty">加载失败：' + esc(e.message) + '</div>'; return; }
+  const refItems = refs.items || [];
+  const unclItems = uncls.entries || [];
+  if (!refItems.length && !unclItems.length) {
+    el.innerHTML = '<div class="empty">暂无素材。可在统一提示词编辑器"＋→⬆ 本地上传参考图"登记为素材（参考类），或导入/上传未归类图出现在未分类。</div>';
+    return;
+  }
+  // v1.2 阶段2 目检②：素材页不再提供"一键批量删除"（去混淆、去误删风险），删除统一走右键菜单/卡 ⋯
+  el.innerHTML = '';
+  // 未分类（游离/待归类图）在前、参考类（正式素材）在后，混排同列
+  unclItems.forEach(u => {
+    const slot = document.createElement('div');
+    el.appendChild(slot);
+    makeUnassignedCard(slot, u);
+  });
+  refItems.forEach(r => {
+    const slot = document.createElement('div');
+    el.appendChild(slot);
+    makeReferenceCard(slot, r);
+  });
+}
+// 删除/落地后统一刷新：素材(material)视图 → 重渲 renderMaterial（参考类+未分类同列）；
+//   其它视图 → load()（其内部按 currentKind 分派 reference/unassigned/主库）
+function afterMutate() {
+  if (currentKind === 'material') { renderMaterial(); return; }
+  load();
+}
+// 目检①：未分类图右下 ⋯ → 元数据/归属编辑。弹窗展示该图当前引用来源与归属状态（看到是否正确归属/引用），
+//   确认后可归类到已有资产（手动更改归属）。归属/引用模型深化见沟通区【待规划落档·双向追踪模型】。
+function openUnassignedMeta(d) {
+  const cnt = d.ref_count || 0;
+  const ss = d.source_scene;
+  const srcs = d.ref_sources || [];
+  let srcHtml = '';
+  if (srcs.length) {
+    srcHtml = '<div style="margin-top:6px;max-height:180px;overflow:auto;font-size:12px;background:#f9fafb;border-radius:6px;padding:8px">' +
+      srcs.map(function (s) {
+        if (s.type === 'scene_video') return '🎬 场视频截帧 · ' + locateSceneLabel(s.sid) + '（' + (s.field || 'thumbnail') + '）';
+        if (s.type === 'asset') return '🧩 资产 · ' + (s.kind || '') + '/' + (s.id || '') + '（' + (s.field || 'images') + '）';
+        if (s.type === 'generation') return '⚡ 生成引用 · ' + locateSceneLabel(s.sid || '') + '（作参考图生成，保护中）';
+        return (s.type || '引用');
+      }).join('<br>') + '</div>';
+  }
+  const ssTxt = (ss && ss.sid) ? ('归属场：🎬 ' + locateSceneLabel(ss.sid)) : (cnt > 0 ? '已被归类/被引用（不可删）' : '未归属 · 可归类或删除');
+  window.confirmDialog('图元数据 · 引用/归属', '<div style="line-height:1.8;font-size:13px">' +
+    '<div style="font-size:12px;color:#9ca3af;word-break:break-all">' + esc(d.path || '') + '</div>' +
+    '引用计数：<b>' + cnt + '</b>　|　' + esc(ssTxt) +
+    (srcHtml ? '<br><div style="margin-top:2px">引用来源：' + srcHtml + '</div>' : '') +
+    '</div>',
+    function () { openUnassignedBind({ stopPropagation: function () {} }, d.path); },
+    cnt > 0 ? '查看归类目标' : '归类到资产');
+}
+function refImg(r) {  // 取参考类资产主图相对路径（images[0] 优先，回退 path——2026-09-04 模型统一）
+  const im = (r && (r.images || []))[0];
+  return (im && im.path) || (r && r.path) || '';
+}
+function refTotalCount(r) {
+  // P1（2026-09-04）：参考类资产总被引用数 = reference.ref_count（资产生成引用）+ assets_index 主图引用（场/资产）
+  return (r.ref_count || 0) + (r._idx_ref_count || 0);
+}
+function makeReferenceCard(slot, r) {
+  slot.setAttribute('data-layout', 'portrait');  /* v2.1 实施9: 统一比例无白框 */
+  // P1（2026-09-04）：删除语义分层——
+  //   可删性取决于 ref.ref_count（资产生成引用，>0 记录被用不可删）；assets_index 引用仅影响"是否连物理图删"提示。
+  const genCnt = r.ref_count || 0;       // 资产生成引用（记录被用 → 不可删）
+  const idxCnt = r._idx_ref_count || 0;  // 物理图被场/资产引用（记录可删，但仅脱壳不删图）
+  const locked = genCnt > 0;             // 记录被资产生成引用 → 卡灰底白字禁删
+  let sub;
+  if (genCnt > 0) sub = '被 ' + genCnt + ' 个资产生成引用 · 不可删';   // §十四A5：统一灰底白字"不可删"口径(与主三库批4-3④一致)
+  else if (idxCnt > 0) sub = '素材图仍被场/资产用，删除仅脱壳不删图';
+  else sub = '⚠️ 无用可删除';
+  const p = refImg(r);
+  const ac = new window.AssetCard(slot, {
+    kind: 'reference',
+    data: { id: r.id, path: p, thumbnailUrl: '/api/asset-file/' + encodeURIComponent(p), name: (r.prefix || (p || '').split('/').pop() || '未命名素材'), sub: sub, ref_count: refTotalCount(r), ref_sources: (r.ref_sources || []).concat(r._idx_ref_sources || []),
+      // 分段展示（B 批口径4）：references 侧资产生成引用(字符串) / assets_index 侧物理图引用(对象含 generation)
+      _ref_count: (r.ref_count || 0), _ref_sources: (r.ref_sources || []), _idx_ref_sources: (r._idx_ref_sources || []), full: r },
+    icons: {
+      tl: { icon: '🔍', title: '放大预览大图', action: 'zoom' },   // 四角统一：左上=放大预览
+      // v1.3（用户 09-08 裁定）：素材标签卡片 ⬆ 上传暂不实现（等数据层改造批统一）。tr=null 无上传图标——
+      //   素材换主图/加图走卡 ⋯ 元数据面板内"📤 上传主图素材 ▾"（openMeta/editingImages/saveMeta 体系）。
+      tr: null,
+      bl: { icon: '🔗', title: '查看被引用（含生成引用）', action: 'view' },  // 左下=看引用（B 批四角统一）
+      br: { icon: '⋯', title: '素材信息 / 归属编辑', action: 'meta' }   // 右下=元数据编辑
+    },
+    onClick: function () {},
+    onView: function (card) { viewReferenceSources(card.data); },   // 左下 🔗：查看被引用(分段: 资产生成引用/物理图含⚡生成引用)
+    onMeta: function (card) { openRefMeta(card.data.id); },
+    onZoom: function (card) { zoomPreview(card.data.path); }
+  });
+  // ③批4-3修复：参考类卡绑定右键菜单 → 删除（/references/{id}，引用>0 拦截保留）
+  if (ac.el) {
+    // ④批4-3修复：被资产生成引用（genCnt>0）参考卡灰底白字标"不可删"（P1 精化：仅记录引用拦截，assets_index 引用仅提示脱壳）
+    if (locked) ac.el.classList.add('ac-ref-locked');
+    ac.el.addEventListener('contextmenu', function (e) { showCtx(e, r.id, 'reference'); });
+  }
+}
+// 参考类"查看被引用"（偏离①：✎ → 🔗）：弹窗列 ref_sources + 计数 + 引用源资产缩略图
+// 分段展示（B 批口径4）：①references 侧资产生成引用(字符串 asset_id) + ②assets_index 侧物理图引用(对象: 场截帧/资产/生成引用)
+async function viewReferenceSources(data) {
+  const full = data.full || {};
+  const nm = (full.prefix || '').trim() || (data.path || '').split('/').pop() || '素材';
+  const refsSide = (data._ref_sources || data.ref_sources || []).filter(s => typeof s === 'string');
+  const idxObj = (data._idx_ref_sources || []).filter(s => typeof s === 'object' && s);
+  const idxGen = (idxObj.filter(s => s.type === 'generation')).length;  // 物理图侧含 generation
+  let html = '';
+  // --- references 侧：资产生成引用（字符串 asset_id） ---
+  const prefixKind = { ch: 'characters', sc: 'scenes', pr: 'props' };
+  if (refsSide.length) {
+    const rows = [];
+    for (const s of refsSide) {
+      const kind = prefixKind[String(s).slice(0, 2)] || 'characters';
+      let img = '', nm = s;
+      try {
+        const it = await api('/' + kind + '/' + s);
+        nm = (it.prefix || '') + '-' + (it.variant_name || '');
+        const cur = (it.images || [])[0];
+        if (cur) img = '/api/asset-file/' + encodeURIComponent(cur.path);
+      } catch (e) { /* 引用源资产可能已删除 */ }
+      rows.push(`<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid #f3f4f6">
+        ${img ? `<img src="${img}" style="width:44px;height:44px;border-radius:8px;object-fit:cover;border:1px solid #e5e7eb" onerror="this.style.visibility='hidden'">` : `<div style="width:44px;height:44px;border-radius:8px;background:#f3f4f6;display:flex;align-items:center;justify-content:center;color:#9ca3af;font-size:18px">🖼️</div>`}
+        <span style="font-size:13px">🧩 资产生成引用 · ${esc(nm)}</span></div>`);
+    }
+    html += `<div style="font-size:12px;color:#6b7280;padding:6px 12px;background:#f9fafb">资产生成引用（${refsSide.length}）</div>` + rows.join('');
+  }
+  // --- assets_index 侧：物理图引用（对象：场截帧/资产/生成引用） ---
+  if (idxObj.length) {
+    const rows = idxObj.map(s => {
+      if (s.type === 'generation') return `<div style="padding:8px 12px;border-bottom:1px solid #f3f4f6;font-size:13px;display:flex;gap:10px"><span style="width:44px;height:44px;flex:none;border-radius:8px;background:#fef3c7;display:flex;align-items:center;justify-content:center;font-size:18px">⚡</span><span>生成引用 · 于场 ${esc(locateSceneLabel(s.sid || ''))}<div style="color:#9ca3af;font-size:12px">该场生成视频时以本素材作参考图（保护中，删该场/集才释放）</div></span></div>`;
+      if (s.type === 'scene_video') return `<div style="padding:8px 12px;border-bottom:1px solid #f3f4f6;font-size:13px">🎬 场视频截帧 · ${esc(locateSceneLabel(s.sid || ''))}</div>`;
+      if (s.type === 'asset') return `<div style="padding:8px 12px;border-bottom:1px solid #f3f4f6;font-size:13px">🧩 资产 · ${esc(s.kind || '')}/${esc(s.id || '')}</div>`;
+      return `<div style="padding:8px 12px;border-bottom:1px solid #f3f4f6;font-size:13px">${esc(s.type || '引用')}</div>`;
+    });
+    html += `<div style="font-size:12px;color:#6b7280;padding:6px 12px;background:#f9fafb;border-top:1px solid #e5e7eb">素材图被引（物理图侧${idxGen ? '· 含 ⚡生成引用 ' + idxGen : ''}，共 ${idxObj.length}）</div>` + rows.join('');
+  }
+  const empty = (!html) ? `<div style="padding:14px;color:#9ca3af;font-size:13px;line-height:1.7">
+    暂无引用。<br><span style="font-size:12px">本素材未被任何资产生成时作为参考使用（🧩资产生成引用），其素材图也未被任何场/资产/生成引用（⚡生成引用）。无引用素材可安全删除。</span></div>` : '';
+  window.confirmDialog('查看被引用（' + nm + '）',
+    `<div style="max-height:300px;overflow:auto">${html}${empty}</div>`, function () {}, '关闭');
+}
+async function delReference(id) {
+  window.confirmDialog('删除参考类资产', '<div style="line-height:1.7">确认删除该参考引用类资产？<br><span style="color:#9ca3af;font-size:12px">引用计数>0 时后端会拦截并提示"被引用"。</span></div>', async function () {
+    try {
+      await api('/references/' + id, { method: 'DELETE' });
+      tip('已删除参考类资产', 'success');
+      afterMutate();
+    } catch (e) { tip(e.message, 'error'); }
+  }, '删除');
+}
+
+// 批量删除计数为0的参考类资产
+async function batchDeleteReferences() {
+  const zeroRefs = [];
+  const cards = document.querySelectorAll('#groups .asset-card');
+  cards.forEach(card => {
+    const id = card.getAttribute('data-id');
+    const countElement = card.querySelector('.ac-sub');
+    if (countElement && countElement.textContent.includes('无用可删除')) {
+      zeroRefs.push(id);
+    }
+  });
+  
+  if (zeroRefs.length === 0) {
+    tip('没有可删除的参考类资产', 'info');
+    return;
+  }
+  
+  window.confirmDialog('批量删除参考类资产', `<div style="line-height:1.7">确认删除选中的 ${zeroRefs.length} 个计数为0的参考类资产？<br><span style="color:#9ca3af;font-size:12px">此操作不可撤销。</span></div>`, async function () {
+    try {
+      let deleted = 0;
+      for (const id of zeroRefs) {
+        try {
+          await api('/references/' + id, { method: 'DELETE' });
+          deleted++;
+        } catch (e) {
+          console.error(`删除参考类资产 ${id} 失败:`, e.message);
+        }
+      }
+      tip(`已删除 ${deleted} 个参考类资产`, 'success');
+      afterMutate();
+    } catch (e) { tip(e.message, 'error'); }
+  }, '批量删除');
+}
+// 未分类图归类：先选分类（人物/场景/道具），再列出该分类资产选目标 → bind 到该资产
+// 未分类图归类：先选分类（人物/场景/道具），再列出该分类资产选目标 → bind 到该资产
+let unassignBindPath = '';
+let ubSelected = [];   // 选中的资产 {kind, id, name}
+function openUnassignedBind(e, path) {
+  e.stopPropagation();
+  unassignBindPath = path;
+  ubSelected = [];
+  ubShowKind('characters');
+  document.getElementById('unassign-bind-mask').style.display = 'flex';
+  updateUbSubmit();
+}
+function closeUnassignedBind() { document.getElementById('unassign-bind-mask').style.display = 'none'; }
+async function ubShowKind(kind) {
+  document.querySelectorAll('.ub-kind').forEach(t => t.classList.toggle('active', t.dataset.kind === kind));
+  const list = document.getElementById('ub-asset-list');
+  let items;
+  try { items = (await api('/' + kind)).items || []; } catch (e) { list.innerHTML = '<div style="color:#9ca3af;font-size:12px">加载失败</div>'; return; }
+  if (!items.length) { list.innerHTML = '<div class="empty">该分类暂无资产</div>'; return; }
+  list.innerHTML = items.map(it => {
+    const cur = (it.images || [])[0];
+    const hasImg = !!cur;
+    const sel = ubSelected.some(s => s.kind === kind && s.id === it.id);
+    const name = (it.prefix || '') + '-' + (it.variant_name || '');
+    return `
+      <div class="ub-card${sel ? ' sel' : ''}" data-k="${escAttr(kind)}" data-id="${escAttr(it.id)}" onclick="ubToggleAsset(this,'${escAttr(kind)}','${escAttr(it.id)}','${escAttr(name)}')">
+        <div class="ub-thumb">${hasImg ? `<img src="/api/asset-file/${encodeURIComponent(cur.path)}">` : `<div class="ph">🖼️<br>无图</div>`}</div>
+        <div class="ub-name">${esc(name)}</div>
+        ${sel ? '<div class="ub-check">✓</div>' : ''}
+      </div>`;
+  }).join('');
+}
+function ubToggleAsset(el, kind, id, name) {
+  const i = ubSelected.findIndex(s => s.kind === kind && s.id === id);
+  if (i >= 0) ubSelected.splice(i, 1);
+  else ubSelected.push({ kind, id, name });
+  // 更新本卡勾选态
+  if (el) el.classList.toggle('sel', ubSelected.some(s => s.kind === kind && s.id === id));
+  updateUbSubmit();
+}
+function updateUbSubmit() {
+  const tipEl = document.getElementById('ub-selected-tip');
+  if (tipEl) tipEl.textContent = '已选 ' + ubSelected.length + ' 个资产';
+  const btn = document.getElementById('ub-submit');
+  if (btn) btn.disabled = ubSelected.length === 0;
+}
+async function ubSubmitBind() {
+  if (!unassignBindPath) { tip('未选择未分类图', 'error'); return; }
+  if (!ubSelected.length) { tip('请至少选择一个资产', 'error'); return; }
+  let done = 0;
+  for (const s of ubSelected) {
+    try {
+      const it = await api('/' + s.kind + '/' + s.id);
+      // 归类图统一加到 images 开头，作为该资产"当前有效图"（AssetCard 取 images[0]）
+      const imgs = [{ path: unassignBindPath, version: '', gen_prompt: '', source: 'bind', added_at: new Date().toISOString().slice(0, 19) }, ...(it.images || [])];
+      await api('/' + s.kind + '/' + s.id, jsonBody('PUT', { images: imgs }));
+      done++;
+    } catch (e) { tip('归类 ' + s.name + ' 失败：' + e.message, 'error'); }
+  }
+  tip('已归类到 ' + done + ' 个资产', 'success');
+  unassignBindPath = '';
+  closeUnassignedBind();
+  load();
+}
+// ===== 统一提示词编辑器（共享组件 prompt-editor.js v3，卡片下方锚定 popover） =====
+let peHandle = null, peId = null, peAnchor = null, _assetCache = { scenes: [], characters: [], props: [], reference: [], unclassified: [] };
+const PE_STYLES = (window.PALETTE && window.PALETTE.STYLES) ? window.PALETTE.STYLES : [{ name: '写实电影感', type: 'real', img: '' }, { name: '日系动漫', type: '2d' }, { name: '水墨国风', type: '2d' }, { name: '赛博朋克', type: '3d' }, { name: '古风', type: 'real' }, { name: '手绘插画', type: '2d' }, { name: '低多边形', type: '3d' }, { name: '像素风', type: '2d' }];
+const PE_COMPS = () => [
+  { name: '2', kind: 'dur' }, { name: '3', kind: 'dur' }, { name: '5', kind: 'dur' }, { name: '10', kind: 'dur' }, { name: '15', kind: 'dur' },
+  { name: '推近', kind: 'cam' }, { name: '拉远', kind: 'cam' }, { name: '横摇', kind: 'cam' }, { name: '直移', kind: 'cam' }, { name: '跟拍', kind: 'cam' }, { name: '升降', kind: 'cam' }, { name: '环绕', kind: 'cam' }, { name: '手持', kind: 'cam' }, { name: '变焦', kind: 'cam' }, { name: '固定', kind: 'cam' }, { name: '仰拍', kind: 'cam' }, { name: '俯拍', kind: 'cam' },
+  { name: '特写', kind: 'shot' }, { name: '近景', kind: 'shot' }, { name: '中景', kind: 'shot' }, { name: '全景', kind: 'shot' }, { name: '远景', kind: 'shot' }
+];
+async function _loadAssetCache() {
+  const [sd, rd, pd, uf, rf] = await Promise.all([
+    api('/scenes').catch(() => ({ items: [] })), api('/characters').catch(() => ({ items: [] })),
+    api('/props').catch(() => ({ items: [] })), api('/assets/index/unclassified').catch(() => ({ entries: [] })),
+    api('/references').catch(() => ({ items: [] }))
+  ]);
+  _assetCache = { scenes: sd.items || [], characters: rd.items || [], props: pd.items || [],
+                  reference: rf.items || [], unclassified: uf.entries || [] };
+}
+function _peDraftKey(id) { return 'ss_pe_draft_' + (id || '_unassigned'); }
+function peClose() {
+  if (peHandle && peHandle.destroy) { try { peHandle.destroy(); } catch (e) {} }
+  peHandle = null; peId = null; peAnchor = null;
+  const p = document.getElementById('pe-pop'); if (p) p.style.display = 'none';
+}
+async function _assetPromptOpen(anchorEl, initialText, id) {
+  peClose();
+  peId = id; peAnchor = anchorEl;
+  await _loadAssetCache();
+  const pop = document.getElementById('pe-pop');
+  const r = (anchorEl && anchorEl.getBoundingClientRect) ? anchorEl.getBoundingClientRect() : null;
+  const vw = window.innerWidth, vh = window.innerHeight;
+  const W = 720, H = 260;
+  let left = r ? r.left : 20; if (left + W > vw - 8) left = Math.max(8, vw - W - 8);
+  let top = 60;
+  if (r) {
+    const below = r.bottom + 8, above = r.top - H - 8;
+    if (below + H <= vh - 8) top = below;                       // 优先卡片正下方
+    else if (above >= 8) top = above;                           // 下方放不下→卡片上方
+    else top = Math.max(8, Math.min(vh - H - 8, Math.max(8, Math.round(r.bottom - H - 8))));  // 都放不下→尽量贴近卡片下方
+  }
+  pop.style.left = left + 'px'; pop.style.top = top + 'px'; pop.style.display = 'block';
+  const key = _peDraftKey(id);
+  let draft = null; try { draft = JSON.parse(localStorage.getItem(key) || 'null'); } catch (e) {}
+  // v1.53 自动复用：草稿无 refPath 时，从该资产最近用过的参考类资产预填（跨会话/清空草稿仍可复用，不须手工找）
+  if ((!draft || !draft.refPath) && id) {
+    try {
+      const byAsset = await api('/references/by-asset/' + id);
+      const items = (byAsset.items || []);
+      if (items.length) { draft = draft || {}; if (draft.refPath == null) draft.refPath = items[0].path; }
+    } catch (e) {}
+  }
+  const initText = (draft && draft.text != null) ? draft.text : (initialText || '');
+  let curStyle = '';
+  try { const ctx = JSON.parse(localStorage.getItem('ss_style_ctx') || 'null'); if (ctx && ctx.art_style) curStyle = ctx.art_style; } catch (e) {}
+  // 生图工作流清单（IC 5 工作流工坊化）：Z-Image 文生图 / 2511 多角度 / Flux2-Klein 参考迁移 / Enhance 细节增强 / upscale 2K 超分
+  // Enhance/upscale 阶段3 UI 可选；真实 ComfyUI 工作流 json 阶段4 补（当前选中后生成走假数据/提示阶段4）
+  const WF_OPTS = [
+    { name: 'Z-Image.json', title: 'Z-Image（文生图）' },
+    { name: '2511.json', title: '2511（参考图·多角度）' },
+    { name: 'Flux2-Klein.json', title: 'Flux2-Klein（参考迁移）' },
+    { name: 'Z-Image-Enhance.json', title: 'Enhance（细节增强）' },
+    { name: 'upscale.json', title: 'upscale（2K 超分）' }
+  ];
+  // 阶段5（B-20260908-03）：工作流文件名 → /api/comfy/generate workflow_type（直连 ComfyUI）
+  const WF_FILE_TO_TYPE = {
+    'Z-Image.json': 'z_image', '2511.json': '2511', 'Flux2-Klein.json': 'klein',
+    'Z-Image-Enhance.json': 'enhance', 'upscale.json': 'upscale'
+  };
+  const wfMap = { 'Z-Image.json': { images: 0 }, 'Flux2-Klein.json': { images: 3 }, '2511.json': { images: 1 }, 'Z-Image-Enhance.json': { images: 1 }, 'upscale.json': { images: 1 } };
+  try { const rf = await api('/references'); peRefs.length = 0; (rf.items || []).forEach(r => peRefs.push(r)); } catch (e) {}
+  peHandle = window.createPromptEditor({
+    root: document.getElementById('pe-root'),
+    genKind: 'image',
+    initialText: initText,
+    initialSelectors: (draft && draft.sel) ? draft.sel : { style: curStyle, workflow: 'Z-Image.json' },
+    styles: PE_STYLES,
+    draft: draft,
+    data: {
+      getAssets: (k) => (_assetCache[k] || []),
+      getComponents: PE_COMPS,
+      assetImg: (k, a) => a && a.images && a.images[0] ? ('/api/asset-file/' + encodeURIComponent(a.images[0].path)) : '',
+      openWorkflowPick: (cb) => { const wfs = WF_OPTS.map(function (w) { return w.name; }); window.promptDialog('选择工作流（模型）', (peHandle ? null : 'Z-Image.json'), (v) => { if (v) cb(v); }, WF_OPTS.map(function (w) { return w.title; }).join('  /  ')); },
+      workflows: WF_OPTS,   // 级联"模型→工作流"列列出 5 工作流（Z-Image/2511/Klein/Enhance/upscale）
+      openAspectPick: (cb) => { window.promptDialog('比例 · 分辨率', '16:9 · 3K', (v) => { if (v) cb(v); }, '如 16:9 · 3K'); },
+      openLibraryPick: (cb) => { openAssetPickerForPrompt(cb); },
+      refs: peRefs || [],   // v1.53 参考类资产（@ 弹窗可选）
+      onRefsChanged: async () => { try { const rf = await api('/references'); peRefs.length = 0; (rf.items || []).forEach(r => peRefs.push(r)); } catch (e) {} },
+      workflowInputSlots: (wf) => { return wfMap[wf] || { images: 1 }; }
+    },
+    callbacks: {
+      onDraft: (dr) => { try { localStorage.setItem(key, JSON.stringify(dr)); } catch (e) {} },
+      onSave: async (text) => {
+        if (!peId) { tip('未分类图提示词随归类保存（请先归类）', 'info'); return; }
+        try { await api('/' + currentKind + '/' + peId, jsonBody('PUT', { prompt: text })); try { localStorage.removeItem(key); } catch (e) {} tip('提示词已保存', 'success'); peClose(); load(); }
+        catch (e) { tip(e.message, 'error'); }
+      },
+      onGenerate: async (payload) => { await assetGenImage(peId, payload.prompt, payload.params, payload.refs, payload.text); }
+    }
+  }).handle;
+}
+let _promptPickerCb = null;
+function openAssetPickerForPrompt(cb) {
+  _promptPickerCb = cb;
+  const t = document.getElementById('picker-title'); if (t) t.textContent = '选择参考图';
+  openAssetPicker(true);
+}
+async function openPrompt(id, anchorEl) {
+  const it = await getAsset(id);
+  await _assetPromptOpen(anchorEl, it.prompt || '', id);
+}
+async function openUnassignedPrompt(path, anchorEl) {
+  await _assetPromptOpen(anchorEl, '', null);
+}
+// 6-7：生图前 IC 预检 + 一键拉起（自动）——IC 不可达(ic.ok=false)时 toast 提示并 POST /api/ic/boot，
+//   boot 就绪(ok=true)后由调用方继续原生成请求；boot 失败/未配置 ic_path → 抛错携带 boot.msg 指引（不静默）。
+async function ensureIcReady() {
+  var h = null;
+  try { h = await api('/ic/health'); } catch (e) { h = { ic: { ok: false } }; }
+  if (h && h.ic && h.ic.ok) return true;                 // IC 已就绪，无需拉起
+  tip('IC 未运行，正在自动拉起…', 'info');                 // 自动拉起，免用户手动
+  var b = null;
+  try { b = await api('/ic/boot', { method: 'POST' }); }
+  catch (e) { throw new Error('IC 拉起请求失败：' + ((e && e.message) || e)); }
+  if (!b || !b.ok) throw new Error((b && b.msg) || 'IC 自动拉起失败');  // ic_path 无效等 → 报错指引到设置页配置
+  return true;
+}
+
+// 资产生成（统一编辑器 onGenerate）：组装 prompt → /api/comfy/generate（阶段5 切流，直连 ComfyUI）→ 有资产则 unshift 为当前有效图，否则进未分类区
+async function assetGenImage(id, prompt, params, refs, rawText) {
+  if (!prompt.trim()) { tip('请先输入提示词', 'error'); return; }
+  // 阶段5（B-20260908-03）：直连 ComfyUI（绕 IC），不再预检/拉起 IC。映射工作流文件→workflow_type
+  const _wft = { 'Z-Image.json': 'z_image', '2511.json': '2511', 'Flux2-Klein.json': 'klein', 'Z-Image-Enhance.json': 'enhance', 'upscale.json': 'upscale' };
+  const wfFile = (params && params.workflow) || 'Z-Image.json';
+  const wfType = _wft[wfFile] || 'z_image';
+  const size = (params && params.size) || '1024';
+  let width = 1024, height = 1024;
+  if (size === '1344x768') { width = 1344; height = 768; }
+  const body = { workflow_type: wfType, prompt: prompt, width: width, height: height };
+  if (refs && refs.length) body.ref_images = refs.map(r => r.path);   // 参考图（相对 SharedAssets 路径），后端经 /upload/image 上传
+  // v1.55c：生图接通用进度模态（阶段按工作流区分，参考图生图更久）
+  const genStages = [
+    { at: 0, text: '提交生成任务（' + wfFile + '）…', pct: 10 },
+    { at: 2000, text: '直连 ComfyUI 生成中…', pct: 35 },
+    { at: (refs && refs.length) ? 12000 : 6000, text: '生成图片（首次含模型加载 1-2 分钟）…', pct: 70 },
+    { at: (refs && refs.length) ? 30000 : 15000, text: '保存产物…', pct: 92 }
+  ];
+  showProgress('生成图片中…', genStages);
+  try {
+    const r = await api('/comfy/generate', jsonBody('POST', body));
+    hideProgress(true);
+    const img0 = (r.images || [])[0];
+    if (!img0) { tip('未返回图片', 'error'); return; }
+    // v1.53：生成用到参考类资产 → 引用计数+1、引用源记资产ID
+    const refPaths = (refs || []).map(x => x.path).filter(p => p && String(p).indexOf('refs/') === 0);
+    if (refPaths.length) { try { await api('/references/use', jsonBody('POST', { paths: refPaths, asset_id: id || '' })); } catch (e) {} }
+    const fname = String(img0).split('/').pop();
+    const path = 'output/' + fname;
+    if (id) {
+      const it = await getAsset(id);
+      const imgs = [{ path: path, version: '', gen_prompt: prompt, source: 'generate', added_at: new Date().toISOString().slice(0, 19) }, ...(it.images || [])];
+      // 第6批 §2.3（步骤⑤）：生成绑资产时，把草稿引用的"未分类参考图"（非 refs/ 参考类、非本次产物）也归类到该资产，
+      //   使其受资产 images 引用保护（ref_count+1，不可误删），实现"草稿参考图随生成归类"。
+      const existing = new Set((it.images || []).map(function (x) { return x.path; }));
+      existing.add(path);
+      (refs || []).forEach(function (ref) {
+        var rp = (ref && ref.path) ? String(ref.path) : '';
+        if (!rp) return;
+        if (rp.indexOf('refs/') === 0) return;            // 参考类已走 /references/use 计数，无需归类到资产
+        if (existing.has(rp)) return;                       // 已是该资产图 / 本次产物
+        if (String(rp).split('/').pop() === fname) return;  // 防误当参考图（本次产物同名）
+        // 仅归类"未分类/上传"参考图（uploads/ 等已被版本索引登记的图片）；output/drama 已属某资产时不重复归类
+        if (rp.indexOf('uploads/') === 0 || rp.indexOf('output/') === 0) {
+          imgs.push({ path: rp, version: '', gen_prompt: '', source: 'ref_auto', added_at: new Date().toISOString().slice(0, 19) });
+          existing.add(rp);
+        }
+      });
+      await api('/' + currentKind + '/' + id, jsonBody('PUT', { images: imgs }));
+      tip('✅ 已生成并设为当前资产图版本', 'success');
+    } else {
+      // B 批 N5：未绑卡生成（产物进未分类区）→ 对 @ 引用的"未分类/截帧图"(uploads/，非 refs/ 参考类、非本次产物)
+      //   补 generation {pid} 项目级保护（后端按各图 source_scene.pid 优先 / 当前项目兜底）。
+      //   使这些截帧/未分类图被生成引用也有账本，删归属场后仍保护至项目删除（P4/N5 缺口）。
+      const genRefPaths = (refs || []).map(x => x.path).filter(p => p && String(p).indexOf('uploads/') === 0 && String(p).split('/').pop() !== fname);
+      if (genRefPaths.length) {
+        try {
+          await api('/assets/generation/refs', jsonBody('POST', { paths: genRefPaths, pid: curProjId || localStorage.getItem('ss_current_project') || '' }));
+        } catch (e) { /* 记账失败不阻断生成 */ }
+      }
+      tip('✅ 已生成（见未分类区，可归类）', 'success');
+    }
+    try { localStorage.removeItem(_peDraftKey(id)); } catch (e) {}
+    peClose();
+    load();
+  } catch (e) { hideProgress(false); tip('生成失败：' + e.message, 'error'); }
+}
+
+// ===== 卡片四角（v1.4）：:: 排序拖拽（占位，后接） / 右上角上传·从库选择 =====
+function onCardDragHandle(e, id) {
+  // @v1.4：::: 柄=排序拖拽（本次占位——卡片排序落库 API 未做，拖了不生效）；点击提示排序后接
+  e.preventDefault();
+  e.stopPropagation();
+  tip('卡片排序（拖动 :: 柄）将在后续接入', 'info');
+}
+function onCardDragStart() {}
+function onCardDragover(e) { e.preventDefault(); }
+function onCardDrop(e) { e.preventDefault(); }
+async function cardReorder(srcId, targetId) { tip('卡片排序待接入', 'info'); }
+
+// 右上角（无图）：上传 / 从资产库选择 下拉菜单
+function openCardActions(e, id) {
+  e.stopPropagation();
+  closeCardActions();
+  const m = document.getElementById('card-actions-menu');
+  m.style.display = 'block';
+  m.style.left = Math.min(e.clientX, window.innerWidth - 170) + 'px';
+  m.style.top = Math.min(e.clientY, window.innerHeight - 110) + 'px';
+  m.dataset.id = id;
+}
+function closeCardActions() { const m = document.getElementById('card-actions-menu'); if (m) m.style.display = 'none'; }
+async function cardUploadImage() {
+  const id = (document.getElementById('card-actions-menu')||{}).dataset?.id;
+  if (!id) return; closeCardActions();
+  const input = document.createElement('input'); input.type = 'file'; input.accept = 'image/*';
+  input.onchange = async () => {
+    const f = input.files[0]; if (!f) return;
+    const fd = new FormData(); fd.append('file', f);
+    try { await api('/' + currentKind + '/' + id + '/image-upload', { method:'POST', body: fd }); tip('已上传图片到资产', 'success'); load(); }
+    catch (err) { tip(err.message, 'error'); }
+  };
+  input.click();
+}
+async function cardBindFromLibrary() {
+  const id = document.getElementById('card-actions-menu').dataset.id;
+  if (!id) return; closeCardActions();
+  // 复用资产库选择器：把选的图 bind 到该资产
+  cardBindTarget = id;
+  openAssetPicker(true);
+}
+
+// ===== 历史版本弹窗已移除（v1.56 裁定：与右下 ⋯ 编辑面板历史管理重复，右上角改为上传/选库） =====
+document.getElementById('unassign-bind-mask').addEventListener('click', e => { if (e.target.id === 'unassign-bind-mask') closeUnassignedBind(); });
+// 取消按钮：脚本级绑定（最可靠，不依赖内联 onclick）
+(function(){ const b = document.getElementById('ub-cancel'); if (b) b.addEventListener('click', function(e){ e.preventDefault(); e.stopPropagation(); closeUnassignedBind(); }); })();
+
+// ===== 图片上传 / 绑定（卡片） =====
+function toggleDrop(btn) {
+  const menu = btn.nextElementSibling;
+  document.querySelectorAll('.upload-drop .menu').forEach(m => { if (m !== menu) m.style.display = 'none'; });
+  menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+}
+document.addEventListener('click', e => {
+  if (!e.target.closest('.upload-drop')) document.querySelectorAll('.upload-drop .menu').forEach(m => m.style.display = 'none');
+});
+// v1.57：统一"从资产库选择"——分类 tab（人物/场景/道具/参考/未分类）+ 资产卡列表，点卡绑其当前主图；提示词参考图选择仍走"参考"专用路径
+const _PICK_TABS = [
+  { key: 'characters', label: '人物', api: '/characters', isCard: true },
+  { key: 'scenes', label: '场景', api: '/scenes', isCard: true },
+  { key: 'props', label: '道具', api: '/props', isCard: true },
+  { key: 'reference', label: '参考', api: '/references', isRef: true },
+  { key: 'unclassified', label: '未分类', api: '/assets/index/unclassified', isUnc: true }
+];
+let _activePickKind = 'characters';
+function pickCardCurImg(it) {
+  // 资产卡/参考卡 → 当前主图 path（参考卡兼容 path 字段）；未分类单图 → 自身 path
+  if (it.path && !(it.images && it.images.length)) return it.path;
+  return (it.images && it.images[0]) ? it.images[0].path : (it.path || '');
+}
+function pickItemName(it, tab) {
+  if (tab.isCard) { const nm = (it.prefix || '') + (it.variant_name ? '-' + it.variant_name : ''); return nm || it.path || ''; }
+  if (tab.isRef) { return (it.prefix || it.path || '').split('/').pop(); }
+  return (it.path || '').split('/').pop();
+}
+async function pickShowKind(kind, force) {
+  if (!kind) return;
+  const tab = _PICK_TABS.find(t => t.key === kind); if (!tab) return;
+  _activePickKind = kind;
+  const tb = document.getElementById('picker-tabs'); const el = document.getElementById('picker-list');
+  tb.innerHTML = _PICK_TABS.map(t => `<button type="button" class="tab ub-kind${t.key === kind ? ' active' : ''}" data-kind="${t.key}" onclick="pickShowKind('${t.key}',true)">${t.label}</button>`).join('');
+  el.innerHTML = '<div style="color:#9ca3af;font-size:12px">加载中…</div>';
+  try {
+    const data = await api(tab.api);
+    const items = tab.isUnc ? (data.entries || []) : (tab.isRef ? (data.items || []) : (data.items || []));
+    if (!items.length) { el.innerHTML = '<div class="empty">该分类暂无资产</div>'; return; }
+    el.innerHTML = items.map(it => {
+      const cur = pickCardCurImg(it);
+      const hasImg = !!cur;
+      const nm = pickItemName(it, tab);
+      const sub = tab.isUnc ? ('被引用 ' + (it.ref_count || 0)) : '';
+      return `<div class="ub-card" data-pick="${escAttr(kind)}" onclick="pickBind('${escAttr(cur)}')" title="${esc(cur)}">` +
+        `<div class="ub-thumb">${hasImg ? `<img src="/api/asset-file/${encodeURIComponent(cur)}" onerror="this.style.visibility='hidden'">` : '<div class="ph">🖼️<br>无图</div>'}</div>` +
+        `<div class="ub-name">${esc(nm)}</div>` +
+        (sub ? `<div class="ub-name" style="color:#9ca3af;font-size:11px">${esc(sub)}</div>` : '') +
+        `</div>`;
+    }).join('');
+  } catch (e) { el.innerHTML = '<div style="color:#9ca3af;font-size:12px">加载失败：' + esc(e.message) + '</div>'; }
+}
+async function openAssetPicker() {
+  try {
+    const el = document.getElementById('picker-list');
+    const tb = document.getElementById('picker-tabs');
+    if (_promptPickerCb) {
+      // v1.53：提示词编辑器参考图选择 → 专用参考路径（列参考类资产），保持原有交互
+      tb.style.display = 'none';
+      const data = await api('/references');
+      const items = (data.items || []);
+      if (!items.length) { el.innerHTML = '<div style="color:#9ca3af">暂无参考类资产，可先用"＋→⬆ 本地上传"登记</div>'; }
+      else {
+        el.innerHTML = items.map(r => `
+          <div style="text-align:center;cursor:pointer" onclick="pickBind('${escAttr(r.path)}')" title="${esc(r.path)}">
+            <img src="/api/asset-file/${encodeURIComponent(r.path)}" style="width:88px;height:88px;border-radius:8px;object-fit:cover;border:1px solid #e5e7eb" onerror="this.style.visibility='hidden'">
+            <div style="font-size:10px;color:#6b7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.path.split('/').pop())}</div>
+          </div>`).join('');
+      }
+    } else {
+      // v1.57：分类 tab + 资产卡（人物/场景/道具/参考/未分类），默认落在当前编辑资产所属分类
+      tb.style.display = 'flex';
+      const defKind = (currentKind && ['characters', 'scenes', 'props'].indexOf(currentKind) >= 0) ? currentKind : 'characters';
+      await pickShowKind(defKind, true);
+    }
+    document.getElementById('picker-mask').style.display = 'flex';
+  } catch (e) { tip(e.message, 'error'); }
+}
+function closePicker() { document.getElementById('picker-mask').style.display = 'none'; const t = document.getElementById('picker-title'); if (t) t.textContent = '选择要绑定的图片'; }
+let cardBindTarget = null;   // v1.4：卡片右上"从资产库选择"时，选中的图 bind 到该资产 id；否则走元数据弹窗
+async function pickBind(path) {
+  try {
+    if (_promptPickerCb) { const cb = _promptPickerCb; _promptPickerCb = null; document.getElementById('picker-mask').style.display = 'none'; cb(path); return; }
+    if (cardBindTarget) {
+      // 卡片级：直接把选中的图 bind 到卡片资产（立即生效）
+      await api('/' + currentKind + '/' + cardBindTarget, jsonBody('PUT', { images: [ ...( await getAsset(cardBindTarget) ).images || [], { path, version: '', gen_prompt: '', source: 'bind', added_at: new Date().toISOString().slice(0, 19) } ] }));
+      cardBindTarget = null;
+      tip('已绑定图片到资产', 'success');
+      closePicker(); load();
+      return;
+    }
+    if (!editingId) { tip('请先打开资产信息（⋮ 三点）再绑定图片', 'error'); closePicker(); return; }
+    editingImages.push({ path, version: '', gen_prompt: '', source: 'bind', added_at: new Date().toISOString().slice(0, 19) });
+    renderMetaVersions(); tip('已绑定图片（保存后生效）', 'success');
+    closePicker();
+  } catch (e) { tip(e.message, 'error'); }
+}
+
+// ===== 右键菜单 =====
+// ctxKind：右键目标所属分类（characters/scenes/props/reference/unassigned）；reference/unassigned 无复制/副本，仅删除
+function showCtx(e, id, kind) {
+  e.preventDefault();
+  ctxAsset = id;
+  ctxKind = kind || currentKind || 'characters';
+  // reference / unassigned 类：隐藏"复制图片/创建副本"（仅删除适用）；主三库：全部显示
+  var isSimple = (ctxKind === 'reference' || ctxKind === 'unassigned');
+  var c1 = document.getElementById('ctx-item-copy');
+  var c2 = document.getElementById('ctx-item-dup');
+  if (c1) c1.style.display = isSimple ? 'none' : '';
+  if (c2) c2.style.display = isSimple ? 'none' : '';
+  const m = document.getElementById('ctx-menu');
+  m.style.display = 'block';
+  m.style.left = Math.min(e.clientX, window.innerWidth - 160) + 'px';
+  m.style.top = Math.min(e.clientY, window.innerHeight - 130) + 'px';
+}
+document.addEventListener('click', () => { document.getElementById('ctx-menu').style.display = 'none'; });
+document.addEventListener('click', (e) => { const m = document.getElementById('card-actions-menu'); if (m && m.style.display === 'block' && !m.contains(e.target) && !(e.target.closest && e.target.closest('.crt'))) m.style.display = 'none'; });
+async function ctxDelete() {
+  if (!ctxAsset) return;
+  // 未分类图：删除走 /assets/unclassified?path=（ref_count>0 后端 409 拦，返回引用来源）
+  if (ctxKind === 'unassigned') {
+    delUnassigned(ctxAsset);   // ctxAsset 此时=图片 path；内部二次确认+后端拦截展示
+    return;
+  }
+  // 参考类：删除走 /references/{id}（引用计数>0 后端 409 拦）；主三库：被出场引用拒绝删除（前端先行提示，后端 409 兜底）
+  if (ctxKind === 'reference') {
+    delReference(ctxAsset);   // 内部二次确认 + api DELETE /references/{id}，复用既有删除弹窗/提示
+    return;
+  }
+  const refN = isAssetReferenced(ctxKind, ctxAsset);
+  if (refN > 0) { tip('该资产被 ' + refN + ' 个场次引用，不可删除', 'error'); return; }
+  window.confirmDialog('删除资产', '确定删除该资产？', function () {
+    api('/' + ctxKind + '/' + ctxAsset, { method: 'DELETE' }).then(() => { tip('已删除', 'success'); load(); })
+      .catch(e => { tip(e.message || e.detail?.msg || '删除失败', 'error'); });
+  });
+}
+async function ctxCopy() {
+  if (!ctxAsset || ctxKind === 'reference' || ctxKind === 'unassigned') return;
+  try {
+    const it = await getAsset(ctxAsset);
+    const img = (it.images || [])[0];
+    if (!img) { tip('暂无图片可复制', 'error'); return; }
+    const blob = await (await fetch('/api/asset-file/' + img.path)).blob();
+    await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+    tip('图片已复制到剪贴板', 'success');
+  } catch (e) { tip('复制失败：' + e.message, 'error'); }
+}
+async function ctxDuplicate() {
+  if (!ctxAsset || ctxKind === 'reference' || ctxKind === 'unassigned') return;
+  try { await api('/' + ctxKind + '/' + ctxAsset + '/duplicate', { method: 'POST' }); tip('已创建副本', 'success'); load(); }
+  catch (e) { tip(e.message, 'error'); }
+}
+
+// ===== 归属三层联动（v1.34：项目/集单选 + 场多选） =====
+async function loadScopeOptions() {
+  try {
+    const data = await api('/projects');
+    scopeTree = [];
+    for (const p of data.projects) {
+      const detail = await api('/projects/' + p.id);
+      scopeTree.push({ id: p.id, name: p.name, episodes: (detail.episodes || []).map(ep => ({ id: ep.id, title: ep.title, scenes: (ep.scenes || []).map(sc => ({ id: sc.id, title: sc.title })) })) });
+    }
+    renderScopes();
+    loadProjSelect();
+  } catch (e) { tip('加载项目失败：' + e.message, 'error'); }
+}
+// ===== 归属·归属明细（v1.48/49/50：项目下拉始终可用 ↔ 集多选联动，"＋添加"=项目+所选集一并入 chips；chips 每项目一组横排） =====
+function loadProjSelect() {
+  const sel = document.getElementById('sc-proj');
+  sel.innerHTML = '<option value="">— 选择项目 —</option>' + scopeTree.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join('');
+  // v1.49：项目下拉始终可用——未归属选首个项目；已归属回显当前归属项目（可切换修改）
+  // v1.16（U10 防复现①）：去掉无上下文的 scopeTree[0] 自动兜底——避免新建资产被静默误归属到无关项目；
+  // 优先级 = 已有归属项目 > localStorage 当前浏览项目 > 空（明确提示用户选择，杜绝跨项目污染）
+  let pid = editingScopes.projects[0] || localStorage.getItem('ss_current_project') || '';
+  if (pid && !scopeTree.some(p => p.id === pid)) pid = (scopeTree[0] && scopeTree[0].id) || '';
+  curProjId = pid;
+  sel.value = pid;
+  resetPending();
+  renderEpMulti();
+}
+function onProjChange() {
+  curProjId = document.getElementById('sc-proj').value;
+  resetPending();
+  renderEpMulti();
+}
+function resetPending() { pendingEpSelection = { all: false, eps: [] }; }
+function renderEpMulti() {
+  const el = document.getElementById('ep-multi-list');
+  const p = scopeTree.find(x => x.id === curProjId);
+  if (!p) { el.innerHTML = '<div style="color:#9ca3af;font-size:12px;padding:4px 0">请先选择项目（或在项目中打开资产，自动带出）</div>'; return; }
+  const eps = p.episodes || [];
+  let html = `<label><input type="checkbox" ${pendingEpSelection.all ? 'checked' : ''} onchange="toggleAllEps(this.checked)"> 所有集（${esc(p.name)}）</label><div style="color:#9ca3af;font-size:11px;margin:2px 0 6px 2px">勾选此项＝归属项目 + 该项目全部集（不含具体场）；若只需某几集请取消勾选、改勾下方单集。</div>`;
+  if (eps.length) {
+    html += eps.map(e => `<label><input type="checkbox" class="ep-chk" ${pendingEpSelection.eps.includes(e.id) ? 'checked' : ''} onchange="toggleEpPending('${e.id}', this.checked)"> 📺 ${esc(e.title)}</label>`).join('');
+  } else {
+    html += '<div style="color:#9ca3af;font-size:12px">该项目暂无集（可先拆解/导入生成）</div>';
+  }
+  el.innerHTML = html;
+}
+function toggleAllEps(checked) { pendingEpSelection.all = checked; renderEpMulti(); }
+function toggleEpPending(eid, checked) {
+  if (checked) { if (!pendingEpSelection.eps.includes(eid)) pendingEpSelection.eps.push(eid); }
+  else { pendingEpSelection.eps = pendingEpSelection.eps.filter(x => x !== eid); }
+}
+// v1.48：添加动作 = "项目+所选集"一并添加存储（点"添加"→整体入 chips）
+function addScopeGroup() {
+  const p = scopeTree.find(x => x.id === curProjId);
+  if (!p) { tip('请先选择项目', 'error'); return; }
+  if (pendingEpSelection.all) {
+    if (!editingScopes.projects.includes(p.id)) editingScopes.projects.push(p.id);
+    // "所有集"=项目级归属 + 该项目所有集一并入 episodes（场页"本集"过滤按集命中，需集级归属；
+    // 与 scopeFilter 语义对齐，避免"全集可见、本集不可见"；显示仍折叠为项目 chip，buildScopeGroups all 隐藏集）
+    // v1.16（U10 防复现②）：明确该操作粒度为「项目 + 全部集」，【不含具体场】——如需只归单集/单场请改选下面单集勾选；
+    (p.episodes || []).forEach(e => { if (!editingScopes.episodes.includes(e.id)) editingScopes.episodes.push(e.id); });
+    tip('已添加：' + p.name + '（项目 + 全部集，不含具体场）', 'success');
+  } else if (pendingEpSelection.eps.length) {
+    pendingEpSelection.eps.forEach(eid => { if (!editingScopes.episodes.includes(eid)) editingScopes.episodes.push(eid); });
+    tip('已添加：' + p.name + ' 的 ' + pendingEpSelection.eps.length + ' 个集', 'success');
+  } else {
+    tip('请先勾选集（或"所有集"）', 'error'); return;
+  }
+  resetPending();
+  renderScopes(); renderEpMulti();
+}
+function findCtx(kind, id) {
+  for (const p of scopeTree) {
+    if (kind === 'projects' && p.id === id) return p.name;
+    for (const ep of p.episodes) {
+      if (kind === 'episodes' && ep.id === id) return `${p.name} / ${ep.title}`;
+      for (const sc of ep.scenes) {
+        if (kind === 'scenes' && sc.id === id) return `${p.name} / ${ep.title} / ${sc.title}`;
+      }
+    }
+  }
+  return '';
+}
+function scopeTagLabel(level, id) {
+  if (level === 'projects') return '📁 ' + (findCtx('projects', id) || id) + '（项目）';
+  if (level === 'episodes') return '📺 ' + (findCtx('episodes', id) || id) + '（集）';
+  return '🎬 ' + (findCtx('scenes', id) || id) + '（场）';
+}
+function addScope(level, id) { if (!editingScopes[level].includes(id)) editingScopes[level].push(id); }
+function removeScope(level, i) { editingScopes[level].splice(i, 1); renderScopes(); }
+// chips 悬浮提示（v1.44 用户要求）：显示该归属对应的详细信息，避免误解；信息从 scopeTree 实时解析，找不到回退原始 id
+function scopeChipTitle(level, id) {
+  for (const p of scopeTree) {
+    if (level === 'projects' && p.id === id) {
+      const eps = p.episodes || [];
+      const scCount = eps.reduce((n, e) => n + ((e.scenes || []).length), 0);
+      return '项目：' + p.name + '\n集数：' + eps.length + ' · 场数：' + scCount;
+    }
+    for (const ep of (p.episodes || [])) {
+      if (level === 'episodes' && ep.id === id) {
+        return '项目：' + p.name + '\n集：' + ep.title + '\n场数：' + ((ep.scenes || []).length);
+      }
+      for (const sc of (ep.scenes || [])) {
+        if (level === 'scenes' && sc.id === id) {
+          return '项目：' + p.name + '\n集：' + ep.title + '\n场：' + sc.title;
+        }
+      }
+    }
+  }
+  return id;
+}
+// v1.50：归属明细 chips 紧凑横排——每已归属项目组一行（📁项目名 + 📺集标签横向滚动）；组头×删整组、组内集×删单个
+function buildScopeGroups() {
+  const groups = [];
+  const projIndex = {};
+  editingScopes.projects.forEach(pid => {
+    const p = scopeTree.find(x => x.id === pid);
+    const g = { id: pid, name: p ? p.name : pid, all: true, eps: [] };
+    groups.push(g); projIndex[pid] = g;
+  });
+  editingScopes.episodes.forEach(eid => {
+    const ctx = findEpCtx(eid);
+    if (!ctx) return;
+    if (projIndex[ctx.pid]) { if (!projIndex[ctx.pid].all) projIndex[ctx.pid].eps.push({ id: eid, label: ctx.epTitle }); }
+    else { const g = { id: ctx.pid, name: ctx.name, all: false, eps: [{ id: eid, label: ctx.epTitle }] }; groups.push(g); projIndex[ctx.pid] = g; }
+  });
+  return groups;
+}
+function findEpCtx(eid) {
+  for (const p of scopeTree) {
+    const ep = (p.episodes || []).find(e => e.id === eid);
+    if (ep) return { pid: p.id, name: p.name, epTitle: ep.title };
+  }
+  return null;
+}
+function findScopeIndex(level, id) { return editingScopes[level].findIndex(x => x === id); }
+function removeProjectGroup(pid) {
+  editingScopes.projects = editingScopes.projects.filter(x => x !== pid);
+  const p = scopeTree.find(x => x.id === pid);
+  const eids = ((p && p.episodes) || []).map(e => e.id);
+  editingScopes.episodes = editingScopes.episodes.filter(eid => !eids.includes(eid));
+  renderScopes(); renderEpMulti();
+}
+function renderScopes() {
+  const el = document.getElementById('f-scopes');
+  const groups = buildScopeGroups();
+  if (!groups.length) { el.innerHTML = '<span style="font-size:12px;color:#9ca3af">未设置归属</span>'; return; }
+  el.innerHTML = groups.map(g => {
+    const head = g.all ? `📁 ${esc(g.name)}（所有集）` : `📁 ${esc(g.name)}`;
+    const eps = g.eps.map(e => `<span class="scope-tag" title="${esc(scopeChipTitle('episodes', e.id))}">📺 ${esc(e.label)}<button onclick="removeScope('episodes',${findScopeIndex('episodes', e.id)})">×</button></span>`).join('');
+    return `<div class="scope-group"><span class="scope-group-head">${head}<button class="scope-group-del" onclick="removeProjectGroup('${g.id}')" title="删除该组归属">×</button></span><span class="scope-group-eps">${eps}</span></div>`;
+  }).join('');
+}
+
+// ===== 通用 AI 能力（4-6：AI 优化提示词 + 归属智能推荐·LLM；v1.43 统一成本确认类模式；v1.51 流式同窗显示生成内容） =====
+// ===== 统一提示词编辑器逻辑：已抽至共享组件 static/prompt-editor.js（单源，生图/生视频复用） =====
+// 资产页 openPrompt/openUnassignedPrompt/assetGenImage 已改用 window.openPromptEditor；生图走 /api/comfy/generate（阶段5 切流直连 ComfyUI）。
+
+async function aiRecommendScopes() {
+  if (!editingId) { tip('请先打开资产信息（三点按钮）再推荐归属', 'error'); return; }
+  try {
+    const est = await api('/' + currentKind + '/' + editingId + '/recommend-scopes/estimate', jsonBody('POST', {}));
+    window.costRunDialog({
+      title: '智能推荐归属',
+      est: est,
+      confirmText: '开始推荐',
+      run: async (progress) => {
+        let acc = '';
+        progress('⏳ 正在推荐归属（LLM 分析项目/集/场）…');
+        const r = await window.streamLLM('recommend_scopes', { kind: currentKind, item_id: editingId }, (d) => { acc += d; progress('⏳ ' + esc(acc)); });
+        const recs = r.recommendations || [];
+        if (!recs.length) return { summary: '未得到推荐（可手动选择归属）', type: 'plain' };
+        const listHtml = recs.map(rec => {
+          const name = resolveScopeName(rec.level, rec.id);
+          return `<div style="display:flex;align-items:center;gap:8px;padding:8px;border:1px solid #e5e7eb;border-radius:8px;margin-bottom:6px">
+            <span style="flex:1;font-size:13px">${esc(name)} <span style="color:#9ca3af">（${esc(rec.reason || '')}）</span></span>
+            <button type="button" class="g-btn g-ok" style="padding:4px 12px;font-size:12px" onclick="window.__addRec(this,'${rec.level}','${rec.id}')">添加</button>
+          </div>`;
+        }).join('');
+        return { summary: '📌 推荐归属（点击"添加"，可多次添加累积）：<div style="margin-top:8px">' + listHtml + '</div>', type: 'plain' };
+      }
+    });
+  } catch (e) { tip(e.message, 'error'); }
+}
+// v1.43：推荐条目添加（同窗进度弹窗内）——添加后按钮 disabled 置灰（视觉明确+防重复）
+// 根因修复（4-19补丁7）：后端推荐 level 为单数（project/episode/scene），editingScopes 键为复数（projects/episodes/scenes），需映射，否则 addScope 访问 undefined 抛错
+const _SCOPE_KEY = { project: 'projects', episode: 'episodes', scene: 'scenes' };
+window.__addRec = function (btn, level, id) {
+  const key = _SCOPE_KEY[level] || level;
+  addScope(key, id);
+  renderScopes();
+  if (btn) { btn.disabled = true; btn.textContent = '已添加'; btn.style.background = '#9ca3af'; btn.style.borderColor = '#9ca3af'; }
+  const total = editingScopes.projects.length + editingScopes.episodes.length + editingScopes.scenes.length;
+  tip('已添加：' + resolveScopeName(level, id) + '（归属 ' + total + ' 项，点"保存"生效）', 'success');
+};
+function resolveScopeName(level, id) {
+  for (const p of scopeTree) {
+    if (level === 'project' && p.id === id) return '📁 ' + p.name + '（项目）';
+    for (const ep of p.episodes) {
+      if (level === 'episode' && ep.id === id) return '📺 ' + p.name + ' / ' + ep.title + '（集）';
+      for (const sc of ep.scenes) {
+        if (level === 'scene' && sc.id === id) return '🎬 ' + p.name + ' / ' + ep.title + ' / ' + sc.title + '（场）';
+      }
+    }
+  }
+  return id;
+}
+
+// ===== 元数据编辑（双栏） =====
+let editingImages = [];
+let editingAudios = [];
+// §十四 B4（用户走查 09-06）：上传后"不合规音频"不入卡历史，暂存为可试听/可删除的待处置条目。
+//   {path, error} 由后端保留在 audio/tmp；红条提示+保存禁用；用户点条目 × 删除后才恢复保存。
+let pendingBadAudio = null;
+// reference/落地统一入口：id 非空=编辑现有参考类资产；id 空 + seedPath=把未分类裸图"落地为参考类资产"（2026-09-04 模型统一）
+function openRefMeta(id, seedPath) {
+  _refPrevKind = currentKind;                 // 记录来源标签（unassigned 等），保存后恢复刷新
+  _refSeed = seedPath || null;
+  if (!isRefKind(currentKind)) {
+    // 临时切到素材(material)标签高亮，使 openMeta 的 /api/{kind} 端点正确指向 references（getAsset/saveMeta 已分支）
+    // v1.2 阶段2：原切 tab-reference 改切 tab-material（参考类已并入素材标签）
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.getElementById('tab-material').classList.add('active');
+  }
+  return openMeta(id, (id ? '' : ((seedPath || '').split('/').pop().split('_').pop() || '')));
+}
+async function openMeta(id, prefix) {
+  editingId = id || null;
+  editingScopes = { projects: [], episodes: [], scenes: [] };
+  editingImages = [];
+  editingAudios = [];
+  pendingBadAudio = null;   // §十四 B4：打开编辑窗口重置不合规试听条目
+  const isRef = isRefKind(currentKind);
+  // v1.2 阶段2 目检①：素材卡 meta 弹窗统一叫"资产信息/素材信息"，不向用户暴露"落地参考类"内部术语
+  document.getElementById('meta-title').textContent = isRef ? (id ? '素材信息' : '资产信息') : (id ? '资产信息' : '新建资产');
+  document.getElementById('m-prefix').value = prefix || '';
+  document.getElementById('m-variant').value = '';
+  document.getElementById('m-voice').value = '';
+  // v1.55b：打开资产信息时重置 Qwen3-TTS 样本状态提示
+  const st0 = document.getElementById('vs-sample-status');
+  if (st0) st0.style.display = 'none';
+  setVoiceSrc('text');
+  renderScopes(); renderMetaVersions(); renderMetaAudios();
+  loadScopeOptions();
+  try {
+    const data = await api('/' + (isRef ? 'references' : currentKind));
+    const dl = document.getElementById('prefix-list');
+    dl.innerHTML = [...new Set((data.items || []).map(x => x.prefix).filter(Boolean))].map(p => `<option value="${esc(p)}">`).join('');
+  } catch (e) {}
+  if (id) {
+    try {
+      const it = await getAsset(id);
+      document.getElementById('m-prefix').value = it.prefix || '';
+      document.getElementById('m-variant').value = it.variant_name || '';
+      document.getElementById('m-voice').value = it.voice_text || '';
+      // v1.55d：三标签映射（文本/音频/预置 edge-tts；旧 edge-tts 数据 → 预置标签）
+      const vsMap = { text: 'text', audio: 'audio', 'edge-tts': 'edge' };
+      const vs = vsMap[it.voice_source] || 'text';
+      setVoiceSrc(vs);
+      if (it.voice) { try { document.getElementById('tts-voice').value = it.voice; } catch (e) {} }
+      editingScopes = { projects: [...(it.scopes?.projects || [])], episodes: [...(it.scopes?.episodes || [])], scenes: [...(it.scopes?.scenes || [])] };
+      editingImages = (it.images || []).map(x => ({ ...x }));
+      editingAudios = (it.audios || []).map(x => ({ ...x }));
+      renderScopes(); renderMetaVersions(); renderMetaAudios();
+    } catch (e) {
+      // 兜底：参考类资产 GET 单条端点异常时仍要弹出（让用户看到错误或空白编辑），不阻断 mask 显示
+      console.warn('openMeta: load asset failed:', e.message);
+      tip('资产加载失败：' + e.message + '（可手动新建/上传）', 'warn');
+    }
+  } else if (_refSeed) {
+    // 裸图落地参考类：预置种子图为 images[0]（落地即资产、资产库无游离图）
+    editingImages = [{ path: _refSeed, version: '', gen_prompt: '', source: 'ref_landing', added_at: new Date().toISOString().slice(0, 19) }];
+    renderMetaVersions();
+  }
+  document.getElementById('meta-mask').style.display = 'flex';
+}
+function closeMeta() {
+  // §十四 B4（用户走查 09-06）：关闭编辑窗口 = 放弃未采用的不合规试听音频 → 清其 audio/tmp 文件防残留
+  if (pendingBadAudio) { clearTmpAudio(pendingBadAudio.path); pendingBadAudio = null; }
+  vaClearErrBar();  // §十四 B4②：关闭时清除音频阻断常驻红条
+  document.getElementById('meta-mask').style.display = 'none'; editingId = null;
+  if (_refPrevKind !== null && _refPrevKind !== currentKind) {
+    // 落地/编辑参考类后：恢复来源标签视图并刷新（裸图落地后未分类区应消失该图）
+    const prev = _refPrevKind; _refPrevKind = null; _refSeed = null;
+    switchTab(prev);
+    return;
+  }
+  _refSeed = null; _refPrevKind = null;
+  load();
+}
+// 6-5：去画布编辑——对当前编辑资产生成去程任务卡（写 handoff/outbox，含组装提示词）；6-7 已实现按需拉起 IC（自动）
+async function goCanvasEdit() {
+  if (!editingId) { tip('请先打开资产信息（⋮ 三点）再去画布编辑', 'info'); return; }
+  try {
+    const it = await getAsset(editingId);
+    const name = (it.prefix || '') + '-' + (it.variant_name || '');
+    const cur = (it.images || [])[0];
+    // 组装提示词（单资产：画风+该资产提示词；画风当前取项目 art_style，可空）
+    let prompt = it.prompt || '';
+    const meta = { kind: currentKind, id: editingId, name: name };
+    const body = jsonBody('POST', { target_type: currentKind, name: name, resource_path: (cur ? cur.path : ''), prompt: prompt, meta: meta });
+    const card = await api('/task-card', body);
+    tip('已生成任务卡（手写 outbox）：' + card.id, 'success');
+    // 6-7 已实现按需拉起 IC（生图链路自动，此处无需手动拉起提示）
+    tip('任务卡已生成，可到 Infinite Canvas 编辑（IC 未运行时生图会自动拉起）', 'info');
+  } catch (e) { tip('生成任务卡失败：' + e.message, 'error'); }
+}
+// v1.55i（方案A·用户拍板）：图版本 = 顶部主图（容器宽 200 高）+ 底部缩略图条（小卡横铺，点击切换主图）
+function renderMetaVersions() {
+  const el = document.getElementById('meta-versions');
+  // v1.55k：inline 不设 display（走 CSS flex column 撑满）；仅清除 nav.js 的 grid/滚动残留
+  el.style.display = '';
+  el.style.gridTemplateColumns = 'none';
+  el.style.maxHeight = 'none';
+  el.style.overflow = 'visible';
+  el.style.padding = '0';
+  if (!editingImages.length) {
+    el.innerHTML = '<div class="mp-ver-card"><div class="ph-card"><span class="ph-ic">🖼️</span><span>暂无图片</span><span class="ph-sub">上传主图素材 或 从资产库选择</span></div></div>';
+    return;
+  }
+  const cur = editingImages[0];
+  const main = `
+    <div class="mp-main-img" title="当前主图">
+      <img src="/api/asset-file/${encodeURIComponent(cur.path)}">
+      <span class="mp-ver-badge">主图</span>
+      ${editingImages.length > 1 ? `<button class="mp-ver-del" onclick="event.stopPropagation();delMetaImage(0)" title="删除该版本">×</button>` : ''}
+      <a class="mp-ver-zoom" href="/api/asset-file/${encodeURIComponent(cur.path)}" download title="下载" onclick="event.stopPropagation()">↓</a>
+    </div>`;
+  const thumbs = editingImages.length > 1 ? `
+    <div class="mp-thumbs">
+      ${editingImages.map((img, i) => `
+        <div class="mp-thumb ${i === 0 ? 'cur' : ''}" onclick="setMetaCurrent(${i})" title="${i === 0 ? '当前主图' : '点击设为当前主图（提示词随版本联动）'}">
+          <img src="/api/asset-file/${encodeURIComponent(img.path)}">
+          <span class="n">${i + 1}</span>
+        </div>`).join('')}
+    </div>` : '';
+  el.innerHTML = '<div class="mp-ver-title">🖼️ 图版本（' + editingImages.length + '）</div>' + main + thumbs;
+}
+function setMetaCurrent(i) {
+  if (i === 0) return;
+  const [t] = editingImages.splice(i, 1);
+  editingImages.unshift(t);
+  renderMetaVersions();
+  tip('已设为当前主图（提示词随版本联动，保存后生效）', 'success');
+}
+async function delMetaImage(i) {
+  if (editingImages.length <= 1) { tip('至少保留 1 张图片', 'error'); return; }
+  editingImages.splice(i, 1);
+  renderMetaVersions();
+  tip('图片已移除（保存后生效）', 'success');
+}
+function uploadImageMeta() {
+  const input = document.createElement('input');
+  input.type = 'file'; input.accept = 'image/*';
+  input.onchange = async () => {
+    const f = input.files[0]; if (!f) return;
+    try {
+      const fd = new FormData(); fd.append('file', f);
+      const rec = await api('/tmp-image-upload', { method: 'POST', body: fd });
+      editingImages.push({ path: rec.path, version: '', gen_prompt: '', source: 'upload', added_at: new Date().toISOString().slice(0, 19) });
+      renderMetaVersions(); tip('图片已添加（保存后生效）', 'success');
+    } catch (e) { tip(e.message, 'error'); }
+  };
+  input.click();
+}
+let voiceSrc = 'text';
+function setVoiceSrc(v) {
+  voiceSrc = v;
+  document.querySelectorAll('.vs-tab').forEach(t => t.classList.toggle('active', t.dataset.v === v));
+  ['text', 'audio', 'edge'].forEach(k => {
+    const el = document.getElementById('v-' + k);
+    if (el) el.style.display = k === v ? '' : 'none';
+  });
+}
+// v1.55d：三标签分流渲染（简版：条目+🔊试听+下载+删除，完整播放条只在主音色卡面）
+function renderMetaAudios() {
+  const split = { text: [], audio: [], edge: [] };
+  for (const a of editingAudios) {
+    if (a.role === 'voice_sample') split.text.push(a);       // Qwen3-TTS 样本 → 文本音色
+    else if (a.type === 'tts-trial') split.edge.push(a);     // Edge-TTS 试听 → 预置音色
+    else split.audio.push(a);                                // 上传绑定（reference 无 role）→ 音频音色
+  }
+  renderSubAudios('m-audios-text', split.text);
+  renderSubAudios('m-audios-audio', split.audio);
+  renderSubAudios('m-audios-edge', split.edge);
+  renderBadAudioEntry();
+  renderMetaVoicePrev();
+}
+// §十四 B4（用户走查 09-06）：不合规上传音频作为"待处置条目"渲染在"音频音色"区顶部——可试听辨别、
+//   右侧 × 删除（删除即恢复保存+清红条）。不合规音频始终不进 editingAudios（不入卡历史/不作音源）。
+function renderBadAudioEntry() {
+  const el = document.getElementById('m-audios-audio'); if (!el) return;
+  const old = el.querySelector('.bad-audio-item'); if (old) old.remove();
+  if (!pendingBadAudio) return;
+  const b = pendingBadAudio;
+  const wrap = document.createElement('div');
+  wrap.className = 'audio-item bad-audio-item';
+  wrap.style.cssText = 'border:1px solid #fca5a5;background:#fef2f2;display:flex;align-items:center;gap:6px;margin-bottom:6px;padding:3px 6px;border-radius:6px';
+  wrap.innerHTML = '<button class="sub-play" onclick="toggleVoicePlay(\'' + encodeURIComponent(b.path) + '\', this)" title="播放/暂停试听（辨别是否传错）">▶</button>' +
+    '<span class="bad-tag" style="flex:none;font-size:11px;color:#b91c1c;font-weight:bold" title="该音频不合规，未加入音色；试听后如不想要点右侧 × 删除">⚠️不合规</span>' +
+    '<span class="fname" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;color:#7f1d1d" title="' + escAttr(b.path) + '">' + esc((b.path || '').split('/').pop()) + '</span>' +
+    '<button onclick="delBadAudio()" title="删除这段不合规音频（恢复保存）" style="background:none;border:none;color:#b91c1c;font-size:14px;cursor:pointer;line-height:1">×</button>';
+  el.prepend(wrap);
+}
+// 删除暂存的不合规音频：调后端清 audio/tmp 文件 + 清 pendingBadAudio + 收红条恢复保存
+function clearTmpAudio(path) {
+  if (!path) return;
+  try { api('/tmp-audio?path=' + encodeURIComponent(path), { method: 'DELETE' }).catch(() => {}); } catch (_) {}
+}
+function delBadAudio() {
+  if (!pendingBadAudio) return;
+  clearTmpAudio(pendingBadAudio.path);
+  pendingBadAudio = null;
+  renderBadAudioEntry();
+  vaClearErrBar();               // 红条收起 + 恢复保存按钮
+  tip('已删除该段不合规音频，可重新上传', 'success');
+}
+function renderSubAudios(id, list) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  if (!list.length) { el.innerHTML = ''; return; }
+  // v1.55h：去掉蓝底"音色样本"chip——三标签统一简版（条目+▶+下载+删除），身份信息已在主音色卡/历史弹窗展示
+  el.innerHTML = list.map(a => `
+    <span class="audio-item">
+      <button class="sub-play" onclick="toggleVoicePlay('${encodeURIComponent(a.path)}', this)" title="播放/暂停">▶</button>
+      <a href="/api/asset-file/${encodeURIComponent(a.path)}" download>下载</a>
+      <span class="fname" title="${escAttr(a.path)}">${esc((a.path || '').split('/').pop())}</span>
+      <button onclick="delMetaAudioByPath('${escAttr(a.path)}')" title="移除（保存后生效）">×</button>
+    </span>`).join('');
+}
+function delMetaAudioByPath(path) {
+  const idx = editingAudios.findIndex(a => a.path === path);
+  if (idx < 0) return;
+  editingAudios.splice(idx, 1);
+  renderMetaAudios();
+  // §十四 B4：删除一条音频 = 用户正在解决"不达标音条" → 红条收起+恢复保存（若仍有问题保存时后端会再拦+红条重现兜底）
+  if (vaHasErrBar()) vaClearErrBar();
+  tip('音频已移除（保存后生效）', 'success');
+}
+// v1.55e：音色卡（卡片状，左区右下角；▶播放/⏸暂停 + 🕘历史 + ⬇下载；无内嵌播放条）
+function renderMetaVoicePrev() {
+  const el = document.getElementById('meta-voice-prev');
+  if (!el) return;
+  if (!editingAudios.length) { el.innerHTML = '<div class="mp-voice-card empty">🎙 无音色</div>'; return; }
+  const cur = editingAudios[0];
+  const kindLabel = cur.role === 'voice_sample' ? '音色样本' : (cur.type === 'tts-trial' ? '预置音色' : '参考音频');
+  el.innerHTML = `
+    <div class="mp-voice-card">
+      <div class="mp-voice-head">
+        <span class="vs-badge">🎙 ${kindLabel}</span>
+        <span class="mp-voice-cur">当前</span>
+        <span class="mp-voice-name" title="${escAttr(cur.path)}">${esc((cur.path || '').split('/').pop())}</span>
+      </div>
+      <div class="mp-voice-body">
+        <button class="mp-voice-play" onclick="toggleVoicePlay('${encodeURIComponent(cur.path)}', this)" title="播放/暂停当前有效音色">▶</button>
+        <!-- v1.55j：四角图标化——左下 🕘 历史 / 右下 ⬇ 下载 -->
+        <div class="mp-voice-mini">
+          <button onclick="openVoiceHist(this)" title="音色历史（${editingAudios.length} 条，点击卡片切换当前有效）">🕘</button>
+          <a href="/api/asset-file/${encodeURIComponent(cur.path)}" download title="下载当前音色">⬇</a>
+        </div>
+      </div>
+    </div>`;
+}
+// v1.55e：全局单实例音频播放（▶/⏸ 切换；同一时刻只播一个，播放期间其它播放按钮 disable）
+let _playAudio = null, _playBtn = null;
+function syncPlayDisabled() {
+  document.querySelectorAll('.sub-play, .mp-voice-play').forEach(b => {
+    b.disabled = !!_playBtn && b !== _playBtn;
+  });
+}
+function stopVoicePlay() {
+  if (_playAudio) { _playAudio.pause(); _playAudio = null; }
+  if (_playBtn) { _playBtn.classList.remove('playing'); _playBtn.textContent = '▶'; _playBtn = null; }
+  syncPlayDisabled();
+}
+function toggleVoicePlay(encPath, btn) {
+  if (btn === _playBtn && btn.classList.contains('playing')) { stopVoicePlay(); return; }
+  stopVoicePlay();
+  const a = new Audio('/api/asset-file/' + encPath);
+  _playAudio = a; _playBtn = btn;
+  btn.classList.add('playing'); btn.textContent = '⏸';
+  syncPlayDisabled();
+  a.play().catch(() => { stopVoicePlay(); tip('播放失败（浏览器可能阻止自动播放）', 'error'); });
+  a.addEventListener('ended', () => { stopVoicePlay(); });
+}
+// v1.55e：音色历史弹窗（纯音频平铺卡片，无图；点击卡片切换当前有效音色，保存后生效）
+function openVoiceHist(anchorEl) {
+  const el = document.getElementById('vh-list');
+  el.innerHTML = editingAudios.map((a, i) => `
+    <div class="vh-card ${i === 0 ? 'cur' : ''}" onclick="setAudioCurrent(${i})" title="${i === 0 ? '当前有效音色' : '点击设为当前有效音色（保存后生效）'}">
+      <div class="vh-head">
+        ${a.role === 'voice_sample' ? '<span class="vs-badge">🎙 音色样本</span>' : (a.type === 'tts-trial' ? '<span class="vs-badge" style="background:#9ca3af">预置音色</span>' : '<span class="vs-badge" style="background:#6b7280">参考音频</span>')}
+        ${i === 0 ? '<span class="mp-voice-cur">当前有效</span>' : ''}
+        <span style="font-size:11px;color:#6b7280;margin-left:auto">${(a.added_at || '').slice(0, 16).replace('T', ' ')}</span>
+      </div>
+      <div class="vh-name" title="${escAttr(a.path)}">${esc((a.path || '').split('/').pop())}</div>
+      <audio controls src="/api/asset-file/${encodeURIComponent(a.path)}" preload="none" onclick="event.stopPropagation()"></audio>
+    </div>`).join('');
+  const pop = document.getElementById('vh-pop');
+  const r = (anchorEl && anchorEl.getBoundingClientRect) ? anchorEl.getBoundingClientRect() : null;
+  const vw = window.innerWidth, vh = window.innerHeight;
+  const W = 420, H = Math.min(380, vh - 40);
+  if (r) {
+    let left = Math.max(8, Math.min(r.right - W, vw - W - 8));
+    const topDown = r.bottom + 8, topUp = Math.max(8, r.top - H - 8);
+    const top = (topDown + H <= vh) ? topDown : topUp;
+    pop.style.left = left + 'px'; pop.style.top = top + 'px';
+  } else { pop.style.left = '20px'; pop.style.top = '60px'; }
+  pop.style.display = 'block';
+}
+function closeVoiceHist() { document.getElementById('vh-pop').style.display = 'none'; }
+function setAudioCurrent(i) {
+  if (i === 0) { return; }
+  const [t] = editingAudios.splice(i, 1);
+  editingAudios.unshift(t);   // 设为 [0]=当前有效（保存后生效）
+  renderMetaAudios();          // 含 renderMetaVoicePrev
+  tip('已设为当前有效音色（保存后生效）', 'success');
+  const btn = document.querySelector('#meta-voice-prev .mp-voice-mini button');
+  if (btn) openVoiceHist(btn);
+}
+function uploadAudioMeta() {
+  const input = document.createElement('input');
+  input.type = 'file'; input.accept = 'audio/*';
+  input.onchange = async () => {
+    const f = input.files[0]; if (!f) return;
+    try {
+      const fd = new FormData(); fd.append('file', f);
+      const rec = await api('/tmp-audio-upload', { method: 'POST', body: fd });
+      try { setVoiceSrc('audio'); } catch (_) {}
+      // §十四 B4（用户走查 09-06）：不合规音频后端不再 400 拒+删文件，而是保留 tmp 返回 {ok:false,path,error}，
+      //   让用户能"试听辨别 + 点条目 × 删除"处置（不合规永远不入卡音源，防超长进 H3 OOM 的安全底线不变）。
+      if (rec && rec.ok === false) {
+        // 若之前还有一条未处置的不合规 tmp，先清掉（只留最新一条，避免堆积）
+        if (pendingBadAudio) clearTmpAudio(pendingBadAudio.path);
+        pendingBadAudio = { path: rec.path, error: rec.error || '音频不合规' };
+        renderMetaAudios();
+        vaRenderAudioErrBar('所选音频不合规，未加入音色', '<div>• <b>原因</b>：' + esc(pendingBadAudio.error) + '</div>');
+        tip('音频不合规：' + pendingBadAudio.error, 'error');
+        return;
+      }
+      // v1.55c：合规音频 unshift 到 [0] = 当前有效音色（与 images[0] 同构，等价处理）
+      editingAudios.unshift({ path: rec.path, type: 'reference', voice: '', added_at: new Date().toISOString().slice(0, 19) });
+      renderMetaAudios(); tip('音频已绑定（保存后设为当前有效音色）', 'success');
+    } catch (e) {
+      // 兜底（真 400/网络错误）：不只 toast，在"音色卡"顶部给常驻红条说明原因
+      try { setVoiceSrc('audio'); } catch (_) {}
+      vaRenderAudioErrBar('音频上传被拦截：所选音频不达标', '<div>• <b>原因</b>：' + esc(e.message || '音频不合规') + '</div>');
+      tip('音频上传失败：' + (e.message || '音频不合规'), 'error');
+    }
+  };
+  input.click();
+}
+async function genTrial() {
+  try {
+    const voice = document.getElementById('tts-voice').value;
+    const voiceLabel = (ttsVoices.find(t => t.id === voice) || {}).label || voice;
+    // v1.45 复检：试听文本直接说音色名称（不包含资产名），如"大家好，我叫晓晓"
+    const say = '大家好，我叫' + voiceLabel;
+    const rec = await api('/tts/play', jsonBody('POST', { voice: voice, text: say }));
+    const audio = new Audio('/api/asset-file/' + rec.path);
+    audio.play().catch(() => tip('播放失败（浏览器可能阻止自动播放）', 'error'));
+    // v1.45：试听音频随资产保存（隐式作为生视频参考音色自动传入），供后续生视频环节取用
+    if (!editingAudios.some(a => a.path === rec.path)) {
+      // v1.55c：新音频 unshift 到 [0] = 当前有效音色（Edge-TTS / 上传 / Qwen3-TTS 等价）
+      editingAudios.unshift({ path: rec.path, type: 'tts-trial', voice: voice, added_at: new Date().toISOString().slice(0, 19) });
+      renderMetaAudios();
+    }
+    tip('试听已生成并保存为该资产音频（' + voiceLabel + '），可播放', 'success');
+  } catch (e) { tip(e.message, 'error'); }
+}
+// v1.55c：通用进度模态（全站推广：音色样本/生图/视频生成共用）
+let _pgTimer = null, _pgT0 = 0, _pgStages = [];
+function showProgress(title, stages) {
+  _pgT0 = Date.now(); _pgStages = stages || [];
+  document.getElementById('vs-progress-title').textContent = title || '处理中…';
+  document.getElementById('vs-progress-mask').style.display = 'flex';
+  document.getElementById('vs-progress-fill').style.width = '2%';
+  document.getElementById('vs-progress-time').textContent = '已耗时 0 秒';
+  _pgTimer = setInterval(() => {
+    const el = Date.now() - _pgT0;
+    let cur = _pgStages[_pgStages.length - 1] || { text: '处理中…', pct: 10 };
+    for (const s of _pgStages) if (el >= s.at) cur = s;
+    document.getElementById('vs-progress-stage').textContent = cur.text;
+    document.getElementById('vs-progress-fill').style.width = cur.pct + '%';
+    document.getElementById('vs-progress-time').textContent = '已耗时 ' + Math.floor(el / 1000) + ' 秒';
+  }, 200);
+}
+function hideProgress(final) {
+  clearInterval(_pgTimer);
+  if (final) {
+    document.getElementById('vs-progress-stage').textContent = '完成 ✓';
+    document.getElementById('vs-progress-fill').style.width = '100%';
+    setTimeout(() => { document.getElementById('vs-progress-mask').style.display = 'none'; }, 600);
+  } else {
+    document.getElementById('vs-progress-mask').style.display = 'none';
+  }
+}
+// v1.55b：生成进度模态（阶段文字+进度条+计时，防止用户等待着急）
+const VS_STAGES = [
+  { at: 0, text: '提交工作流…', pct: 8 },
+  { at: 2000, text: 'Qwen3-TTS 加载模型中…', pct: 30 },
+  { at: 5000, text: '生成音频（语音设计）…', pct: 60 },
+  { at: 10000, text: '下载产物…', pct: 85 },
+  { at: 14000, text: '保存资产…', pct: 96 }
+];
+function showVsProgress() { showProgress('生成音色样本中…', VS_STAGES); }
+function hideVsProgress(final) { hideProgress(final); }
+// v1.55：音色样本生成（资产侧一次性工具）——Qwen3-TTS VoiceDesign 文字描述音色 → 24kHz FLAC 干音，
+// 产物 role=voice_sample = H3 音色克隆输入（reference_only）。直连远程 ComfyUI，约 15 秒。
+async function genVoiceSample() {
+  if (!editingId) { tip('请先打开一个已保存的资产再生成音色样本', 'info'); return; }
+  const instruct0 = (document.getElementById('m-voice').value || '').trim();
+  if (instruct0) { _genVoiceSample(instruct0); return; }
+  // F9(审计20260909/M9.5): 弃用原生 prompt(), 改统一 promptDialog(非阻塞回调式, 取消不触发 onOk 即不生成)
+  window.promptDialog(
+    '音色描述（例：男声，少年音色，澄澈干净，字正腔圆）',
+    '',
+    (v) => {
+      const instruct = (v || '').trim();
+      if (!instruct) return;
+      document.getElementById('m-voice').value = instruct;   // 回填供复用
+      _genVoiceSample(instruct);
+    },
+    '如 男声，少年音色，澄澈干净，字正腔圆'
+  );
+}
+// F9: genVoiceSample 的实际生成主体（供已有描述直接走、无描述经 promptDialog 输入后走）
+async function _genVoiceSample(instruct) {
+  const btn = document.getElementById('btn-voice-sample');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ 生成中…'; }
+  showVsProgress();
+  try {
+    const rec = await api('/voice-sample/generate', jsonBody('POST', {
+      asset_id: editingId, kind: currentKind, instruct: instruct, text: '', language: 'Chinese'
+    }));
+    // 后端已落库；同步本地编辑态（否则点保存会用旧 editingAudios 覆盖丢失新样本）
+    if (rec.audio && !editingAudios.some(a => a.path === rec.audio.path)) {
+      // v1.55c：新样本 unshift 到 [0] = 当前有效音色（与 Edge-TTS/上传等价）
+      editingAudios.unshift(rec.audio);
+      renderMetaAudios();
+    }
+    hideVsProgress(true);
+    const n = editingAudios.filter(a => a.role === 'voice_sample').length;
+    const st = document.getElementById('vs-sample-status');
+    st.style.display = 'block';
+    st.innerHTML = '✓ 已生成音色样本（当前 ' + n + ' 个），保存后视频配音将用作 H3 音色克隆';
+    tip('音色样本已生成（' + Math.round((rec.size || 0) / 1024) + ' KB），保存后生效', 'success');
+  } catch (e) {
+    hideVsProgress(false);
+    tip(e.message, 'error');
+  }
+  finally { if (btn) { btn.disabled = false; btn.textContent = '🎙 生成音色样本'; } }
+}
+// v1.55b：样本 🔊 快捷试听（不占用编辑态）
+function playAudioSample(encPath) {
+  const a = new Audio('/api/asset-file/' + encPath);
+  a.play().catch(() => tip('播放失败（浏览器可能阻止自动播放）', 'error'));
+}
+// v1.45：声音描述 ✨AI 优化（成本确认类：成本弹窗→同窗进度→同窗汇总）
+async function aiOptimizeVoice() {
+  const ta = document.getElementById('m-voice');
+  const text = (ta.value || '').trim();
+  if (!text) { tip('请先填写声音描述', 'error'); return; }
+  try {
+    const est = await api('/optimize-prompt/estimate', jsonBody('POST', { text: text }));
+    window.costRunDialog({
+      title: '✨ AI 优化声音描述',
+      est: est,
+      confirmText: '开始优化',
+      run: async (progress) => {
+        progress('⏳ 正在优化声音描述（LLM）…');
+        const r = await api('/optimize-prompt', jsonBody('POST', { text: text }));
+        ta.value = r.optimized || text;
+        return { summary: '✅ 声音描述已优化（' + (r.optimized || text).length + ' 字），可继续编辑后保存' };
+      }
+    });
+  } catch (e) { tip(e.message, 'error'); }
+}
+function vaFlash(elId, msgs) { // 6-13：字段级阻断高亮
+  const el = document.getElementById(elId); if (el) { el.classList.remove('va-invalid'); void el.offsetWidth; el.classList.add('va-invalid'); }
+  const label = document.querySelector('label[for="' + elId + '"], #' + elId + ' label');
+  if (label) label.classList.add('va-invalid-label');
+}
+function vaFieldList(errors) { // {字段:[msg]} → [{field,msg}] 扁平，含"字段标题"
+  const out = [];
+  const titles = { 'images[-1]': '🖼️ 图片（当前主图）', audios: '🎙 音频', 'meta-versions': '🖼️ 图片', 'voice-card': '🎙 音频' };
+  for (const [f, arr] of Object.entries(errors || {})) {
+    const title = titles[f] || ('字段 ' + f);
+    (arr || []).forEach(m => out.push(title + '：' + m));
+  }
+  return out;
+}
+// §十四 B4②：音频阻断在音色卡顶部注入"常驻红条"（明示哪条不合格+原因+合格上限），
+//   用户可从容看清"为什么不能保存"（toast 5s 即逝，改常驻+滚动到音色卡）。
+// §十四 B4②：把"音频不合格"原因做成音色卡(voice-card"音色"区块)顶部的常驻红条——
+//   明示不合格项+合格上限+去哪看，解决"toast 5s 即逝、看不清为什么不能保存"。
+// 公共构造：title=红条标题，linesHTML=每行 <div>• ...</div> 拼接。
+function vaHasErrBar() { return !!(document.getElementById('voice-card') && document.getElementById('voice-card').querySelector('.va-errbar')); }
+function vaRenderAudioErrBar(title, linesHTML) {
+  const card = document.getElementById('voice-card'); if (!card) return;
+  const titleEl = card.querySelector('.mp-card-t'); if (!titleEl) return;
+  const old = card.querySelector('.va-errbar'); if (old) old.remove();
+  const bar = document.createElement('div');
+  bar.className = 'va-errbar';
+  // §十四 B4（用户走查 09-06）：红条内不要 ✕ 收起钮——处置权在"音色区块"里那条音频的 ×（删除/替换）上，
+  //   红条只作常驻提示，直到用户删除/替换掉不达标音条才消失（vaClearErrBar 恢复保存）。
+  bar.innerHTML = '<b>' + esc(title) + '</b>' + (linesHTML || '') +
+    '<div class="va-sep"></div><div><b>合格标准：</b>单条时长 <b>2~15 秒</b>、采样率 <b>≥16kHz</b>（建议 WAV/FLAC/MP3/M4A，单条 ≤15MB，多条累计 ≤15s）。</div>' +
+    '<div style="margin-top:5px;color:#991b1b;font-size:12px">处置方式：试听辨别后，点下方"音频音色"区里这条问题音频右侧的 <b>×</b> 删除，或重新上传合规音频替换——删除后此提示消失、保存恢复可点。</div>';
+  titleEl.after(bar);
+  card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  card.classList.add('va-invalid');
+  // §十四 B4（用户走查 09-06）：红条存在 = 有未决的音频合规问题 → 禁止直接保存，防误以为已保存
+  const saveBtn = document.getElementById('meta-save'); if (saveBtn) saveBtn.disabled = true;
+}
+function vaAudiosErrBar(errors) { // {field:[msg]}，field 为 audios 或 audios[N]（保存路径：卡内已有超长音条被拦）
+  const lines = [];
+  for (const [f, arr] of Object.entries(errors || {})) {
+    if (f !== 'audios' && !/^audios\[/.test(f)) continue;
+    const who = f === 'audios' ? '音频' : ('音频[' + f.slice('audios['.length, -1) + ']');
+    (arr || []).forEach(m => lines.push('<div>• <b>' + esc(who) + '</b>：' + esc(m) + '</div>'));
+  }
+  if (!lines.length) return;
+  vaRenderAudioErrBar('保存被拦截：以下音色参考音频不达标', lines.join(''));
+}
+function vaClearErrBar() {
+  const card = document.getElementById('voice-card'); if (card) { const old = card.querySelector('.va-errbar'); if (old) old.remove(); card.classList.remove('va-invalid'); }
+  // §十四 B4：红条收起（删除了问题音条） → 恢复保存按钮
+  const saveBtn = document.getElementById('meta-save'); if (saveBtn) saveBtn.disabled = false;
+}
+async function saveMeta() {
+  const prefix = document.getElementById('m-prefix').value.trim();
+  if (!prefix) { tip('请填写名称', 'error'); return; }
+  // v1.55d：全部保存进历史 + 时间最新为当前（audios 按 added_at 降序，[0]=当前有效，与 images[0] 同构）
+  const sortedAudios = [...editingAudios].sort((a, b) => String(b.added_at || '').localeCompare(String(a.added_at || '')));
+  const body = {
+    prefix,
+    variant_name: document.getElementById('m-variant').value.trim(),
+    scopes: { projects: [...editingScopes.projects], episodes: [...editingScopes.episodes], scenes: [...editingScopes.scenes] },
+    images: editingImages,
+    voice_text: document.getElementById('m-voice').value,
+    audios: sortedAudios,
+    voice_source: voiceSrc === 'edge' ? 'edge-tts' : voiceSrc,
+    voice: voiceSrc === 'edge' ? document.getElementById('tts-voice').value : ''
+  };
+  try {
+    let saved;
+    const apiKind = isRefKind(currentKind) ? 'references' : currentKind;
+    if (editingId) { saved = await api('/' + apiKind + '/' + editingId, jsonBody('PUT', body)); tip('已保存', 'success'); }
+    else { saved = await api('/' + apiKind, jsonBody('POST', body)); tip('已创建', 'success'); }
+    // 6-13：保存成功但带软警告（warnings）——黄色提示不阻断
+    if (saved && saved._warnings) {
+      const w = vaFieldList(saved._warnings);
+      setTimeout(() => { tip('已保存（提示：' + (w[0] || '') + ')', 'warn'); }, 50);
+    }
+    closeMeta(); load();
+  } catch (e) {
+    // 6-13：后端 fail-fast 校验（detail.errors 字段级）→ 高亮具体字段 + 列阻断明细
+    if (e && e.detail && e.detail.errors) {
+      const errs = e.detail.errors;
+      if (errs['images[-1]'] || errs['meta-versions']) vaFlash('meta-versions', errs['images[-1]'] || errs['meta-versions']);
+      if (errs['audios'] || Object.keys(errs).some(k => /^audios\[/.test(k))) { vaFlash('voice-card', []); vaAudiosErrBar(errs); }
+      tip('资产未保存：\n' + vaFieldList(errs).map(x => '• ' + x).join('\n'), 'error');
+      return;
+    }
+    tip(e.message, 'error');
+  }
+}
+
+// 初始化
+(async () => {
+  try { const v = await api('/tts/voices'); ttsVoices = v.voices || ttsVoices; } catch (e) {}
+  document.getElementById('tts-voice').innerHTML = ttsVoices.map(t => `<option value="${t.id}">${esc(t.label)}</option>`).join('');
+  // 复检反馈⑤：从场页"编辑资产"跳转而来（?tab= 切库 + localStorage 记录待编辑资产）
+  const tabParam = new URLSearchParams(location.search).get('tab');
+  // v1.2 阶段2：reference/unassigned 已并入 material 标签（无 tab-reference/tab-unassigned 按钮）→ URL 传参归一化到 material
+  const tabNorm = (tabParam === 'reference' || tabParam === 'unassigned') ? 'material' : tabParam;
+  if (tabNorm && ['characters', 'scenes', 'props', 'material'].includes(tabNorm)) switchTab(tabNorm);
+  await load();
+  const pending = localStorage.getItem('ss_edit_asset');
+  if (pending) {
+    localStorage.removeItem('ss_edit_asset');
+    try {
+      const target = JSON.parse(pending);
+      // v1.2 阶段2：reference/unassigned 已并入 material；旧链接的 kind 归一为 material
+      const targetKind = (target.kind === 'reference' || target.kind === 'unassigned') ? 'material' : target.kind;
+      if (targetKind !== currentKind) switchTab(targetKind);
+      await load();
+      const items = (await api('/' + currentKind)).items || [];
+      const hit = items.find(it => (it.prefix || '') + '-' + (it.variant_name || '') === target.name);
+      if (hit) openMeta(hit.id);
+    } catch (e) {}
+  }
+  // 第6批 item4：页面加载完成后自动跑体检 → 顶部轻量汇总（静默，不打断渲染）
+  runAutoAudit();
+})();
+// 统一编辑器 popover：点击组件外即消失（但草稿持久化保留）；组件/弹层/卡片内点击不关
+document.addEventListener('mousedown', function (e) {
+  const p = document.getElementById('pe-pop');
+  if (p && p.style.display === 'block' && !p.contains(e.target) && !(e.target.closest && e.target.closest('.pue-stylepop,.pue-atpop,.pue-menu,.pue-hoverprev,.pue-cascade,.pue-size,#g-modal-mask,#picker-mask,.card-img,.ac-thumb'))) peClose();
+});
+/* 实施9 v1.4：场页右上 ✎ 跳来时自动选中+滚动+高亮资产（?id=；v1.5 跨 tab 切换持续监听）
+   批4-3：体检报告跳转也走此定位——来自体检时闪烁 4s（红框），场页跳转维持 2.5s（蓝框）。 */
+(function () {
+  var selId = new URLSearchParams(location.search).get('id');
+  if (!selId) return;
+  // 体检跳转标记（auditLocate 导航前写入 sessionStorage，跨页仍可读）
+  var fromAudit = sessionStorage.getItem('ss_audit_flash') === '1';
+  if (fromAudit) sessionStorage.removeItem('ss_audit_flash');
+  var DUR = fromAudit ? 4000 : 2500;
+  var flashCls = fromAudit ? 'ac-flash-red' : 'ac-flash';
+  var selFlashTimer = null;
+  function flash() {
+    var card = document.querySelector('.asset-card[data-id="' + selId + '"]');
+    if (!card) return;
+    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    /* v1.55 P0-3c：静态高亮改闪烁（320ms 亮/灭交替）；批4-3 体检=4s红框/场页=2.5s蓝框；防重入：新 flash 重置旧 timer */
+    if (selFlashTimer) clearInterval(selFlashTimer);
+    var t0 = Date.now(), on = true;
+    card.classList.add(flashCls);
+    selFlashTimer = setInterval(function () {
+      if (Date.now() - t0 >= DUR) { clearInterval(selFlashTimer); selFlashTimer = null; card.classList.remove(flashCls); return; }
+      on = !on;
+      if (on) card.classList.add(flashCls); else card.classList.remove(flashCls);
+    }, 320);
+  }
+  function tryLater(times) {
+    if (document.querySelector('.asset-card[data-id="' + selId + '"]')) flash();
+    else if (times > 0) setTimeout(function () { tryLater(times - 1); }, 150);
+  }
+  if (document.readyState === 'complete') tryLater(15);
+  else window.addEventListener('load', function () { tryLater(15); });
+  /* 跨 tab 切换：监听 #groups 子元素变化，每次重渲后尝试高亮 */
+  var groups = document.getElementById('groups');
+  if (groups && window.MutationObserver) {
+    new MutationObserver(function () { tryLater(8); }).observe(groups, { childList: true, subtree: true });
+  }
+})();
+</script>
+</div>
+<style>
+/* 实施9 v1.4：选中高亮（与上方 script 内的 IIFE 配合） */
+.asset-card.ac-flash { box-shadow: 0 0 0 3px #2563eb, 0 4px 14px rgba(37,99,235,.35); transition: box-shadow .25s ease; }
+/* ④批4-3修复：被出场引用的资产卡 → 去掉红框/红锁，改"卡片下部文字区灰底白字"标记不可删（灰底条贴在 sub 文字行，不外溢） */
+.asset-card.ac-locked { box-shadow: none; }
+.asset-card.ac-locked:hover { box-shadow: 0 4px 12px rgba(0,0,0,.1); }
+.asset-card.ac-locked .ac-sub { background:#6b7280; color:#fff !important; font-weight:600; border-radius:6px; padding:1px 7px; margin-top:1px; }
+/* 参考类被引用卡（ref_count>0，不可删）同样灰底白字 */
+.asset-card.ac-ref-locked .ac-sub { background:#6b7280; color:#fff !important; font-weight:600; border-radius:6px; padding:1px 7px; margin-top:1px; }
+/* 批4-3：体检报告跳转定位 → 红框闪烁 4s（区别于场页跳转的蓝框 2.5s） */
+.asset-card.ac-flash-red { box-shadow: 0 0 0 3px #dc2626, 0 0 0 6px rgba(220,38,38,.15), 0 4px 14px rgba(220,38,38,.35); transition: box-shadow .25s ease; }
+</style>
+<link rel="stylesheet" href="/static/vendor/asset-card.css">
+<script src="/static/vendor/asset-card.js?v=8"></script>
+<script src="/static/prompt-editor.js?v=28"></script>
+<script src="/static/env-guard.js?v=1"></script>
+<script src="/static/nav.js?v=14"></script>
+
+<!-- ============ 资产库体检（批4-3 修复：只读报告 + 自动修正悬空引用） ============ -->
+<div id="audit-mask" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:600;align-items:flex-start;justify-content:center;overflow:auto;padding:24px 0">
+  <div style="background:#fff;border-radius:12px;width:880px;max-width:96vw;padding:18px 20px;position:relative">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <h2 style="font-size:17px;margin:0">🔍 资产库体检（只读）</h2>
+      <button class="btn-ghost btn-mini" onclick="closeAudit()">关闭</button>
+    </div>
+    <div id="audit-snapshot" style="font-size:12px;color:#374151;margin-bottom:10px;line-height:1.7"></div>
+    <div style="max-height:60vh;overflow:auto;border:1px solid #e5e7eb;border-radius:8px">
+      <div id="audit-body"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;gap:10px">
+      <div style="font-size:12px;color:#6b7280" id="audit-count"></div>
+    </div>
+    <div id="audit-result" style="display:none;margin-top:12px;font-size:13px;line-height:1.8;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px 14px;white-space:pre-wrap"></div>
+  </div>
+</div>
+<style>
+/* 资产库体检（批4-3 只读报告）样式 */
+#audit-mask .audit-sec { border-bottom:1px solid #e5e7eb; padding:10px 14px; }
+#audit-mask .audit-sec:last-child { border-bottom:none; }
+#audit-mask .audit-sec h3 { font-size:13px; margin:0 0 6px; display:flex; align-items:center; gap:6px; }
+#audit-mask .audit-row { display:flex; align-items:center; gap:8px; font-size:12px; padding:3px 0; color:#374151; }
+#audit-mask .audit-row input { margin-top:1px; }
+#audit-mask .audit-row .a-id { color:#9ca3af; font-family:monospace; font-size:11px; }
+#audit-mask .audit-empty { color:#9ca3af; font-size:12px; padding:4px 0; }
+#audit-mask .audit-badge-orphan { background:#fee2e2; color:#b91c1c; border-radius:8px; padding:0 8px; font-size:12px; }
+#audit-mask .audit-badge-dang  { background:#fef3c7; color:#92400e; border-radius:8px; padding:0 8px; font-size:12px; }
+#audit-mask .audit-badge-badp  { background:#fce7f3; color:#9d174d; border-radius:8px; padding:0 8px; font-size:12px; }
+#audit-mask .audit-badge-mini { display:inline-block; background:#eef2ff; color:#4338ca; border-radius:6px; padding:0 6px; font-size:11px; margin-right:6px; vertical-align:1px; }
+/* 问题项行（可点击跳转）：悬停整行高亮 */
+#audit-mask .audit-item { cursor:pointer; border-radius:8px; padding:5px 6px; align-items:center; }
+#audit-mask .audit-item:hover { background:#f5f7fb; }
+/* 缩略图：小图常显，悬浮显示大图 */
+#audit-mask .audit-prev { position:relative; width:34px; height:34px; border-radius:6px; overflow:visible; background:#f3f4f6; display:inline-flex; align-items:center; justify-content:center; flex:none; font-size:10px; color:#9ca3af; }
+#audit-mask .audit-prev img { width:34px; height:34px; object-fit:cover; border-radius:6px; display:block; }
+/* ①批4-3修复：悬浮大图预览——默认隐藏；由 JS 以 position:fixed 显示并限制在视口内（不再 absolute 溢出被裁切） */
+#audit-mask .audit-prev-big { display:none; position:fixed; width:200px; height:auto; max-height:280px; object-fit:contain; border-radius:8px; box-shadow:0 6px 20px rgba(0,0,0,.28); z-index:1000; background:#fff; border:1px solid #e5e7eb; pointer-events:none; }
+#audit-mask .audit-nothumb { font-size:9px; }
+/* ①批4-3修复：体检索缩略图占位图标（无图或图加载失败时显示，避免空白/破图） */
+#audit-mask .audit-glyph { width:34px; height:34px; display:inline-flex; align-items:center; justify-content:center; font-size:16px; color:#9ca3af; background:#f3f4f6; border-radius:6px; }
+</style>
+<script>
+/* 资产库体检（批4-3 修复）：GET /api/library/audit（只读报告）。打开体检若存在悬空/坏proj 引用 → 自动修正（后端 cleanup 先备份），不留手动"一键修正"按钮。
+   不做删除、不做重复合并；孤儿仅列示（删卡由资产库页）；删除由资产库页完成。 */
+let auditData = null;
+const A_KIND = { characters: '人物', scenes: '场景', props: '道具' };
+// ①批4-3修复：体检索条目无图/加载失败 → 按 kind 显示占位图标（不再空白/破图）
+function kindGlyph(kind) { return { characters: '👤', scenes: '🏙️', props: '🎭' }[kind] || '🖼️'; }
+function auditGlyphSpan(kind) { return '<span class="audit-glyph">' + kindGlyph(kind) + '</span>'; }
+
+// 第6批 item4：加载资产页自动跑体检 + 顶部轻量汇总（静默，不弹窗）。
+//   ①引用计数全量核对自动修正（/assets/index/recount，以扫描为准，修正入日志）
+//   ②读 /library/audit 孤儿/悬空数（悬空/坏proj 的自动修正保留在 openAudit 打开时触发，避免页面每次加载都写库）
+//   ③读未分类列表算"Z 张(其中 W 张可安全删除)"
+function runAutoAudit() {
+  var el = document.getElementById('audit-summary');
+  if (!el) return;
+  Promise.all([
+    api('/assets/index/recount').catch(function () { return { scanned: 0, fixed: 0 }; }),
+    api('/library/audit').catch(function () { return { issues: { orphans: { count: 0 }, dangling_episodes: { count: 0 }, bad_project_refs: { count: 0 } } }; }),
+    api('/assets/index/unclassified').catch(function () { return { entries: [] }; })
+  ]).then(function (rs) {
+    var recount = rs[0], audit = rs[1], uc = rs[2];
+    var orph = ((audit.issues || {}).orphans || {}).count || 0;
+    var dang = ((audit.issues || {}).dangling_episodes || {}).count || 0;
+    var badp = ((audit.issues || {}).bad_project_refs || {}).count || 0;   // §十四D4：坏项目引用为 0 也显式显示
+    var entries = (uc.entries || []);
+    var safeDel = entries.filter(function (e) { return (e.ref_count || 0) === 0; }).length;
+    var allOk = orph === 0 && dang === 0 && badp === 0 && (recount.fixed || 0) === 0;
+    el.style.display = 'block';
+    el.style.background = allOk ? '#f0fdf4' : '#fefce8';
+    el.style.border = '1px solid ' + (allOk ? '#bbf7d0' : '#fde68a');
+    el.innerHTML = (allOk ? '✅' : '🔎') + ' 体检完成：孤儿<b>' + orph + '</b>个 / 悬空<b>' + dang +
+      '</b>个 / <b>坏项目引用 ' + badp + '</b>个 / 未分类<b>' + entries.length + '</b>张（其中<b style="color:#16a34a">' + safeDel + '</b>张引用为0·可安全删除）' +
+      (recount.fixed ? '｜引用计数已自动修正 <b>' + recount.fixed + '</b> 项' : '') +
+      ' <button class="btn-ghost btn-mini" style="float:right" onclick="openAudit()">查看详情</button>';
+    if (window.console && (recount.fixed || 0) > 0) console.log('[assets-auto-audit] 引用计数自动修正 ' + recount.fixed + ' 项（静默，见 /api/assets/index/recount）');
+  }).catch(function () { /* 体检失败不打扰页面 */ });
+}
+
+function openAudit() {
+  document.getElementById('audit-mask').style.display = 'flex';
+  const resBox = document.getElementById('audit-result');
+  resBox.style.display = 'none';
+  resBox.style.background = '#eff6ff'; resBox.style.borderColor = '#bfdbfe';
+  document.getElementById('audit-body').innerHTML = '<div class="empty" style="padding:20px">体检中……</div>';
+  // 先扫一次看是否有可自动修正的悬空/坏proj
+  api('/library/audit').then(function (d) {
+    const n = (((d.issues || {}).dangling_episodes || {}).items || []).length
+      + (((d.issues || {}).bad_project_refs || {}).items || []).length;
+    if (n > 0) { autoFixAudit(d); return; }   // 自动修正后重扫展示
+    auditData = d;
+    renderAudit();
+  }).catch(function (e) { document.getElementById('audit-body').innerHTML = '<div class="empty">体检失败：' + esc(e.message || e) + '</div>'; });
+}
+// 打开体检自动修正悬空/坏proj 引用（后端先整体备份三库；不删孤儿、不合并）
+function autoFixAudit(d) {
+  const body = { actions: { fix_dangling: [], fix_bad_proj: [] } };
+  ((d.issues && d.issues.dangling_episodes || {}).items || []).forEach(function (it) {
+    body.actions.fix_dangling.push({ id: it.id, drop_episodes: it.dangling_episodes || [], drop_scenes: it.dangling_scenes || [] });
+  });
+  ((d.issues && d.issues.bad_project_refs || {}).items || []).forEach(function (it) {
+    body.actions.fix_bad_proj.push({ id: it.id, drop_projects: it.bad_projects || [] });
+  });
+  api('/library/audit/cleanup', jsonBody('POST', body)).then(function (res) {
+    const box = document.getElementById('audit-result');
+    box.style.display = 'block';
+    let s = '✅ 已自动修正悬空/坏项目引用\n备份目录：data/' + (res.backup_path || '-') + '\n';
+    const ap = res.applied || {};
+    s += '修正悬空引用 ' + (ap.fix_dangling || 0) + ' 项｜修正坏项目引用 ' + (ap.fix_bad_proj || 0) + ' 项\n';
+    if ((res.errors || []).length) { s += '⚠️ ' + res.errors.length + ' 项未执行：\n' + res.errors.map(function (e) { return ' - [' + (e.id || e.op) + '] ' + e.reason; }).join('\n'); }
+    box.textContent = s;
+    box.style.background = '#eff6ff'; box.style.borderColor = '#bfdbfe';
+    // 重扫，展示修正后健康度
+    api('/library/audit').then(function (d2) { auditData = d2; renderAudit(); })
+      .catch(function (e) { document.getElementById('audit-body').innerHTML = '<div class="empty">重扫失败：' + esc(e.message || e) + '</div>'; });
+  }).catch(function (e) {
+    const box = document.getElementById('audit-result');
+    box.style.display = 'block';
+    box.textContent = '自动修正失败：' + (e.detail && e.detail.msg ? e.detail.msg : (e.message || e));
+    box.style.background = '#fee2e2'; box.style.borderColor = '#fecaca';
+    auditData = d; renderAudit();
+  });
+}
+function closeAudit() { document.getElementById('audit-mask').style.display = 'none'; auditData = null; }
+function auditName(it) { return (it.name || '') + (it.variant_name && it.variant_name !== '基础形象' ? '-' + it.variant_name : ''); }
+
+function renderAudit() {
+  const d = auditData;
+  const snap = document.getElementById('audit-snapshot');
+  snap.innerHTML = '在案项目 <b>' + d.scope.valid_projects_count + '</b> 个 / 有效集 <b>' + d.scope.valid_episodes +
+    '</b> / 有效场 <b>' + d.scope.valid_scenes + '</b>；三库资产 人物<b>' + (d.library.characters || 0) +
+    '</b> / 场景<b>' + (d.library.scenes || 0) + '</b> / 道具<b>' + (d.library.props || 0) +
+    '</b>。巡检时间：' + d.generated_at.replace('T', ' ') +
+    '。本报告只读；<b>删除请在资产库页自行操作</b>（被引用的卡片会红框禁删）。点击任一项可跳转资产库定位对应卡片。';
+  let html = '';
+
+  // 通用问题行（图缩略 + 名称 + 跳转）。hover 悬浮大图预览，点击行/按钮跳转资产库定位闪烁。
+  function issueRow(it, badge, desc) {
+    // ①批4-3修复：有 thumb 渲染图（含悬浮大图预览），图加载失败由下方 error 绑定回退占位图标；无 thumb 直接占位图标
+    let img;
+    if (it.thumb) {
+      const u = '/api/asset-file/' + encodeURIComponent(it.thumb);
+      img = '<span class="audit-prev"><img class="audit-thumb" src="' + u + '" loading="lazy" alt="">' +
+        '<img class="audit-prev-big" src="' + u + '" alt=""></span>';
+    } else {
+      img = '<span class="audit-prev">' + auditGlyphSpan(it.kind) + '</span>';
+    }
+    return '<div class="audit-row audit-item" data-kind="' + esc(it.kind) + '" data-id="' + esc(it.id) + '">' +
+      img +
+      '<div style="flex:1;min-width:0"><span class="audit-badge-mini">' + badge + '</span>' +
+      '<b>' + esc(auditName(it)) + '</b> <span class="a-id">[' + esc(it.id) + ']</span>（' + (A_KIND[it.kind] || it.kind) + '）<br>' +
+      '<span style="color:#6b7280">' + desc + '</span></div>' +
+      '<button class="btn-ghost btn-mini" onclick="auditLocate(\'' + esc(it.kind) + '\',\'' + esc(it.id) + '\')">去资产库定位 ➜</button></div>';
+  }
+
+  // —— 孤儿资产（只读列示，不删；删卡由资产页完成） ——
+  const orph = (d.issues.orphans || {}).items || [];
+  html += '<div class="audit-sec"><h3><span class="audit-badge-orphan">孤儿资产 ' + orph.length + '</span>' +
+    ' 无任何项目归属（历史测试/删除残留）。<b>体检不删</b>；如需删除请到资产库页（此类无引用可删）。</h3>';
+  if (!orph.length) html += '<div class="audit-empty">无孤儿资产 ✓</div>';
+  else orph.forEach(function (it) {
+    html += issueRow(it, '孤儿', '无项目归属 · 资产库页可直接删除');
+  });
+  html += '</div>';
+
+  // —— 悬空 eps/场 引用（打开体检自动修正） ——
+  const dang = (d.issues.dangling_episodes || {}).items || [];
+  html += '<div class="audit-sec"><h3><span class="audit-badge-dang">悬空引用 ' + dang.length + '</span>' +
+    ' projects 在案但引用了已删除的集/场。打开体检即自动剔除悬空、保留项目与有效归属。</h3>';
+  if (!dang.length) html += '<div class="audit-empty">无悬空引用 ✓</div>';
+  else dang.forEach(function (it) {
+    const dd = (it.dangling_episodes || []).concat(it.dangling_scenes || []).length;
+    html += issueRow(it, '悬空引用', '自动剔除悬空 ' + dd + ' 个 · 保留项目 ' + (it.projects || []).length + ' 个');
+  });
+  html += '</div>';
+
+  // —— 坏 project 引用（打开体检自动修正） ——
+  const badp = (d.issues.bad_project_refs || {}).items || [];
+  html += '<div class="audit-sec"><h3><span class="audit-badge-badp">坏项目引用 ' + badp.length + '</span> projects 指向不在案项目。打开体检即自动剔除坏引用。</h3>';
+  if (!badp.length) html += '<div class="audit-empty">无坏项目引用 ✓</div>';
+  else badp.forEach(function (it) {
+    html += issueRow(it, '坏项目引用', '自动剔除坏引用 ' + (it.bad_projects || []).length + ' 个');
+  });
+  html += '</div>';
+
+  document.getElementById('audit-body').innerHTML = html;
+  // 整行点击跳转资产库（非按钮区）
+  document.querySelectorAll('#audit-body .audit-item').forEach(function (row) {
+    row.addEventListener('click', function (e) {
+      if (e.target.closest('button')) return;   // 按钮自己处理
+      auditLocate(row.getAttribute('data-kind'), row.getAttribute('data-id'));
+    });
+  });
+  // ①批4-3修复：缩略图加载失败（文件缺失/404）→ 回退为 kind 占位图标，避免破图/空白
+  document.querySelectorAll('#audit-body .audit-prev img.audit-thumb').forEach(function (im) {
+    if (im.complete && im.naturalWidth === 0) im.outerHTML = auditGlyphSpan((im.closest('.audit-item') || {}).getAttribute ? im.closest('.audit-item').getAttribute('data-kind') : '');
+    else im.addEventListener('error', function () {
+      var it = im.closest('.audit-item'); var k = it ? it.getAttribute('data-kind') : '';
+      im.outerHTML = auditGlyphSpan(k);
+    });
+  });
+  // ①批4-3修复：悬浮大图预览改为 fixed 定位并限制在视口内，避免在滚动/弹窗容器内被裁切出界（靠近右/下沿自动反侧）
+  document.querySelectorAll('#audit-body .audit-prev').forEach(function (prev) {
+    var big = prev.querySelector('.audit-prev-big');
+    if (!big) return;
+    function placeBig(e) {
+      var w = 200, h = 220;
+      if (big.naturalWidth) w = Math.min(240, big.naturalWidth);
+      if (big.naturalHeight) h = Math.min(280, big.naturalHeight);
+      var x = e.clientX + 16, y = e.clientY + 12;
+      if (x + w > window.innerWidth - 8) x = e.clientX - w - 16;
+      if (y + h > window.innerHeight - 8) y = window.innerHeight - h - 8;
+      if (x < 4) x = 4; if (y < 4) y = 4;
+      big.style.position = 'fixed'; big.style.left = x + 'px'; big.style.top = y + 'px';
+      big.style.width = w + 'px'; big.style.maxHeight = 'none'; big.style.display = 'block'; big.style.zIndex = 1000;
+    }
+    prev.addEventListener('mouseenter', placeBig);
+    prev.addEventListener('mousemove', placeBig);
+    prev.addEventListener('mouseleave', function () { big.style.display = 'none'; });
+  });
+  auditCount();
+}
+// 点击问题项 → 跳转资产库定位该卡片（红框闪烁 4s）。经 sessionStorage 标记，让目标页定位 IIFE 走 4s 红框分支。
+function auditLocate(kind, id) {
+  closeAudit();
+  try { sessionStorage.setItem('ss_audit_flash', '1'); } catch (e) {}
+  location.href = 'assets.html?tab=' + encodeURIComponent(kind) + '&id=' + encodeURIComponent(id);
+}
+function auditCount() {
+  const d = auditData || {};
+  const n = ((d.issues && d.issues.dangling_episodes || {}).items || []).length
+    + ((d.issues && d.issues.bad_project_refs || {}).items || []).length;
+  // ①孤儿仅列示；②悬空/坏proj 打开体检已自动修正，此处仅提示（无手动按钮）
+  document.getElementById('audit-count').textContent =
+    (n > 0 ? ('可自动修正（打开体检已执行）：' + n + ' 项') : '体检完成：孤儿（仅列示）/悬空/坏项目引用均已处理，无待手动修正项');
+}
+</script>
+
+</body>
+</html>
+

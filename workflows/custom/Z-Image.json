@@ -1,0 +1,12 @@
+{
+  "20": {"inputs": {"samples": ["22", 0], "vae": ["27", 0]}, "class_type": "VAEDecode"},
+  "22": {"inputs": {"seed": 1104391495230198, "steps": 10, "cfg": 1, "sampler_name": "euler", "scheduler": "simple", "denoise": 1, "model": ["33", 0], "positive": ["23", 0], "negative": ["24", 0], "latent_image": ["144", 0]}, "class_type": "KSampler"},
+  "23": {"inputs": {"text": "", "speak_and_recognation": {"__value__": [false, true]}, "clip": ["34", 0]}, "class_type": "CLIPTextEncode"},
+  "24": {"inputs": {"conditioning": ["23", 0]}, "class_type": "ConditioningZeroOut"},
+  "27": {"inputs": {"vae_name": "flux ultra vae.safetensors"}, "class_type": "VAELoader"},
+  "33": {"inputs": {"model_name": "z_image_turbo_bf16.safetensors", "weight_dtype": "default", "key_opt": "", "mode": "Auto"}, "class_type": "LoadDiffusionModelShared //Inspire"},
+  "34": {"inputs": {"model_name1": "qwen_3_4b.safetensors", "model_name2": "None", "model_name3": "None", "type": "stable_diffusion", "key_opt": "", "mode": "Auto", "device": "default"}, "class_type": "LoadTextEncoderShared //Inspire"},
+  "137": {"inputs": {"images": ["20", 0]}, "class_type": "PreviewImage"},
+  "142": {"inputs": {"vae": ["27", 0]}, "class_type": "VAEEncode"},
+  "144": {"inputs": {"width": 512, "height": 512, "batch_size": 1}, "class_type": "EmptyLatentImage"}
+}

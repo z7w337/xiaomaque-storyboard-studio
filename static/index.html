@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>小麻雀剧本分镜工坊 - 我的项目</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "Microsoft YaHei", "PingFang SC", sans-serif; background: #f5f6f8; color: #333; display: flex; min-height: 100vh; }
+  .main-wrap { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  main { max-width: 1200px; margin: 20px auto; padding: 0 16px; width: 100%; }
+  .dash-title { font-size: 17px; font-weight: 600; color: #1f2937; margin-bottom: 14px; display: flex; align-items: center; gap: 10px; }
+  .dash-title .cur-proj { font-size: 13px; font-weight: 400; color: #6b7280; }
+  .dash-title .cur-proj a { color: #2563eb; text-decoration: none; margin-left: 4px; }
+  /* ===== 上部创作区（v1.35：粘贴/导入/获取提示词/帮助） ===== */
+  .create-panel { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px 18px; margin-bottom: 20px; }
+  .create-panel .fc-label { font-size: 12px; color: #6b7280; margin-bottom: 8px; }
+  textarea { width: 100%; min-height: 90px; border: 1px solid #d1d5db; border-radius: 8px; padding: 10px; font-size: 13px; font-family: inherit; resize: vertical; }
+  .fc-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 10px; }
+  .fc-row input[type=text] { flex: 1; min-width: 160px; padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 13px; }
+  .fc-row2 { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 10px; }
+  button { padding: 8px 14px; border: none; border-radius: 8px; cursor: pointer; font-size: 13px; }
+  .btn-primary { background: #2563eb; color: #fff; }
+  .btn-primary:hover { background: #1d4ed8; }
+  .btn-ghost { background: #f3f4f6; color: #374151; border: 1px solid #e5e7eb; }
+  .btn-ghost:hover { background: #e5e7eb; }
+  .file-btn { position: relative; display: inline-block; }
+  .file-btn input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .help-btn { width: 30px; height: 30px; border-radius: 50%; border: 1px solid #d1d5db; background: #fff; color: #6b7280; font-size: 15px; cursor: pointer; padding: 0; }
+  /* 生成按钮（v1.36：圆圈内上箭头，与全站生成图/视频/音频按钮统一，"生成"概念） */
+  .btn-gen { width: 42px; height: 42px; border-radius: 50%; background: #2563eb; color: #fff; font-size: 20px; line-height: 1; cursor: pointer; border: none; display: inline-flex; align-items: center; justify-content: center; flex: none; }
+  .btn-gen:hover { background: #1d4ed8; }
+  .btn-gen:disabled { background: #cbd5e1; cursor: not-allowed; }
+  .btn-gen:disabled:hover { background: #cbd5e1; }
+  /* 画风卡片式下拉（v1.35：占位色块+名称+一句说明；示例图随阶段 6） */
+  .style-picker { position: relative; min-width: 210px; }
+  .style-cur { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 13px; cursor: pointer; color: #6b7280; background: #fff; }
+  .style-list { position: absolute; top: 42px; left: 0; z-index: 100; background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; box-shadow: 0 6px 20px rgba(0,0,0,.12); width: 300px; max-height: 320px; overflow-y: auto; display: none; padding: 6px; }
+  .style-list.open { display: block; }
+  .style-opt { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; cursor: pointer; }
+  .style-opt:hover { background: #f3f4f6; }
+  .style-opt .sw { width: 34px; height: 24px; border-radius: 4px; flex: none; }
+  .style-opt .sn { font-size: 13px; color: #1f2937; flex: none; }
+  .style-opt .sd { font-size: 11px; color: #9ca3af; }
+  .style-opt.sel { background: #dbeafe; }
+  /* ===== 下部项目卡片墙 ===== */
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 16px; }
+  .card { border: 1px solid #e5e7eb; border-radius: 12px; background: #fff; overflow: hidden; position: relative; transition: box-shadow .15s; cursor: pointer; }
+  .card:hover { box-shadow: 0 4px 12px rgba(0,0,0,.1); }
+  .cover { width: 100%; aspect-ratio: 16/9; background: #e5e7eb; position: relative; overflow: hidden; }
+  .cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .cover .ph { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 34px; color: #9ca3af; background: linear-gradient(135deg, #eef2f7, #dfe5ec); }
+  .ep-badge { position: absolute; top: 8px; left: 8px; background: rgba(17,24,39,.72); color: #fff; font-size: 11px; padding: 2px 8px; border-radius: 10px; }
+  .card-body { padding: 10px 12px 12px; }
+  .card-name { font-size: 14px; font-weight: 600; color: #1f2937; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card-time { font-size: 11px; color: #9ca3af; margin-top: 3px; }
+  .menu-btn { position: absolute; top: 8px; right: 8px; width: 30px; height: 30px; border: none; border-radius: 50%; background: rgba(255,255,255,.92); color: #4b5563; cursor: pointer; display: none; align-items: center; justify-content: center; font-size: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.15); z-index: 5; }
+  .card:hover .menu-btn { display: inline-flex; }
+  .ctx-menu { position: fixed; z-index: 400; background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; box-shadow: 0 6px 20px rgba(0,0,0,.15); min-width: 150px; padding: 4px; display: none; }
+  .ctx-menu .mi { padding: 8px 12px; font-size: 13px; color: #374151; border-radius: 6px; cursor: pointer; }
+  .ctx-menu .mi:hover { background: #f3f4f6; }
+  .ctx-menu .mi.danger { color: #dc2626; }
+  .progress-row { display: flex; gap: 14px; align-items: center; margin-top: 10px; flex-wrap: wrap; }
+  .stat b { font-size: 16px; color: #1f2937; }
+  .stat span { font-size: 11px; color: #9ca3af; margin-left: 2px; }
+  .bar { flex: 1; min-width: 90px; height: 8px; background: #e5e7eb; border-radius: 4px; overflow: hidden; }
+  .bar > i { display: block; height: 100%; background: #22c55e; }
+  .empty { color: #9ca3af; text-align: center; padding: 40px 0; grid-column: 1 / -1; }
+  /* 模态 */
+  .modal-mask { position: fixed; inset: 0; background: rgba(17,24,39,.4); z-index: 500; display: none; align-items: center; justify-content: center; }
+  .modal { background: #fff; border-radius: 12px; width: 520px; max-width: 92vw; max-height: 82vh; display: flex; flex-direction: column; overflow: hidden; }
+  .modal.wide { width: 720px; }
+  .modal-head { padding: 14px 18px; border-bottom: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: space-between; }
+  .modal-head h3 { font-size: 15px; }
+  .modal-body { padding: 14px 18px; overflow-y: auto; }
+  .modal-foot { padding: 12px 18px; border-top: 1px solid #e5e7eb; display: flex; justify-content: flex-end; gap: 8px; }
+  .modal-body textarea { width: 100%; min-height: 260px; border: 1px solid #d1d5db; border-radius: 8px; padding: 10px; font-size: 12px; line-height: 1.6; font-family: Consolas, monospace; resize: vertical; }
+  .cover-opt { display: flex; align-items: center; gap: 10px; padding: 8px; border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 8px; cursor: pointer; }
+  .cover-opt:hover { border-color: #2563eb; background: #f8fafc; }
+  .cover-opt img { width: 72px; height: 40px; object-fit: cover; border-radius: 4px; background: #e5e7eb; }
+  .cover-opt .n { flex: 1; font-size: 13px; color: #374151; }
+  .cover-opt .s { font-size: 11px; color: #9ca3af; }
+  .detail-sum { font-size: 13px; color: #4b5563; line-height: 1.7; background: #f9fafb; border-radius: 8px; padding: 10px 12px; margin-bottom: 12px; white-space: pre-wrap; }
+  .detail-stats { display: flex; gap: 20px; flex-wrap: wrap; font-size: 13px; color: #374151; }
+  .detail-stats b { font-size: 18px; color: #1f2937; display: block; }
+  .help-body { font-size: 13px; color: #4b5563; line-height: 1.9; }
+  .help-body b { color: #1f2937; }
+</style>
+<script src="/static/palette.js?v=1"></script>
+</head>
+<body>
+<aside id="sidebar"></aside>
+<div class="main-wrap">
+<main>
+  <div class="dash-title">我的项目 <span class="cur-proj" id="cur-proj"></span></div>
+
+  <!-- 上部创作区（v1.35：粘贴/导入/获取提示词/帮助） -->
+  <div class="create-panel">
+    <div class="fc-label">新建项目：粘贴或导入剧本，自动创建（不允许空白项目）</div>
+    <textarea id="nc-paste" placeholder="粘贴剧本内容（粘贴一行也算）…" oninput="onPasteInput(this)"></textarea>
+    <div class="fc-row">
+      <input type="text" id="nc-name" placeholder="项目名称（可空，自动推导）" maxlength="60">
+      <div class="style-picker" id="style-box">
+        <div class="style-cur" id="style-cur" onclick="toggleStyleList(event)">🎨 画风（可空）</div>
+        <div class="style-list" id="style-list"></div>
+      </div>
+      <button class="btn-gen" id="btn-create" onclick="createByPaste()" disabled title="请先粘贴剧本">↑</button>
+    </div>
+    <div class="fc-row2">
+      <span class="file-btn"><button class="btn-ghost" title="txt/docx/pdf/md/json，按内容判断专家文件或剧本">📂 导入文件</button><input type="file" id="file-import" accept=".txt,.docx,.pdf,.md,.json,text/plain" onchange="handleImport(event)"></span>
+      <button class="btn-ghost" onclick="openPromptModal()">📋 获取提示词</button>
+      <button class="help-btn" onclick="openHelp()" title="帮助">?</button>
+    </div>
+  </div>
+
+  <!-- 下部项目卡片墙 -->
+  <div class="grid" id="grid"></div>
+</main>
+</div>
+
+<div class="ctx-menu" id="ctx-menu"></div>
+<div class="modal-mask" id="mask"><div class="modal" id="modal"></div></div>
+
+<!-- 获取提示词弹窗 -->
+<div class="modal-mask" id="prompt-mask">
+  <div class="modal wide">
+    <div class="modal-head"><h3>📋 视频专家导入提示词</h3><button class="btn-ghost" onclick="closePrompt()">关闭</button></div>
+    <div class="modal-body">
+      <div style="font-size:12px;color:#6b7280;margin-bottom:8px">复制下面的提示词，粘贴给外部视频专家（如 updream）。专家按约定输出 JSON 文件，保存后用"📂 导入文件"落地（免 AI 拆解）。</div>
+      <textarea id="prompt-text" readonly></textarea>
+    </div>
+    <div class="modal-foot"><button class="btn-primary" onclick="copyPrompt()">📋 复制到剪贴板</button></div>
+  </div>
+</div>
+
+<!-- 帮助弹窗 -->
+<div class="modal-mask" id="help-mask">
+  <div class="modal wide">
+    <div class="modal-head"><h3>❓ 帮助</h3><button class="btn-ghost" onclick="closeHelp()">关闭</button></div>
+    <div class="modal-body">
+      <div class="help-body">
+        <b>剧本来源（两种方式，任选其一）：</b><br>
+        ① 在上方粘贴剧本 → 点"创建项目并进入"自动创建项目；<br>
+        ② 点"📂 导入文件"选择文件：<br>
+        &nbsp;&nbsp;· <b>.txt / .docx / .pdf</b>：剧本原文（提取文本后作为剧本导入）；<br>
+        &nbsp;&nbsp;· <b>.md / .json</b>：若内容符合视频专家格式（含 script_text/script_summary/episodes/assets）→ 按专家文件导入（免 AI 拆解，结构+资产直接落地）；否则按剧本原文导入。<br><br>
+        <b>如何从 updream 等平台获取专家 JSON：</b>点"📋 获取提示词"复制标准提示词，粘贴给视频专家，要求其按格式<b>生成文件</b>（.md/.json）供下载；把下载的文件拖入"📂 导入文件"即可。<br><br>
+        <b>AI 拆解：</b>导入剧本原文后，进入剧本摘要页点"✨ AI 拆解"（有成本预估确认），系统按集调用 LLM 产出剧本大纲与资产草案并直接入库。
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = '/api';
+let projects = [];
+let selectedStyle = '';
+// 画风数据统一用共享 PALETTE.STYLES（批2，见 static/palette.js）；原 index 本地 STYLES 已移除
+
+function toast(text, type) { window.toast ? window.toast(text, type) : (function(){ const el=document.getElementById('toast')||(document.body.appendChild(Object.assign(document.createElement('div'),{id:'toast'}))); el.textContent=text; el.style.background=type==='success'?'#dcfce7':type==='error'?'#fee2e2':'#111827'; el.style.color=type==='success'?'#16a34a':type==='error'?'#dc2626':'#fff'; el.style.display='block'; el.style.cssText+=';position:fixed;top:14px;right:16px;z-index:600;padding:10px 16px;border-radius:8px;font-size:13px;box-shadow:0 4px 14px rgba(0,0,0,.18);max-width:340px;'; clearTimeout(el._t); el._t=setTimeout(()=>{el.style.display='none';},3200); })(); }
+
+async function api(path, options) {
+  const resp = await fetch(API + path, options);
+  if (!resp.ok) { let d = '请求失败'; try { d = (await resp.json()).detail || d; } catch (e) {} throw new Error(d); }
+  return resp.json();
+}
+function jsonOptions(method, body) { return { method, headers: { 'Content-Type': 'application/json; charset=utf-8' }, body: JSON.stringify(body) }; }
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+
+// ---- 当前项目（v1.35 ④：项目内点"工作台"回卡片墙不丢当前项目，顶部显示项目名） ----
+(async function initCurProj() {
+  const pid = new URLSearchParams(location.search).get('project');
+  if (!pid) return;
+  try {
+    const p = await api('/projects/' + pid);
+    document.getElementById('cur-proj').innerHTML = '当前项目：<b>' + esc(p.name) + '</b> <a href="/script.html?project=' + pid + '&view=outline">进入剧本大纲页 →</a>';
+  } catch (e) {}
+})();
+
+// ---- 画风卡片式下拉（v1.35 ⑤；批2：共用 PALETTE.STYLES + SVG 示例图，替代占位色块；示例图随阶段 6 补真实图） ----
+function renderStyles() {
+  const list = document.getElementById('style-list');
+  const STYLES = (window.PALETTE && window.PALETTE.STYLES) || [];
+  list.innerHTML = '<div class="style-opt" data-v="" onclick="pickStyle(\'\')"><span class="sw" style="background:#e5e7eb"></span><span class="sn">无（默认）</span><span class="sd">不指定画风</span></div>' +
+    STYLES.map(s => `<div class="style-opt" data-v="${esc(s.id)}" onclick="pickStyle('${esc(s.id)}')"><span class="sw" style="background-image:url('${esc(window.PALETTE.styleImg(s, 60, 40))}');background-size:cover"></span><span class="sn">${esc(s.name || s.id)}</span><span class="sd">${esc(s.desc || '')}</span></div>`).join('');
+}
+function toggleStyleList(e) { e.stopPropagation(); document.getElementById('style-list').classList.toggle('open'); }
+function pickStyle(v) {
+  selectedStyle = v;
+  const STYLES = (window.PALETTE && window.PALETTE.STYLES) || [];
+  const cur = document.getElementById('style-cur');
+  if (!v) cur.textContent = '🎨 画风（可空）';
+  else { const s = STYLES.find(x => x.id === v); cur.innerHTML = `<span style="display:inline-block;width:20px;height:14px;border-radius:3px;background-image:url('${esc(window.PALETTE.styleImg(s, 60, 40))}');background-size:cover"></span> ${esc(s.name || v)}`; }
+  document.getElementById('style-list').classList.remove('open');
+  document.querySelectorAll('#style-list .style-opt').forEach(o => o.classList.toggle('sel', o.dataset.v === v));
+}
+document.addEventListener('click', function (e) { if (!e.target.closest('.style-picker')) document.getElementById('style-list').classList.remove('open'); });
+
+// ---- 粘贴创建（v1.35：粘贴即自动创建；v1.37 补丁：生成按钮有输入才可用） ----
+function onPasteInput(el) {
+  document.getElementById('btn-create').disabled = !el.value.trim();
+}
+function deriveName() {
+  const manual = document.getElementById('nc-name').value.trim();
+  if (manual) return manual;
+  const paste = document.getElementById('nc-paste').value.trim();
+  const first = paste.split('\n').map(s => s.trim()).find(Boolean);
+  return first ? first.slice(0, 20) : '';
+}
+async function createByPaste() {
+  const paste = document.getElementById('nc-paste').value.trim();
+  if (!paste) { toast('请先粘贴剧本或导入文件', 'error'); return; }
+  try {
+    const r = await api('/projects', jsonOptions('POST', { name: deriveName(), script: paste, art_style: selectedStyle }));
+    toast('项目已创建', 'success');
+    location.href = '/script.html?project=' + r.id + '&view=outline';
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+// ---- 统一导入（v1.35：按内容判断专家文件/剧本路径；无项目 → 自动创建）
+// v1.56（批3 需求4）：剧本导入后**自动拆解+落地资产**（导入即自动全流程），完成后跳剧本大纲页；专家文件直接落地后跳剧本大纲页 ----
+async function handleImport(event) {
+  const file = event.target.files[0];
+  event.target.value = '';
+  if (!file) return;
+  try {
+    const fd = new FormData();
+    fd.append('file', file);
+    const resp = await fetch(API + '/files/import', { method: 'POST', body: fd });
+    if (!resp.ok) { let d = '导入失败'; try { d = (await resp.json()).detail || d; } catch (e) {} throw new Error(d); }
+    const r = await resp.json();
+    if (r.mode === 'expert') {
+      toast('视频专家文件导入完成，结构+资产已落地', 'success');
+      location.href = '/script.html?project=' + r.project_id + '&view=outline';
+      return;
+    }
+    // 剧本原文 → 自动调 LLM 拆解 → apply 落地 → 跳剧本大纲页
+    toast('剧本导入完成（' + (r.length || 0) + ' 字），正在自动拆解并入库…', 'success');
+    await autoAnalyzeAndOpen(r.project_id);
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+// 剧本自动拆解全流程（v1.56：无成本确认弹窗，导入即拆；进度展示于页面内模态；完成后跳剧本大纲页）
+async function autoAnalyzeAndOpen(pid) {
+  const mask = document.getElementById('mask');
+  const modal = document.getElementById('modal');
+  modal.innerHTML = '<div class="modal-head"><h3>📄 正在导入剧本并自动拆解</h3></div>' +
+    '<div class="modal-body"><div id="aa-progress" style="font-size:13px;color:#7c3aed;background:#f5f3ff;border:1px solid #ddd6fe;border-radius:8px;padding:10px 12px;line-height:1.7;height:200px;overflow-y:auto;white-space:pre-wrap">⏳ 正在拆解（LLM 生成中）…</div></div>';
+  mask.style.display = 'flex';
+  const progEl = document.getElementById('aa-progress');
+  function setProg(txt, type) { if (!progEl) return; progEl.style.color = type === 'ok' ? '#16a34a' : (type === 'err' ? '#dc2626' : '#7c3aed'); progEl.textContent = txt; }
+  let acc = '';
+  try {
+    const draft = await window.streamLLM('analyze', { pid: pid }, function (d) {
+      acc += d;
+      setProg('⏳ 正在拆解（LLM 生成中）…\n' + acc.split('\n').slice(-4).join('\n'));
+    });
+    const eps = (draft && draft.episodes) || [];
+    const ok = eps.filter(function (e) { return e.status === 'ok'; }).length;
+    const errs = eps.filter(function (e) { return e.status === 'error'; });
+    if (!ok) throw new Error('拆解失败：' + ((errs[0] && errs[0].error) || '无结果'));
+    setProg('✅ 拆解完成（' + ok + '/' + eps.length + ' 集），正在落地资产与项目结构…');
+    await api('/projects/' + pid + '/drafts/apply', { method: 'POST' });
+    setProg('✅ 已完成，正在进入剧本大纲页…', 'ok');
+    closeModal();
+    location.href = '/script.html?project=' + pid + '&view=outline';
+  } catch (e) {
+    setProg('❌ ' + e.message + '\n\n（可点击弹窗外空白处关闭，稍后到该项目页内点"✨ AI 拆解"手动重试）', 'err');
+    toast(e.message, 'error');
+  }
+}
+
+// ---- 项目卡片墙 ----
+async function loadProjects() {
+  try {
+    const data = await api('/projects');
+    projects = data.projects || [];
+    // v1.41：项目卡按更新时间倒序动态排列（最近更新的在前）
+    projects.sort((a, b) => (b.updated_at || '').localeCompare(a.updated_at || ''));
+    render();
+  } catch (e) {
+    document.getElementById('grid').innerHTML = '<div class="empty">加载失败：' + esc(e.message) + '</div>';
+  }
+}
+function render() {
+  const grid = document.getElementById('grid');
+  if (!projects.length) { grid.innerHTML = '<div class="empty">暂无项目。请在上方粘贴剧本或导入文件创建。</div>'; return; }
+  grid.innerHTML = projects.map(cardHTML).join('');
+}
+function cardHTML(p) {
+  const pr = p.progress || { total: 0, pending: 0, generated: 0, confirmed: 0 };
+  const done = pr.generated + pr.confirmed;
+  const pct = pr.total ? Math.round(done / pr.total * 100) : 0;
+  const created = (p.created_at || '').replace('T', ' ').slice(0, 16);
+  const cover = p.cover;
+  const coverHtml = cover && cover.path ? '<img src="/api/asset-file/' + cover.path + '" alt="">' : '<div class="ph">🎬</div>';
+  return `
+    <div class="card" id="card-${p.id}" onclick="openProject('${p.id}')" oncontextmenu="showMenu(event,'${p.id}')">
+      <div class="cover">${coverHtml}<span class="ep-badge">${p.episodes_count || 0} 集</span></div>
+      <button class="menu-btn" onclick="showMenu(event,'${p.id}')" title="更多操作">⋯</button>
+      <div class="card-body">
+        <div class="card-name" title="${esc(p.name)}">${esc(p.name)}</div>
+        <div class="card-time">创建于 ${esc(created)}</div>
+        <div class="progress-row">
+          <div class="stat"><b>${pr.total}</b><span>总场次</span></div>
+          <div class="stat"><b>${pr.pending}</b><span>待生成</span></div>
+          <div class="stat"><b>${pr.generated}</b><span>已生成</span></div>
+          <div class="stat"><b>${pr.confirmed}</b><span>已确认</span></div>
+        </div>
+        <div class="progress-row"><div class="bar"><i style="width:${pct}%"></i></div><span style="font-size:11px;color:#9ca3af">${pct}%</span></div>
+      </div>
+    </div>`;
+}
+function openProject(id) { location.href = '/script.html?project=' + id + '&view=outline'; }
+
+// ---- 统一操作菜单（三点=右键，v1.33） ----
+let menuProjectId = null;
+function showMenu(e, id) {
+  e.preventDefault(); e.stopPropagation();
+  menuProjectId = id;
+  const menu = document.getElementById('ctx-menu');
+  menu.innerHTML = `
+    <div class="mi" onclick="renameProject()">重命名</div>
+    <div class="mi" onclick="openCoverModal()">修改封面</div>
+    <div class="mi" onclick="duplicateProject()">创建副本</div>
+    <div class="mi" onclick="openDetailModal()">查看详情</div>
+    <div class="mi danger" onclick="deleteProject()">删除</div>`;
+  menu.style.display = 'block';
+  menu.style.left = Math.min(e.clientX, window.innerWidth - 160) + 'px';
+  menu.style.top = Math.min(e.clientY, window.innerHeight - 190) + 'px';
+}
+document.addEventListener('click', function (e) { if (!e.target.closest('.ctx-menu')) document.getElementById('ctx-menu').style.display = 'none'; });
+
+async function renameProject() {
+  const p = projects.find(x => x.id === menuProjectId);
+  if (!p) return;
+  // v1.42：弃用原生 prompt，统一页面内自定义模态
+  window.promptDialog('重命名项目', p.name, function (val) {
+    const v = (val || '').trim();
+    if (!v) { toast('名称不能为空', 'error'); return; }
+    api('/projects/' + p.id, jsonOptions('PUT', { name: v })).then(() => { toast('已重命名', 'success'); loadProjects(); })
+      .catch(err => { toast(err.message, 'error'); });
+  }, '项目名称');
+}
+async function duplicateProject() {
+  try { await api('/projects/' + menuProjectId + '/duplicate', jsonOptions('POST', {})); toast('已创建副本', 'success'); loadProjects(); }
+  catch (err) { toast(err.message, 'error'); }
+}
+async function deleteProject() {
+  // v1.42：弃用原生 confirm，统一页面内自定义模态
+  window.confirmDialog('删除项目', '确定删除该项目？该操作不可撤销。', function () {
+    api('/projects/' + menuProjectId, { method: 'DELETE' }).then(() => {
+      document.getElementById('ctx-menu').style.display = 'none';   // v1.36：删除后关闭右键菜单
+      toast('项目已删除', 'success');
+      loadProjects();
+    }).catch(err => { toast(err.message, 'error'); });
+  });
+}
+
+// ---- 查看详情 / 修改封面 ----
+async function openDetailModal() {
+  const p = projects.find(x => x.id === menuProjectId);
+  if (!p) return;
+  try {
+    const d = await api('/projects/' + p.id + '/detail');
+    const pr = d.progress || {};
+    showModal(`<div class="detail-sum">${esc(d.summary || '（暂无剧本摘要）')}</div>
+      <div class="detail-stats">
+        <div>集数<b>${d.episodes_count}</b></div><div>出场资产<b>${d.asset_count}</b></div>
+        <div>总场次<b>${pr.total || 0}</b></div><div>待生成<b>${pr.pending || 0}</b></div>
+        <div>已生成<b>${pr.generated || 0}</b></div><div>已确认<b>${pr.confirmed || 0}</b></div>
+      </div>`, '项目详情');
+  } catch (err) { toast(err.message, 'error'); }
+}
+async function openCoverModal() {
+  try {
+    const d = await api('/projects/' + menuProjectId + '/cover-options');
+    const opts = (d.options || []).map(o => `
+      <div class="cover-opt" onclick="setCover('${o.asset_id}')">
+        <img src="/api/asset-file/${o.path}" alt=""><div class="n">${esc(o.name)}</div><div class="s">出场 ${o.scene_count} 场</div>
+      </div>`).join('') || '<div style="font-size:13px;color:#9ca3af;padding:8px 0">该项目暂无出场且有图的资产</div>';
+    showModal('<div style="font-size:12px;color:#6b7280;margin-bottom:8px">选择封面（按出场场次数排序）：</div>' + opts +
+      '<div style="margin-top:10px"><button class="btn-ghost" onclick="setCover(\'\')">恢复自动选择</button></div>', '修改封面');
+  } catch (err) { toast(err.message, 'error'); }
+}
+async function setCover(assetId) {
+  try {
+    await api('/projects/' + menuProjectId, jsonOptions('PUT', { cover: assetId }));
+    closeModal(); toast('封面已更新', 'success'); loadProjects();
+  } catch (err) { toast(err.message, 'error'); }
+}
+function showModal(html, title) {
+  document.getElementById('modal').innerHTML =
+    '<div class="modal-head"><h3>' + esc(title || '') + '</h3><button class="btn-ghost" onclick="closeModal()">关闭</button></div>' +
+    '<div class="modal-body">' + html + '</div>';
+  document.getElementById('mask').style.display = 'flex';
+}
+function closeModal() { document.getElementById('mask').style.display = 'none'; }
+document.getElementById('mask').addEventListener('click', function (e) { if (e.target === this) closeModal(); });
+
+// ---- 获取提示词 / 帮助 ----
+function openPromptModal() {
+  document.getElementById('prompt-mask').style.display = 'flex';
+  document.getElementById('prompt-text').value = '加载中…';
+  api('/import/expert-prompt').then(r => { document.getElementById('prompt-text').value = r.prompt || ''; })
+    .catch(e => { document.getElementById('prompt-text').value = '加载失败：' + e.message; });
+}
+function closePrompt() { document.getElementById('prompt-mask').style.display = 'none'; }
+function copyPrompt() {
+  const ta = document.getElementById('prompt-text');
+  ta.select();
+  try { navigator.clipboard.writeText(ta.value).then(() => toast('提示词已复制到剪贴板', 'success')).catch(() => { document.execCommand('copy'); toast('提示词已复制到剪贴板', 'success'); }); }
+  catch (e) { document.execCommand('copy'); toast('提示词已复制到剪贴板', 'success'); }
+}
+function openHelp() { document.getElementById('help-mask').style.display = 'flex'; }
+function closeHelp() { document.getElementById('help-mask').style.display = 'none'; }
+
+renderStyles();
+loadProjects();
+</script>
+<script src="/static/nav.js?v=14"></script>
+</body>
+</html>
+

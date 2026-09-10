@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>小麻雀剧本分镜工坊 · 画风库</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body { font-family: "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif; background: #f5f6f8; color: #1f2937; font-size: 14px; line-height: 1.55; display: flex; overflow: hidden; }
+.main-wrap { flex: 1; min-width: 0; display: flex; flex-direction: column; padding: 20px 24px 40px; overflow: auto; }
+.style-page { max-width: 980px; margin: 0 auto; width: 100%; }
+h1 { font-size: 18px; font-weight: 700; }
+.sub { font-size: 12px; color: #6b7280; margin: 4px 0 14px; }
+.sub b { color: #2563eb; }
+.page-desc { font-size: 12px; color: #6b7280; margin-bottom: 14px; line-height: 1.7; background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 10px 14px; }
+.page-desc b { color: #2563eb; }
+.page-desc code { background: #f3f4f6; padding: 1px 5px; border-radius: 4px; font-size: 11px; }
+.style-filter { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+.type-tabs { display: flex; gap: 4px; }
+.type-tab { font-size: 12px; color: #374151; background: #fff; border: 1px solid #e5e7eb; border-radius: 999px; padding: 4px 14px; cursor: pointer; transition: all .15s ease; }
+.type-tab:hover { border-color: #93c5fd; }
+.type-tab.active { background: #2563eb; border-color: #2563eb; color: #fff; }
+.style-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; }
+.s-card2 { border: 2px solid #e5e7eb; border-radius: 12px; overflow: hidden; background: #fff; cursor: pointer; transition: all .15s ease; position: relative; }
+.s-card2:hover { border-color: #93c5fd; box-shadow: 0 4px 12px rgba(0,0,0,.08); transform: translateY(-2px); }
+.s-card2.active { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,.15); }
+.s-card2 img { width: 100%; height: 100px; object-fit: cover; display: block; }
+.s-card2 .s-body { padding: 8px 10px 10px; }
+.s-card2 .s-name { font-size: 13px; font-weight: 700; color: #1f2937; display: flex; justify-content: space-between; align-items: center; }
+.s-card2 .s-desc { font-size: 11px; color: #6b7280; margin-top: 3px; min-height: 18px; line-height: 1.5; }
+.s-card2 .s-type { position: absolute; top: 6px; right: 6px; font-size: 10px; color: #fff; border-radius: 999px; padding: 1px 8px; }
+.t-real { background: #ef4444; } .t-2d { background: #8b5cf6; } .t-3d { background: #0891b2; }
+.s-card2 .s-check { position: absolute; top: 6px; left: 6px; width: 20px; height: 20px; border-radius: 50%; background: #2563eb; color: #fff; font-size: 12px; line-height: 20px; text-align: center; display: none; }
+.s-card2.active .s-check { display: block; }
+.style-picked { margin-top: 16px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px; padding: 12px 16px; display: flex; align-items: center; gap: 10px; font-size: 13px; color: #1d4ed8; }
+.style-picked .ph { font-weight: 700; }
+.style-picked .pdesc { color: #6b7280; font-size: 11px; }
+.style-picked .act { margin-left: auto; display: flex; gap: 8px; }
+.apply-btn, .back-btn { border: none; border-radius: 6px; padding: 6px 14px; font-size: 12px; font-weight: 600; cursor: pointer; }
+.apply-btn { background: #2563eb; color: #fff; }
+.apply-btn:hover { background: #1d4ed8; }
+.back-btn { background: #fff; color: #374151; border: 1px solid #e5e7eb; }
+.back-btn:hover { background: #f3f4f6; }
+#toast { position: fixed; top: 16px; right: 16px; z-index: 1100; background: #111827; color: #fff; padding: 9px 16px; border-radius: 8px; font-size: 13px; box-shadow: 0 4px 12px rgba(0,0,0,.2); opacity: 0; pointer-events: none; transition: opacity .2s ease; max-width: 420px; }
+#toast.show { opacity: 1; }
+#toast.success { background: #16a34a; }
+</style>
+<script src="/static/palette.js?v=1"></script>
+<script src="/static/nav.js?v=14"></script>
+</head>
+<body>
+<aside id="sidebar"></aside>
+<div class="main-wrap">
+  <div class="style-page">
+    <h1>小麻雀剧本分镜工坊 · 画风库</h1>
+    <div class="sub">画风是项目属性（<code>art_style</code>），选择后应用到本项目。</div>
+    <div class="page-desc">预置画风 <b>8 种</b>，按 <b>type 分组筛选</b>（真人 real / 2D / 3D）；点卡片选中 → <b>应用为本项目画风</b>。</div>
+    <div class="style-filter">
+      <div class="type-tabs" id="type-tabs">
+        <button class="type-tab active" data-t="all">全部</button>
+        <button class="type-tab" data-t="real">真人 real</button>
+        <button class="type-tab" data-t="2d">2D</button>
+        <button class="type-tab" data-t="3d">3D</button>
+      </div>
+    </div>
+    <div class="style-grid" id="style-grid"></div>
+    <div class="style-picked" id="style-picked">
+      <span class="ph">✓ 当前项目画风：</span>
+      <span id="picked-name" style="font-weight:600">—</span>
+      <span class="pdesc" id="picked-desc"></span>
+      <span class="hint" style="font-size:11px;color:#9ca3af">点击画风卡即应用并返回</span>
+    </div>
+  </div>
+</div>
+<div id="toast"></div>
+
+<script>
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+var _toastTimer = null;
+function toast(msg, type) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'show' + (type === 'success' ? ' success' : '');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(function () { t.className = ''; }, 2400);
+}
+function api(path, options) { return fetch('/api' + path, options).then(async function (r) { if (!r.ok) { let d = '请求失败'; try { d = (await r.json()).detail || d; } catch (e) {} throw new Error(d); } return r.json(); }); }
+function jsonBody(method, body) { return { method: method, headers: { 'Content-Type': 'application/json; charset=utf-8' }, body: JSON.stringify(body) }; }
+
+var pid = new URLSearchParams(location.search).get('project') || localStorage.getItem('ss_current_project') || '';
+var STYLES = (window.PALETTE && window.PALETTE.STYLES) || [];
+var TYPE_LABEL = { real: '真人', '2d': '2D', '3d': '3D' };
+var currentStyle = null, projCache = null, styleFilter = 'all';
+/* 6-12 真实示例图：风格 id → ASCII 文件名（与 _gen_styles.py ascii_name 一致）；未匹配回落 palette SVG */
+var STYLE_IMG = {
+  '写实电影感': '/static/styles/style_shixian_dianying.png',
+  '赛博朋克': '/static/styles/style_saibopengke.png',
+  '日系动漫': '/static/styles/style_rixi_dongman.png',
+  '水墨国风': '/static/styles/style_shuimo_guofeng.png',
+  '古风': '/static/styles/style_gufeng.png',
+  '手绘插画': '/static/styles/style_shouhui_chahua.png',
+  '低多边形': '/static/styles/style_di_duobianxing.png',
+  '像素风': '/static/styles/style_xiangsu.png'
+};
+function styleImgSrc(s) { return STYLE_IMG[s.id] || (window.PALETTE.styleImg ? window.PALETTE.styleImg(s, 210, 100) : ''); }
+
+// v1.55：画风库数据化——优先读 /api/style-templates（data/style-templates.json，含 positive/negative_template），palette.js 仅兜底
+// 6-12 race 修复：load() 必须在 STYLES 就绪后串行执行——否则 style-templates 回调先返回而 projCache
+//   仍 null 时，renderPicked 会把 currentStyle 误写为 STYLES[0]（L143 currentStyle=currentStyle||s），
+//   与独立异步 load() 抢跑造成"当前项目画风"偶发显示不及时。现改为 IIFE 内读 STYLES 成功后串行 await
+//   load()（含 STYLES 就绪后刷新 currentStyle=项目画风），STYLES 失败则走 palette.js 兜底仍串行 load()。
+var _booted = false;
+function bootLoad() { if (_booted) return; _booted = true; load(); }
+(function () {
+  api('/style-templates').then(function (t) {
+    if (t && t.items && t.items.length) { STYLES = t.items; }
+    renderStyles();          // STYLES 就绪即刷卡（数据化优先）
+    bootLoad();              // STYLES 就绪后再读项目画风（无 race）
+  }).catch(function () {     // 后端不可用时兜底 palette.js
+    renderStyles(); bootLoad();
+  });
+})();
+
+function findStyle(id) { return STYLES.find(function (s) { return s.id === id; }); }
+// v1.55：点击画风卡即应用并自动返回（无"应用到项目"/"返回"按钮，交互更直接）
+function applyStyle(s) {
+  currentStyle = s; renderStyles(); renderPicked();
+  if (!pid) { toast('未识别项目，请从工作台/剧本摘要进入', 'error'); return; }
+  api('/projects/' + pid, jsonBody('PUT', { art_style: s.id }))
+    .then(function () {
+      toast('✓ 已应用画风「' + (s.name || s.id) + '」，返回中…', 'success');
+      var ret = new URLSearchParams(location.search).get('return');
+      setTimeout(function () {
+        if (ret) location.href = decodeURIComponent(ret);
+        else if (window.history.length > 1) window.history.back();
+        else location.href = '/';
+      }, 600);
+    })
+    .catch(function (e) { toast(e.message, 'error'); });
+}
+function renderStyles() {
+  var grid = document.getElementById('style-grid');
+  grid.innerHTML = '';
+  STYLES.forEach(function (s) {
+    if (styleFilter !== 'all' && s.type !== styleFilter) return;
+    var card = document.createElement('div');
+    card.className = 's-card2' + (currentStyle && s.id === currentStyle.id ? ' active' : '');
+    card.innerHTML =
+      '<span class="s-check">✓</span>' +
+      '<span class="s-type t-' + s.type + '">' + TYPE_LABEL[s.type] + '</span>' +
+      '<img src="' + styleImgSrc(s) + '" alt="">' +
+      '<div class="s-body"><div class="s-name">' + esc(s.name || s.id) + '</div><div class="s-desc">' + esc(s.desc || s.type) + '</div></div>';
+    card.addEventListener('click', function () { applyStyle(s); });
+    grid.appendChild(card);
+  });
+  if (!grid.children.length) grid.innerHTML = '<div style="grid-column:1/-1;color:#9ca3af;font-size:12px;padding:20px;text-align:center">无匹配画风</div>';
+}
+function renderPicked() {
+  var s = currentStyle || findStyle((projCache && projCache.art_style) || '') || STYLES[0];
+  currentStyle = currentStyle || s;
+  document.getElementById('picked-name').textContent = (s && (s.name || s.id)) || '—';
+  document.getElementById('picked-desc').textContent = (s && (s.desc || s.type)) || '';
+}
+document.querySelectorAll('#type-tabs .type-tab').forEach(function (t) {
+  t.addEventListener('click', function () {
+    document.querySelectorAll('#type-tabs .type-tab').forEach(function (x) { x.classList.toggle('active', x === t); });
+    styleFilter = t.getAttribute('data-t'); renderStyles();
+  });
+});
+document.getElementById('apply-btn') && null;  // v1.55：已移除「应用到项目」按钮（点击画风卡即应用返回）
+document.getElementById('back-btn') && null;   // v1.55：已移除「回到场页」按钮
+async function load() {
+  if (!pid) { toast('未识别项目', 'error'); return; }
+  try {
+    projCache = await api('/projects/' + pid);
+    currentStyle = findStyle(projCache.art_style) || null;
+    renderStyles(); renderPicked();
+  } catch (e) { toast(e.message, 'error'); }
+  if (!projCache) { renderStyles(); renderPicked(); }
+}
+renderStyles();
+renderPicked();
+/* 6-12：load() 改由 IIFE bootLoad() 串行触发（STYLES 就绪后再读 projCache，消除 race），不再顶层独立调用 */
+</script>
+</body>
+</html>
