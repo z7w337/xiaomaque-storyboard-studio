@@ -22,7 +22,7 @@ BASE_DIR = Path(__file__).resolve().parent
 if str(BASE_DIR) not in sys.path:
     sys.path.insert(0, str(BASE_DIR))
 
-from fastapi import FastAPI, File, Form, HTTPException, Query, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Query, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -451,6 +451,11 @@ def _extract_docx_text(raw: bytes) -> str:
     return "\n".join(lines)
 
 
+# G4-3(审计P3, 09-11)：单条 PDF 内容流解压上限——防构造性 PDF 解压放大撑爆内存。
+# zlib.decompress() 本身不支持 max_length，故改用 decompressobj().decompress(data, max_length)。
+_PDF_STREAM_MAX_BYTES = 8 * 1024 * 1024
+
+
 def _extract_pdf_text(raw: bytes) -> str:
     """从 PDF 提取文本（v1.35：标准库最小实现——zlib 解压内容流 + 正则抓取 Tj/TJ 文本）。
     对文本型 PDF 有效；扫描件/加密 PDF 返回空串（由调用方提示）。"""
@@ -462,7 +467,9 @@ def _extract_pdf_text(raw: bytes) -> str:
     chunks = []
     for s in streams:
         try:
-            data = zlib.decompress(s)
+            # G4-3(审计P3, 09-11)：带放大上限解压（超限即截断，仅取上限内字节做文本抽取）
+            _d = zlib.decompressobj()
+            data = _d.decompress(s, _PDF_STREAM_MAX_BYTES)
         except Exception:
             data = s  # 未压缩流直接尝试
         try:
@@ -497,13 +504,38 @@ def _looks_like_expert_json(content: str) -> bool:
     return hit >= 2
 
 
+# G4-1(审计P3, 09-11)：单文件上传上限 50MB。
+# 两道闸：① Content-Length 预检（声明超限直接 413，不读进内存；留 1MB 余量吸收 multipart 边界开销）
+#         ② 流式兜底（分块累加，累计超限即 413，防声明缺失/伪造）
+_MAX_UPLOAD_BYTES = 50 * 1024 * 1024
+_MAX_UPLOAD_SLACK = 1024 * 1024
+
+
+async def _read_upload_capped(file: UploadFile, request: Request,
+                              limit: int = _MAX_UPLOAD_BYTES) -> bytes:
+    """读取上传文件并施加单文件大小上限（G4-1）。超限抛 413 友好提示，不整读内存。"""
+    mb = limit // (1024 * 1024)
+    cl = request.headers.get("content-length") if request is not None else None
+    if cl and cl.isdigit() and int(cl) > limit + _MAX_UPLOAD_SLACK:
+        raise HTTPException(status_code=413, detail=f"文件过大，单文件上限 {mb}MB")
+    buf = bytearray()
+    while True:
+        chunk = await file.read(1024 * 1024)
+        if not chunk:
+            break
+        buf.extend(chunk)
+        if len(buf) > limit:
+            raise HTTPException(status_code=413, detail=f"文件过大，单文件上限 {mb}MB")
+    return bytes(buf)
+
+
 @app.post("/api/projects/{pid}/import-docx")
-async def api_import_docx(pid: str, file: UploadFile = File(...)):
+async def api_import_docx(pid: str, request: Request, file: UploadFile = File(...)):
     """上传 docx 文件，提取文本并保存为项目剧本。"""
     proj = storage.load_project(pid)
     if not proj:
         raise HTTPException(status_code=404, detail="项目不存在")
-    raw = await file.read()
+    raw = await _read_upload_capped(file, request)
     text = _extract_docx_text(raw).strip()
     if not text:
         raise HTTPException(status_code=400, detail="未从 docx 提取到文本（文件可能损坏或为空）")
@@ -810,13 +842,13 @@ async def api_tts_play(payload: TtsPlayPayload):
 
 
 @app.post("/api/tmp-image-upload")
-async def api_tmp_image_upload(file: UploadFile = File(...)):
+async def api_tmp_image_upload(request: Request, file: UploadFile = File(...)):
     """图片上传（提示词编辑器"本地上传参考图" + 资产元数据上传图）：存 SharedAssets/uploads/（被监听→可进未分类），返回相对路径。
 
     v1.6 改：由 drama/tmp 改为 uploads/（用户裁定：上传图应进被监听的上传目录，可进未分类/保留归类）。
     文件名保留原名 + 短 id 前缀防重名（便于未分类识别），扩展名沿用校验过的文件后缀。
     """
-    raw = await file.read()
+    raw = await _read_upload_capped(file, request)
     if not raw:
         raise HTTPException(status_code=400, detail="文件为空")
     ext = Path(file.filename or "img.png").suffix.lower() or ".png"
@@ -837,12 +869,12 @@ _REF_IMAGE_EXTS = (".png", ".jpg", ".jpeg", ".webp", ".gif")
 
 
 @app.post("/api/ref-upload")
-async def api_ref_upload(file: UploadFile = File(...)):
+async def api_ref_upload(request: Request, file: UploadFile = File(...)):
     """参考图上传（提示词编辑器"＋→⬆ 本地上传参考图"）：存 SharedAssets/refs/，登记为参考类资产（kind=reference）。
 
     不进"未分类"（unclassified_entries 已排除 refs/）；由资产库"参考类"标签维护；可被引用/复用。
     """
-    raw = await file.read()
+    raw = await _read_upload_capped(file, request)
     if not raw:
         raise HTTPException(status_code=400, detail="文件为空")
     ext = Path(file.filename or "img.png").suffix.lower() or ".png"
@@ -972,13 +1004,13 @@ def api_references_by_asset(asset_id: str):
 
 
 @app.post("/api/tmp-audio-upload")
-async def api_tmp_audio_upload(file: UploadFile = File(...)):
+async def api_tmp_audio_upload(request: Request, file: UploadFile = File(...)):
     """临时参考音频上传（不依赖资产）：存 SharedAssets\audio\tmp\，保存资产时引用。
     §十四 B-a 项③：接入 asset_validator 单文件合规校验（时长 2~15s/采样率≥16kHz/大小/格式）。
     合规 → {path,warn}；不合规 → 保留 tmp 文件供前端"试听+×删除"处置（B4 用户走查 09-06）：
       返回 {ok:false, path, error}（HTTP 200，不 400 拒——让用户能听到/删掉/重传这条音频；
       文件保留在 audio/tmp 但不作为卡音源入库，防超长音频进 H3 OOM 的安全底线仍在）。"""
-    raw = await file.read()
+    raw = await _read_upload_capped(file, request)
     if not raw:
         raise HTTPException(status_code=400, detail="文件为空")
     ext = Path(file.filename or "ref.mp3").suffix.lower() or ".mp3"
@@ -1965,10 +1997,10 @@ async def api_gsplat_upload(file: UploadFile = File(...)):
             "size": dest.stat().st_size}
 
 @app.post("/api/gsplat/save")
-async def api_gsplat_save(file: UploadFile = File(...)):
+async def api_gsplat_save(request: Request, file: UploadFile = File(...)):
     """3D 预览截图 → 素材区（参考类 kind=reference，落地即资产）。复用 ref-upload 入库通道：
     存 SharedAssets/refs/ + library.new_reference（prefix 由文件名派生）+ assets_index.register_file（幂等登记）。"""
-    raw = await file.read()
+    raw = await _read_upload_capped(file, request)
     if not raw:
         raise HTTPException(status_code=400, detail="截图文件为空")
     ext = Path(file.filename or "gs.png").suffix.lower() or ".png"

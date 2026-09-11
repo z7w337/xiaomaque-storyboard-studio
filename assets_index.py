@@ -253,12 +253,51 @@ def _auto_materialize_if_needed(rel: str) -> None:
         pass  # fail-open：不阻断 observer/reconcile 循环
 
 
+def _auto_materialize_batch(rels) -> None:
+    """G1-2(审计P3, 09-11)：批量自动资产化——references.json **一次读 + 一次写**。
+
+    原实现逐张 library.new_reference() → save_reference() 各做一次全量读改写 = O(N²)；
+    本批改为：① 一次 materialized_src_set() 预筛（幂等判定）→ ② build_reference 构造 →
+    ③ new_references_batch() 一次落盘。
+
+    调用前提：调用方已持 **library 锁 + _INDEX_LOCK**（先 library 后 assets_index）。
+    语义与 _auto_materialize_if_needed 逐项一致（refs/ 跳过、非自动图后缀跳过、fail-open）。
+    """
+    try:
+        covered = library.materialized_src_set()
+    except Exception:
+        return  # fail-open
+    cards = []
+    for rel in rels:
+        if not rel or Path(rel).suffix.lower() not in _AUTO_IMG_EXTS:
+            continue
+        r = _norm_rel(rel)
+        if not r or r.startswith("refs/"):
+            continue
+        if r in covered:
+            continue
+        covered.add(r)   # 批内去重：同一 rel 只建一张卡
+        try:
+            cards.append(library.build_reference("", r))
+        except Exception:
+            continue
+    if not cards:
+        return
+    try:
+        library.new_references_batch(cards)
+    except Exception:
+        pass  # fail-open：不阻断 observer/reconcile 循环
+
+
 def register_file(rel: str, source: str | None = None, task_id: str = "",
                   note: str = "") -> dict:
     """幂等登记一个媒体文件（监听/对账共用）。
 
     收尾A④：登记前若为"未被资产化的游离裸图"则**自动资产化建卡**（方案A指向原图）；
     登记本身仍只写版本索引。返回：{"action": "skip"|"new"|"version"|"ignored"|"missing", ...}
+
+    G1-1(审计P3, 09-11)：建卡与登记合并进**同一临界区**，消除「幂等检查→建卡」之间的 TOCTOU
+    重复建卡窗口。锁序纪律：**先 library 后 assets_index，不可反**（见下方 with 的锁顺序）。
     """
     rel = _norm_rel(rel)
     if not rel:
@@ -274,55 +313,63 @@ def register_file(rel: str, source: str | None = None, task_id: str = "",
     if not abs_path.is_file():
         return {"action": "missing", "entry": None, "msg": f"文件不存在：{rel}"}
 
-    # 收尾A④：自动资产化（锁外、登记前；内部 _LIBRARY_LOCK 建卡，先于下方 _INDEX_LOCK，锁序安全）
-    _auto_materialize_if_needed(rel)
-
     sha = compute_sha256(abs_path)
     src = source or _source_from_path(rel)
 
-    with _INDEX_LOCK:
+    # G1-1：两把锁一次性按序获取（先 library 锁=建卡域，后 _INDEX_LOCK=索引域，不可反），
+    #       建卡与登记同处一个临界区 → 并发 register 同一新文件不会重复建卡。
+    with library.lock(), _INDEX_LOCK:
+        _auto_materialize_if_needed(rel)   # 收尾A④：自动资产化（幂等）
         data = load_index()
-        entries = data["entries"]
+        r = _register_file_core(data, rel, abs_path, sha, src, task_id, note)
+        if r["action"] in ("new", "version"):
+            save_index(data)
+        return r
 
-        # 幂等：路径 + sha256 均同 → 已登记，跳过
-        for e in entries:
-            if e.get("path") == rel and e.get("sha256") == sha:
-                e.setdefault("last_seen", library.now_iso())
-                return {"action": "skip", "entry": e, "msg": "已登记（路径+sha256 相同）"}
 
-        # 同路径的既有记录：把当前"在用"标记为"历史"（内容变化 → 自动版本）
-        same_path = [e for e in entries if e.get("path") == rel]
-        for e in same_path:
-            if e.get("status") == ST_IN_USE:
-                e["status"] = ST_HISTORY
+def _register_file_core(data: dict, rel: str, abs_path: Path, sha: str, src: str,
+                        task_id: str = "", note: str = "") -> dict:
+    """register_file 的**锁内**实现（G1-2 批量复用）：只读写传入的 data，不取锁、不 load/save。"""
+    entries = data["entries"]
 
-        entry = {
-            "id": library.new_id("v_"),
-            "path": rel,
-            "sha256": sha,
-            "size": abs_path.stat().st_size,
-            "mtime": datetime.fromtimestamp(abs_path.stat().st_mtime).isoformat(timespec="seconds"),
-            "first_seen": library.now_iso(),
-            "last_seen": library.now_iso(),
-            "source": src,
-            "task_id": task_id or _match_open_task(rel),
-            "status": ST_IN_USE,
-            "note": note,
-            # 第6批：未分类图片引用计数（本模块新增；旧条目由 refresh/apply_all_ref_counts 补齐默认值）
-            # ref_sources[] 元素: {"type":"asset","kind":...,"id":...,"field":"images"}
-            #                    | {"type":"scene_video","pid":...,"eid":...,"sid":...,"field":"thumbnail"}
-            "ref_count": 0,
-            "ref_sources": [],
-            "source_scene": None,   # 截帧图额外记录归属场 {"pid","eid","sid"}；非截帧图为 None
-        }
-        entries.append(entry)
-        data["entries"] = entries
-        # 保护性副本开关（默认关）
-        if _protect_copy_enabled():
-            _store_protect_copy(abs_path, entry["id"])
-        save_index(data)
-        action = "version" if same_path else "new"
-        return {"action": action, "entry": entry, "msg": f"登记成功（{action}）：{rel}"}
+    # 幂等：路径 + sha256 均同 → 已登记，跳过
+    for e in entries:
+        if e.get("path") == rel and e.get("sha256") == sha:
+            e.setdefault("last_seen", library.now_iso())
+            return {"action": "skip", "entry": e, "msg": "已登记（路径+sha256 相同）"}
+
+    # 同路径的既有记录：把当前"在用"标记为"历史"（内容变化 → 自动版本）
+    same_path = [e for e in entries if e.get("path") == rel]
+    for e in same_path:
+        if e.get("status") == ST_IN_USE:
+            e["status"] = ST_HISTORY
+
+    entry = {
+        "id": library.new_id("v_"),
+        "path": rel,
+        "sha256": sha,
+        "size": abs_path.stat().st_size,
+        "mtime": datetime.fromtimestamp(abs_path.stat().st_mtime).isoformat(timespec="seconds"),
+        "first_seen": library.now_iso(),
+        "last_seen": library.now_iso(),
+        "source": src,
+        "task_id": task_id or _match_open_task(rel),
+        "status": ST_IN_USE,
+        "note": note,
+        # 第6批：未分类图片引用计数（本模块新增；旧条目由 refresh/apply_all_ref_counts 补齐默认值）
+        # ref_sources[] 元素: {"type":"asset","kind":...,"id":...,"field":"images"}
+        #                    | {"type":"scene_video","pid":...,"eid":...,"sid":...,"field":"thumbnail"}
+        "ref_count": 0,
+        "ref_sources": [],
+        "source_scene": None,   # 截帧图额外记录归属场 {"pid","eid","sid"}；非截帧图为 None
+    }
+    entries.append(entry)
+    data["entries"] = entries
+    # 保护性副本开关（默认关）
+    if _protect_copy_enabled():
+        _store_protect_copy(abs_path, entry["id"])
+    action = "version" if same_path else "new"
+    return {"action": action, "entry": entry, "msg": f"登记成功（{action}）：{rel}"}
 
 
 def _match_open_task(rel: str) -> str:
@@ -385,35 +432,58 @@ def mark_deleted(rel: str) -> dict:
 # ==================== 全量对账（基线 + 兜底） ====================
 
 def reconcile() -> dict:
-    """全量扫描共享库：注册缺失媒体、标记已删除。返回统计。"""
+    """全量扫描共享库：注册缺失媒体、标记已删除。返回统计。
+
+    G1-2(审计P3, 09-11)：首轮批内合并单次写——建卡（references.json）与索引各只落盘一次，
+    N 张裸图的开销由 O(N²) 降为 O(N)。锁序：先 library 后 assets_index（一次 with 按序获取）。
+    """
     root = Path(library.get_shared_assets_path())
     if not root.is_dir():
         return {"new": 0, "version": 0, "skipped": 0, "marked_deleted": 0, "total_files": 0}
-    new_c = version_c = skipped_c = deleted_c = 0
+
+    # ① 一次性收集磁盘上实际存在的媒体文件（原为边遍历边逐条登记）
+    rels = []
     seen = set()
-    # 磁盘上实际存在的媒体文件
     for p in root.rglob("*"):
         if not p.is_file():
             continue
         rel = _norm_rel(str(p.relative_to(root)))
         if not is_media_rel(rel):
             continue
+        if rel in seen:
+            continue
         seen.add(rel)
-        r = register_file(rel)
-        if r["action"] in ("new", "version"):
-            new_c += r["action"] == "new"
-            version_c += r["action"] == "version"
-        elif r["action"] == "skip":
-            skipped_c += 1
-    # 索引中"在用"但磁盘已不存在 → 标记已删除
-    with _INDEX_LOCK:
+        rels.append(rel)
+
+    new_c = version_c = skipped_c = deleted_c = 0
+    with library.lock(), _INDEX_LOCK:
+        # ② 批量建卡：references.json 一次读 + 一次写
+        _auto_materialize_batch(rels)
+        # ③ 批量登记：索引一次 load + 一次 save
         data = load_index()
+        changed = False
+        for rel in rels:
+            abs_path = (root / rel).resolve()
+            if not abs_path.is_file():
+                continue
+            sha = compute_sha256(abs_path)
+            r = _register_file_core(data, rel, abs_path, sha, _source_from_path(rel))
+            act = r["action"]
+            if act == "new":
+                new_c += 1
+                changed = True
+            elif act == "version":
+                version_c += 1
+                changed = True
+            elif act == "skip":
+                skipped_c += 1
+        # ④ 索引中"在用"但磁盘已不存在 → 标记已删除
         for e in data["entries"]:
             if e.get("status") == ST_IN_USE and e.get("path") not in seen:
                 e["status"] = ST_DELETED
                 e.setdefault("deleted_at", library.now_iso())
                 deleted_c += 1
-        if deleted_c:
+        if changed or deleted_c:
             save_index(data)
     return {
         "new": new_c, "version": version_c, "skipped": skipped_c,

@@ -13,6 +13,7 @@
             voice_text(仅人物), audios[]({path,type(trial/reference),role(voice_sample/reference/trial),voice,added_at}),
             voice_source, voice, created_at, updated_at }
 """
+import contextlib
 import threading
 import uuid
 from datetime import datetime
@@ -454,11 +455,24 @@ def find_materialized_by_src_rel(src_rel: str) -> dict | None:
     return None
 
 
-def new_reference(prefix: str = "", path: str = "", source_asset_id: str = "",
-                  variant_name: str = "", scopes: dict | None = None, prompt: str = "",
-                  images: list | None = None, voice_text: str = "", audios: list | None = None,
-                  voice_source: str = "text", voice: str = "") -> dict:
-    """新建统一结构参考类资产。prefix 缺省时由 path 文件名派生（上传参考图走此，落地即资产）。"""
+@contextlib.contextmanager
+def lock():
+    """G1-1(审计P3, 09-11)：对外暴露全局写锁，供调用方按「先 library 后 assets_index」组合临界区。
+
+    铁律（锁序不可反）：持有本锁后**可以**再取 assets_index._INDEX_LOCK；
+    反之（先持 _INDEX_LOCK 再取本锁）会造成与库内既有路径相反的锁序 → 禁止。
+    本锁为 RLock（可重入），库内 save_reference/inc_* 等在同一线程内可安全重入。
+    """
+    with _LIBRARY_LOCK:
+        yield
+
+
+def build_reference(prefix: str = "", path: str = "", source_asset_id: str = "",
+                    variant_name: str = "", scopes: dict | None = None, prompt: str = "",
+                    images: list | None = None, voice_text: str = "", audios: list | None = None,
+                    voice_source: str = "text", voice: str = "") -> dict:
+    """只构造参考类资产 dict，**不落盘**（G1-2 批量建卡用）。
+    落盘请走 new_reference()（单张）或 new_references_batch()（批量，一次写）。"""
     p = _norm_ref_path(path)
     stem = Path(p).name or p
     name = stem.split("_", 1)[1] if (stem and "_" in stem and stem.split("_", 1)[1]) else stem
@@ -466,7 +480,7 @@ def new_reference(prefix: str = "", path: str = "", source_asset_id: str = "",
     now = now_iso()
     cur_prefix = (prefix or "").strip() or name
     images = images if isinstance(images, list) and images else ([{"path": p, "version": "", "gen_prompt": "", "source": "reference", "added_at": now}] if p else [])
-    ref = {
+    return {
         "id": new_id(REF_ID_PREFIX),
         "prefix": cur_prefix,
         "variant_name": variant_name or REF_VARIANT_DEFAULT,
@@ -483,8 +497,67 @@ def new_reference(prefix: str = "", path: str = "", source_asset_id: str = "",
         "created_at": now,
         "updated_at": now,
     }
+
+
+def new_reference(prefix: str = "", path: str = "", source_asset_id: str = "",
+                  variant_name: str = "", scopes: dict | None = None, prompt: str = "",
+                  images: list | None = None, voice_text: str = "", audios: list | None = None,
+                  voice_source: str = "text", voice: str = "") -> dict:
+    """新建统一结构参考类资产。prefix 缺省时由 path 文件名派生（上传参考图走此，落地即资产）。"""
+    ref = build_reference(prefix=prefix, path=path, source_asset_id=source_asset_id,
+                          variant_name=variant_name, scopes=scopes, prompt=prompt,
+                          images=images, voice_text=voice_text, audios=audios,
+                          voice_source=voice_source, voice=voice)
     save_reference(ref)
     return ref
+
+
+def new_references_batch(refs: list) -> list:
+    """G1-2(审计P3, 09-11)：批量落盘参考类资产——**一次 load + 一次 write**。
+
+    替代「逐张 save_reference」各做一次 references.json 全量读改写（N 张卡 = O(N²) 写放大）。
+    入参为 build_reference() 构造好的 ref dict 列表；同 id 视为更新，否则追加。
+    """
+    if not refs:
+        return []
+    with _LIBRARY_LOCK:
+        items = _load_reference_items()
+        idx = {it.get("id"): i for i, it in enumerate(items)}
+        out = []
+        for raw_ref in refs:
+            ref = _migrate_old_ref(raw_ref)
+            ref.setdefault("variant_name", REF_VARIANT_DEFAULT)
+            ref.setdefault("scopes", {"projects": [], "episodes": [], "scenes": []})
+            pos = idx.get(ref.get("id"))
+            if pos is None:
+                idx[ref.get("id")] = len(items)
+                items.append(ref)
+            else:
+                items[pos] = ref
+            out.append(ref)
+        _write_reference_items(items)
+        return out
+
+
+def materialized_src_set() -> set:
+    """G1-2(审计P3, 09-11)：一次性返回「已被素材卡覆盖」的规范化源路径集合。
+
+    与 find_materialized_by_src_rel() 的匹配口径完全一致（_src_rel / path / images[0].path），
+    供批量幂等预筛用，避免逐项调用触发 N 次 references.json 全量读（O(N²) 读放大）。
+    """
+    out = set()
+    try:
+        for it in list_references():
+            for k in ("_src_rel", "path"):
+                v = it.get(k)
+                if v:
+                    out.add(_norm_ref_path(v))
+            im = it.get("images") or []
+            if im and isinstance(im[0], dict) and im[0].get("path"):
+                out.add(_norm_ref_path(im[0]["path"]))
+    except Exception:
+        pass
+    return out
 
 
 def save_reference(ref: dict) -> None:

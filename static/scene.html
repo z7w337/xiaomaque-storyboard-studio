@@ -1092,7 +1092,7 @@ function attachChipBehaviors() {
     } else {
       s.addEventListener('click', function (e) {
         e.stopPropagation();
-        window.confirmDialog('删除引用', '删除引用 @' + s.getAttribute('data-ref') + '？', function () { removeRef(s.getAttribute('data-ref')); }, '删除');
+        window.confirmDialog('删除引用', '删除引用 @' + esc(s.getAttribute('data-ref')) + '？', function () { removeRef(s.getAttribute('data-ref')); }, '删除');
       });
     }
   });
@@ -1326,7 +1326,7 @@ function makeRefChip(name, refPath) {
   });
   s.addEventListener('mouseleave', function () { if (preview) preview.style.display = 'none'; preview = null; });
   var delLabel = isPath ? disp : name;
-  s.addEventListener('click', function (e) { e.stopPropagation(); window.confirmDialog('删除引用', '删除引用 @' + delLabel + '？', function () { removeRef(isPath ? ('~' + refPath) : name); }, '删除'); });
+  s.addEventListener('click', function (e) { e.stopPropagation(); window.confirmDialog('删除引用', '删除引用 @' + esc(delLabel) + '？', function () { removeRef(isPath ? ('~' + refPath) : name); }, '删除'); });
   return s;
 }
 /* 在光标 @ 位置插入一张"按图路径引用的截帧/未分类/参考" chip */
