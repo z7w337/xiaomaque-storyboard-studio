@@ -1,0 +1,205 @@
+{
+  "name": "雨夜寻踪（演示项目）",
+  "art_style": "悬疑国风插画",
+  "aspect_ratio": "16:9",
+  "demo_setup": {
+    "characters": [
+      {
+        "id": "demo_char_linwan",
+        "name": "林晚",
+        "description": "药铺掌柜之女，性格沉静，追查怀表秘密",
+        "standard_appearance": "素色旗袍，墨绿油纸伞，发髻微乱，眉间忧虑"
+      },
+      {
+        "id": "demo_char_shenmo",
+        "name": "沈默",
+        "description": "神秘来客，知晓怀表来历",
+        "standard_appearance": "玄色长衫，斗笠遮面，腰悬铜铃，目光沉静"
+      },
+      {
+        "id": "demo_char_xiaoman",
+        "name": "小满",
+        "description": "林晚的妹妹，机灵活泼",
+        "standard_appearance": "短打布衣，双丫髻，赤脚，冒雨跑来"
+      }
+    ],
+    "scenes": [
+      {
+        "id": "demo_scene_street",
+        "name": "雨夜老街",
+        "description": "故事核心场景，全剧主舞台",
+        "standard_environment": "青石板路，昏黄路灯，雨幕连绵，药铺招牌泛黄，街尾有钟楼"
+      }
+    ],
+    "props": [
+      {
+        "id": "demo_prop_umbrella",
+        "name": "油纸伞",
+        "description": "林晚的随身道具，与怀表同源",
+        "standard_appearance": "墨绿伞面，竹骨，伞柄刻『林』字"
+      },
+      {
+        "id": "demo_prop_watch",
+        "name": "怀表",
+        "description": "核心线索道具，指针异常",
+        "standard_appearance": "黄铜外壳，表盘裂纹，指针倒走，停在 11:47"
+      }
+    ]
+  },
+  "episodes": [
+    {
+      "title": "第一集 雨夜",
+      "scenes": [
+        {
+          "title": "场景一 老街雨夜",
+          "shots": [
+            {
+              "desc": "雨夜老街全景，雨水倾泻，路灯昏黄，钟楼在街尾",
+              "dialogue": "",
+              "narration": "雨夜，青石板老街。",
+              "characters": [],
+              "scene": "demo_scene_street",
+              "props": [],
+              "shot_size": "远景",
+              "camera": "固定",
+              "duration": 5,
+              "status": "待生成"
+            },
+            {
+              "desc": "林晚撑墨绿油纸伞沿街走来，神情疲惫",
+              "dialogue": "",
+              "narration": "",
+              "characters": ["demo_char_linwan"],
+              "scene": "demo_scene_street",
+              "props": ["demo_prop_umbrella"],
+              "shot_size": "中景",
+              "camera": "跟拍",
+              "duration": 6,
+              "status": "待生成"
+            },
+            {
+              "desc": "林晚停在药铺门前，抬头看泛黄招牌",
+              "dialogue": "",
+              "narration": "",
+              "characters": ["demo_char_linwan"],
+              "scene": "demo_scene_street",
+              "props": [],
+              "shot_size": "近景",
+              "camera": "固定",
+              "duration": 4,
+              "status": "待生成"
+            },
+            {
+              "desc": "怀表在手中转动，指针停在 11:47",
+              "dialogue": "（低声）还有三分钟……",
+              "narration": "",
+              "characters": ["demo_char_linwan"],
+              "scene": "demo_scene_street",
+              "props": ["demo_prop_watch"],
+              "shot_size": "特写",
+              "camera": "固定",
+              "duration": 4,
+              "status": "待生成"
+            },
+            {
+              "desc": "沈默披玄色斗篷从巷口出现，斗笠遮面",
+              "dialogue": "",
+              "narration": "",
+              "characters": ["demo_char_shenmo"],
+              "scene": "demo_scene_street",
+              "props": [],
+              "shot_size": "中景",
+              "camera": "摇镜",
+              "duration": 6,
+              "status": "待生成"
+            },
+            {
+              "desc": "林晚与沈默过肩对话，林晚警觉",
+              "dialogue": "林晚：你是谁？",
+              "narration": "",
+              "characters": ["demo_char_linwan", "demo_char_shenmo"],
+              "scene": "demo_scene_street",
+              "props": [],
+              "shot_size": "过肩",
+              "camera": "固定",
+              "duration": 5,
+              "status": "待生成"
+            },
+            {
+              "desc": "沈默近景，说出怀表来历",
+              "dialogue": "沈默：你手里那块表，不是你的。",
+              "narration": "",
+              "characters": ["demo_char_shenmo"],
+              "scene": "demo_scene_street",
+              "props": ["demo_prop_watch"],
+              "shot_size": "近景",
+              "camera": "固定",
+              "duration": 6,
+              "status": "待生成"
+            },
+            {
+              "desc": "林晚握紧怀表，神色警觉，后退半步",
+              "dialogue": "",
+              "narration": "林晚后退半步，握紧怀表。",
+              "characters": ["demo_char_linwan"],
+              "scene": "demo_scene_street",
+              "props": ["demo_prop_watch"],
+              "shot_size": "近景",
+              "camera": "固定",
+              "duration": 4,
+              "status": "待生成"
+            },
+            {
+              "desc": "小满冒雨从街尾跑来，喊姐姐",
+              "dialogue": "小满：姐姐！出事了！",
+              "narration": "",
+              "characters": ["demo_char_xiaoman"],
+              "scene": "demo_scene_street",
+              "props": [],
+              "shot_size": "中景",
+              "camera": "跟拍",
+              "duration": 5,
+              "status": "待生成"
+            },
+            {
+              "desc": "三人雨中对峙全景，雨势渐大",
+              "dialogue": "小满：钟楼的钟……停了。",
+              "narration": "三人对峙，雨势渐大。",
+              "characters": ["demo_char_linwan", "demo_char_shenmo", "demo_char_xiaoman"],
+              "scene": "demo_scene_street",
+              "props": ["demo_prop_umbrella"],
+              "shot_size": "全景",
+              "camera": "升降",
+              "duration": 7,
+              "status": "待生成"
+            },
+            {
+              "desc": "怀表表盘裂纹，指针开始倒走",
+              "dialogue": "林晚：它……在倒走。沈默：时间，在等人。",
+              "narration": "",
+              "characters": ["demo_char_linwan", "demo_char_shenmo"],
+              "scene": "demo_scene_street",
+              "props": ["demo_prop_watch"],
+              "shot_size": "特写",
+              "camera": "固定",
+              "duration": 4,
+              "status": "待生成"
+            },
+            {
+              "desc": "镜头拉远，老街灯火次第熄灭，只剩药铺一盏灯",
+              "dialogue": "",
+              "narration": "老街灯火次第熄灭，只剩药铺门前一盏灯。",
+              "characters": ["demo_char_linwan", "demo_char_shenmo", "demo_char_xiaoman"],
+              "scene": "demo_scene_street",
+              "props": [],
+              "shot_size": "远景",
+              "camera": "拉镜",
+              "duration": 8,
+              "status": "待生成"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

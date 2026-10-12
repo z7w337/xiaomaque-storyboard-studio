@@ -1,0 +1,19 @@
+{
+  "1": {"inputs": {"strength": 1, "model": ["2", 0]}, "class_type": "CFGNorm"},
+  "2": {"inputs": {"shift": 3, "model": ["20", 0]}, "class_type": "ModelSamplingAuraFlow"},
+  "3": {"inputs": {"prompt": "", "speak_and_recognation": {"__value__": [false, true]}, "clip": ["87", 0], "vae": ["22", 0], "image1": ["39", 0]}, "class_type": "TextEncodeQwenImageEditPlus"},
+  "10": {"inputs": {"pixels": ["39", 0], "vae": ["22", 0]}, "class_type": "VAEEncode"},
+  "11": {"inputs": {"prompt": "将摄像机向右旋转45度", "speak_and_recognation": {"__value__": [false, true]}, "clip": ["87", 0], "vae": ["22", 0], "image1": ["39", 0]}, "class_type": "TextEncodeQwenImageEditPlus"},
+  "12": {"inputs": {"samples": ["14", 0], "vae": ["22", 0]}, "class_type": "VAEDecode"},
+  "14": {"inputs": {"seed": 691951626916858, "steps": 8, "cfg": 1, "sampler_name": "euler", "scheduler": "simple", "denoise": 1, "model": ["1", 0], "positive": ["84", 0], "negative": ["85", 0], "latent_image": ["10", 0]}, "class_type": "KSampler"},
+  "20": {"inputs": {"lora_name": "Qwen-Image-Edit-2511-Lightning-4steps-V1.0-bf16.safetensors", "strength_model": 1, "model": ["76", 0]}, "class_type": "LoraLoaderModelOnly"},
+  "22": {"inputs": {"vae_name": "qwen_image_vae.safetensors"}, "class_type": "VAELoader"},
+  "31": {"inputs": {"image": "05-1.jpg"}, "class_type": "LoadImage"},
+  "39": {"inputs": {"upscale_method": "lanczos", "megapixels": 1, "resolution_steps": 1, "image": ["31", 0]}, "class_type": "ImageScaleToTotalPixels"},
+  "45": {"inputs": {"images": ["12", 0]}, "class_type": "PreviewImage"},
+  "76": {"inputs": {"lora_name": "qwen-image-edit-2511-multiple-angles-lora.safetensors", "strength_model": 1, "model": ["86", 0]}, "class_type": "LoraLoaderModelOnly"},
+  "84": {"inputs": {"reference_latents_method": "index_timestep_zero", "conditioning": ["11", 0]}, "class_type": "FluxKontextMultiReferenceLatentMethod"},
+  "85": {"inputs": {"reference_latents_method": "index_timestep_zero", "conditioning": ["3", 0]}, "class_type": "FluxKontextMultiReferenceLatentMethod"},
+  "86": {"inputs": {"unet_name": "qwen_image_edit_2511_fp8_e4m3fn.safetensors", "weight_dtype": "default"}, "class_type": "UNETLoader"},
+  "87": {"inputs": {"clip_name": "qwen_2.5_vl_7b_fp8_scaled.safetensors", "type": "qwen_image", "device": "default"}, "class_type": "CLIPLoader"}
+}

@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>小麻雀脚本与分镜工坊 - 回收站</title>
+<style>
+  /* ===== 页面骨架（与工坊各页一致：侧栏 nav.js + 主区）===== */
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "Microsoft YaHei", "PingFang SC", sans-serif; background: var(--ss-bg); color: #333; display: flex; min-height: 100vh; }
+  .main-wrap { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  main { max-width: 1180px; margin: 18px auto; padding: 0 18px; width: 100%; }
+  button { padding: 8px 16px; border: none; border-radius: 8px; cursor: pointer; font-size: 13px; }
+  .btn-ghost { background: var(--ss-bg); color: var(--ss-text-2); border: 1px solid var(--ss-border); }
+  .btn-ghost:hover { background: var(--ss-border); }
+  .btn-mini { padding: 4px 10px; font-size: 12px; border-radius: 6px; }
+  .btn-danger { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+  .btn-danger:hover { background: #fee2e2; }
+  .btn-use { background: var(--ss-green-600, #2f7a5a); color: #fff; }
+  .btn-use:hover { opacity: .92; }
+  .panel { background: var(--ss-card); border: 1px solid var(--ss-border); border-radius: 12px; padding: 16px; }
+  .page-title { font-size: 18px; font-weight: 700; color: var(--ss-text-1); margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
+  .page-title .sub { font-size: 12px; font-weight: 400; color: var(--ss-text-4); }
+  .banner { font-size: 12px; color: var(--ss-green-700, #2f5d4a); background: var(--ss-green-50, #eef6f1); border: 1px solid var(--ss-green-200, #cfe6da); border-radius: 8px; padding: 6px 12px; margin: 8px 0 14px; line-height: 1.7; }
+  .tr-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+  .tr-bar .hint { font-size: 12px; color: var(--ss-text-4); }
+
+  /* 卡片网格 */
+  .tr-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
+  .tr-card { border: 1px solid var(--ss-border); border-radius: 10px; overflow: hidden; background: var(--ss-card); display: flex; flex-direction: column; }
+  .tr-thumb { width: 100%; aspect-ratio: 1 / 1; background: #f3f4f6; display: flex; align-items: center; justify-content: center; overflow: hidden; color: #9ca3af; font-size: 22px; }
+  .tr-thumb img, .tr-thumb video { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .tr-body { padding: 8px 10px 10px; font-size: 12px; color: var(--ss-text-2); line-height: 1.7; }
+  .tr-name { font-weight: 600; color: var(--ss-text-1); word-break: break-all; font-size: 12.5px; margin-bottom: 2px; }
+  .tr-k { color: var(--ss-text-4); }
+  .tr-acts { display: flex; gap: 6px; margin-top: 8px; }
+  .tr-acts button { flex: 1; }
+  .tr-empty { grid-column: 1 / -1; text-align: center; color: var(--ss-text-4); font-size: 13px; padding: 40px 0; line-height: 1.9; }
+</style>
+</head>
+<body>
+<aside id="sidebar"></aside>
+<div class="main-wrap">
+<main>
+  <div class="page-title">🗑 回收站 <span class="sub">删除的文件先到这里，可恢复</span></div>
+  <div class="banner">
+    在资产库 / 未分类图里删除的文件会<b>先放进这里，不会立刻从磁盘消失</b>。想找回就点「恢复」，文件会回到原来的位置（原位被占用时自动改名，绝不覆盖）。
+    确认不要了再点「彻底删除」；<b>超过 30 天会自动清理</b>（彻底删除，不可恢复）。
+  </div>
+
+  <div class="tr-bar">
+    <span class="hint" id="tr-stats">加载中…</span>
+    <button class="btn-danger btn-mini" style="margin-left:auto" onclick="trEmpty()">清空回收站</button>
+  </div>
+
+  <div class="panel">
+    <div class="tr-grid" id="tr-list"><div class="tr-empty">加载中…</div></div>
+  </div>
+</main>
+</div>
+<script src="/static/nav.js"></script>
+<script>
+const API = '/api';
+
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
+function fmtSize(n) {
+  n = Number(n) || 0;
+  if (n < 1024) return n + ' B';
+  if (n < 1048576) return (n / 1024).toFixed(1) + ' KB';
+  return (n / 1048576).toFixed(1) + ' MB';
+}
+function fmtTime(s) { return String(s || '').replace('T', ' ').slice(0, 16); }
+function isVideo(name) { return /\.(mp4|mov|mkv|webm|avi)$/i.test(name || ''); }
+/* 按段编码、保留 "/"（encodeURIComponent 整串会把斜杠编成 %2F：服务端现在能解码，
+   但那依赖 ASGI 层行为、且 URL 不可读）—— 与后端路径语义一致，更稳。 */
+function fileUrl(it) {
+  const rel = it.preview || ('.trash/' + it.file);
+  return '/api/asset-file/' + String(rel).split('/').map(encodeURIComponent).join('/');
+}
+
+async function api(path, opt) {
+  const r = await fetch(API + path, opt);
+  if (!r.ok) {
+    let d = '';
+    try { d = (await r.json()).detail || ''; } catch (e) { }
+    throw new Error(d || ('HTTP ' + r.status));
+  }
+  return r.json();
+}
+
+function thumb(it) {
+  const u = fileUrl(it);
+  if (isVideo(it.name)) return '<video src="' + esc(u) + '" muted preload="metadata"></video>';
+  return '<img src="' + esc(u) + '" alt="" onerror="this.style.display=\'none\';this.parentNode.textContent=\'🖼️\'">';
+}
+
+function card(it) {
+  return '<div class="tr-card">'
+    + '<div class="tr-thumb">' + thumb(it) + '</div>'
+    + '<div class="tr-body">'
+    + '<div class="tr-name" title="' + esc(it.name) + '">' + esc(it.name) + '</div>'
+    + '<div><span class="tr-k">原位置：</span>' + esc(it.rel || '—') + '</div>'
+    + '<div><span class="tr-k">删除于：</span>' + esc(fmtTime(it.deleted_at)) + ' · ' + esc(fmtSize(it.size)) + '</div>'
+    + '<div><span class="tr-k">来源：</span>' + esc(it.reason || '删除') + '</div>'
+    + '<div class="tr-acts">'
+    + '<button class="btn-use btn-mini" onclick="trRestore(\'' + esc(it.id) + '\')">恢复</button>'
+    + '<button class="btn-danger btn-mini" onclick="trPurge(\'' + esc(it.id) + '\',\'' + esc(it.name).replace(/'/g, "\\'") + '\')">彻底删除</button>'
+    + '</div></div></div>';
+}
+
+async function load() {
+  const box = document.getElementById('tr-list');
+  const st = document.getElementById('tr-stats');
+  try {
+    const j = await api('/trash');
+    const items = j.items || [];
+    box.innerHTML = items.length
+      ? items.map(card).join('')
+      : '<div class="tr-empty">回收站是空的。<br>在资产库里删除的文件会先到这里，可以随时恢复。</div>';
+    st.textContent = items.length
+      ? ('共 ' + items.length + ' 个文件 · 占用 ' + fmtSize((j.stats || {}).bytes) + ' · 保留 ' + (j.keep_days || 30) + ' 天（超期自动清理）')
+      : ('当前没有可恢复的文件 · 保留 ' + (j.keep_days || 30) + ' 天');
+  } catch (e) {
+    box.innerHTML = '<div class="tr-empty">读取失败：' + esc(e.message || e) + '</div>';
+    st.textContent = '';
+  }
+}
+
+async function trRestore(id) {
+  try {
+    const r = await api('/trash/' + encodeURIComponent(id) + '/restore', { method: 'POST' });
+    if (window.toast) window.toast(r.renamed ? ('已恢复（原位置被占用，另存为 ' + r.rel + '）') : '已恢复到原来的位置', 'success');
+    load();
+  } catch (e) { if (window.toast) window.toast('恢复失败：' + (e.message || e), 'error'); }
+}
+
+function trPurge(id, name) {
+  const doIt = async function () {
+    try {
+      await api('/trash/' + encodeURIComponent(id), { method: 'DELETE' });
+      if (window.toast) window.toast('已彻底删除', 'success');
+      load();
+    } catch (e) { if (window.toast) window.toast('删除失败：' + (e.message || e), 'error'); }
+  };
+  if (window.confirmDialog) {
+    window.confirmDialog('彻底删除', '<div style="line-height:1.7">确认彻底删除 <b>' + esc(name) + '</b> ？<br>'
+      + '<span style="color:#9ca3af;font-size:12px">这是从磁盘上删掉，删除后不能恢复。</span></div>', doIt, '确定删除');
+  } else doIt();
+}
+
+function trEmpty() {
+  const doIt = async function () {
+    try {
+      const r = await api('/trash/empty', { method: 'POST' });
+      if (window.toast) window.toast('已清空回收站（' + (r.deleted || 0) + ' 个文件）', 'success');
+      load();
+    } catch (e) { if (window.toast) window.toast('清空失败：' + (e.message || e), 'error'); }
+  };
+  if (window.confirmDialog) {
+    window.confirmDialog('清空回收站', '<div style="line-height:1.7">确认清空回收站里的<b>全部文件</b>？<br>'
+      + '<span style="color:#9ca3af;font-size:12px">这是从磁盘上删掉，删除后不能恢复。</span></div>', doIt, '确定清空');
+  } else doIt();
+}
+
+load();
+</script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="120" height="120">
+  <style>
+    @keyframes bar { 0%,20% {opacity:.25} 45%,80% {opacity:1} 100% {opacity:.25} }
+    @keyframes blink { 0%,15% {opacity:.35} 30%,70% {opacity:1} 85%,100% {opacity:.35} }
+    .b1 { animation: bar 1.6s infinite }
+    .b2 { animation: bar 1.6s infinite .25s }
+    .b3 { animation: bar 1.6s infinite .5s }
+    .dot { animation: blink 1.6s infinite }
+  </style>
+  <line class="b1" x1="8.6" y1="55" x2="57.7" y2="55" stroke="#A5C3B1" stroke-width="9.1" stroke-linecap="round"/>
+  <line class="b2" x1="8.6" y1="71.4" x2="44.1" y2="71.4" stroke="#A5C3B1" stroke-width="9.1" stroke-linecap="round"/>
+  <line class="b3" x1="8.6" y1="87.8" x2="32.9" y2="87.8" stroke="#A5C3B1" stroke-width="9.1" stroke-linecap="round"/>
+  <circle cx="72.3" cy="27.7" r="23.7" fill="#2E5C4C"/>
+  <circle class="dot" cx="79.6" cy="20.4" r="5.5" fill="#F4F1EA"/>
+</svg>

@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>小麻雀脚本与分镜工坊 - 动作迁移</title>
+<style>
+  /* ===== 页面骨架（与工坊各页一致：侧栏 nav.js + 主区；照 gsplat.html）===== */
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "Microsoft YaHei", "PingFang SC", sans-serif; background: var(--ss-bg); color: #333; display: flex; min-height: 100vh; }
+  .main-wrap { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  main { max-width: 1180px; margin: 18px auto; padding: 0 18px; width: 100%; }
+  button { padding: 8px 16px; border: none; border-radius: 8px; cursor: pointer; font-size: 13px; }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  .btn-primary { background: var(--ss-green-600); color: #fff; }
+  .btn-primary:hover { background: var(--ss-green-700); }
+  .btn-ghost { background: var(--ss-bg); color: var(--ss-text-2); border: 1px solid var(--ss-border); }
+  .btn-ghost:hover { background: var(--ss-border); }
+  .btn-mini { padding: 4px 10px; font-size: 12px; border-radius: 6px; }
+  .panel { background: var(--ss-card); border: 1px solid var(--ss-border); border-radius: 12px; padding: 16px; }
+  .page-title { font-size: 18px; font-weight: 700; color: var(--ss-text-1); margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
+  .page-title .sub { font-size: 12px; font-weight: 400; color: var(--ss-text-4); }
+  .banner { font-size: 12px; color: var(--ss-green-700); background: var(--ss-green-50); border: 1px solid var(--ss-green-200); border-radius: 8px; padding: 6px 12px; margin: 8px 0 14px; line-height: 1.7; }
+  .blk-t { font-size: 12px; font-weight: 600; color: var(--ss-text-2); margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+  .blk-t .n { color: var(--ss-text-4); font-weight: 400; }
+
+  /* ===== 布局：左参数区 + 右结果区（照 gsplat 的 gs-layout）===== */
+  .mv-layout { display: grid; grid-template-columns: 320px 1fr; gap: 16px; align-items: stretch; grid-auto-rows: 1fr; min-height: calc(100vh - 200px); }
+  @media (max-width: 900px) { .mv-layout { grid-template-columns: 1fr; } }
+  .mv-params { display: flex; flex-direction: column; gap: 16px; align-self: start; }
+
+  /* 素材槽位（本步为占位；第 2 步接 slotArea 共享组件，按工作流槽位声明渲染） */
+  .slot-item { border: 2px dashed var(--ss-border-strong); border-radius: 10px; background: var(--ss-bg); padding: 14px 12px; text-align: center; color: var(--ss-text-4); font-size: 12px; line-height: 1.7; }
+  .slot-item + .slot-item { margin-top: 10px; }
+  .slot-item .st { font-size: 12px; font-weight: 600; color: var(--ss-text-2); margin-bottom: 4px; }
+  .slot-item .req { color: var(--ss-error); font-weight: 400; }
+  .slot-item .opt { color: var(--ss-text-4); font-weight: 400; }
+
+  /* 工作流＝帮助文字（不做下拉，用户 2026-09-18 定） */
+  .wf-help { font-size: 12px; color: #4b5563; line-height: 1.8; background: var(--ss-bg); border: 1px solid var(--ss-border); border-radius: 8px; padding: 10px 12px; }
+
+  /* 素材合规性检查区（照 v1 §十四 B4 音频合规范式：红条 + 原因 + 不放行） */
+  .chk-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; color: #4b5563; padding: 4px 0; }
+  .chk-tag { flex: none; font-size: 11px; padding: 2px 8px; border-radius: 999px; background: var(--ss-bg); color: var(--ss-text-3); }
+  .chk-warn { font-size: 11px; color: #b91c1c; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 8px 10px; margin-top: 8px; line-height: 1.7; display: none; }
+
+  /* 强度 */
+  .mv-field { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13px; color: var(--ss-text-2); }
+  .mv-field input[type=range] { flex: 1; }
+  .mv-note { font-size: 11px; color: var(--ss-text-4); line-height: 1.6; }
+  .mv-gen { width: 100%; padding: 10px; font-size: 14px; }
+
+  /* 结果区（照 gs-preview / gs-funcbar） */
+  .mv-preview { position: relative; background: var(--ss-ink-bar); border-radius: 12px; overflow: hidden; min-height: 460px; display: flex; flex-direction: column; }
+  .mv-pvhead { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: rgba(17,24,39,.6); color: var(--ss-border-strong); font-size: 12px; flex-wrap: wrap; }
+  .mv-stage { flex: 1; position: relative; min-height: 400px; display: flex; align-items: center; justify-content: center; }
+  .mv-empty { text-align: center; color: var(--ss-text-3); padding: 30px; font-size: 13px; line-height: 1.9; }
+  .mv-empty .e-ic { font-size: 40px; margin-bottom: 8px; }
+  .mv-empty .sub { font-size: 12px; color: var(--ss-text-4); }
+  .mv-funcbar { display: flex; align-items: center; gap: 12px; padding: 8px 12px; background: rgba(17,24,39,.85); color: var(--ss-border); font-size: 13px; flex-wrap: wrap; }
+  .mv-funcbar .fb-btn { background: var(--ss-green-600); color: #fff; border: 0; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 12px; }
+  .mv-funcbar .fb-btn.ghost { background: var(--ss-text-2); }
+  .mv-funcbar .hint { color: var(--ss-text-3); font-size: 11px; margin-left: auto; }
+</style>
+</head>
+<body>
+<aside id="sidebar"></aside>
+<div class="main-wrap">
+<main>
+  <div class="page-title">🎬 动作迁移 <span class="sub">（阶段 ⓪-2 UI 先行 · 布局与交互占位，不接真实生成）</span></div>
+  <div class="banner">
+    <b>怎么用：</b>选一段<b>动作参考视频</b>（提供动作来源），再选<b>人物参考图</b>与<b>场景参考图</b>（锁定形象与场景），写下描述，点「生成」→ 右侧会显示进度（若前面还有任务，会显示"排队中 · 第 X 位"），也可以点「查看队列」看整体情况。
+  </div>
+
+  <div class="mv-layout">
+    <div class="mv-params">
+      <div class="panel">
+        <div class="blk-t">素材 <span class="n">（数量可多可少：可选槽留空即可）</span></div>
+        <!-- 步2：槽位由共享组件按工作流声明渲染（vendor/slot-area.js + vendor/workflow-slots.js） -->
+        <div id="mv-slots"></div>
+        <div class="mv-note" style="margin-top:10px">※ 槽位来自工作流声明；<b>声明里"对应节点 ID"等信息尚未补齐</b>（见待补清单），本步只到界面与校验。</div>
+      </div>
+
+      <div class="panel">
+        <div class="blk-t">工作流</div>
+        <div class="wf-help">
+          本页只做一件事：<b>把参考视频里的动作，搬到你的角色身上</b>。动作来自你选的视频，形象来自人物参考图，环境来自场景参考图 —— 三者一起决定成片。<br>
+          本功能只有这一套工作流，<b>不需要你选择</b>。
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="blk-t">素材检查</div>
+        <div class="chk-row" id="chk-summary"><span>必填素材</span><span class="chk-tag" id="chk-tag">待选择</span></div>
+        <div class="chk-warn" id="chk-warn"></div>
+        <div class="mv-note" style="margin-top:8px">※ 校验在<b>生成前</b>进行，不合规的素材不会提交（照资产页音频合规的同款做法）。本步只做"必填/数量"这一层，格式与时长待补。</div>
+      </div>
+
+      <div class="panel">
+        <div class="blk-t">动作强度</div>
+        <div class="mv-field"><span>弱</span><input type="range" id="mv-strength" min="0" max="1" step="0.05" value="0.5"><span>强</span></div>
+        <div class="mv-note" style="margin-top:6px">默认 0.5。数值越大，动作贴合参考视频越紧。</div>
+      </div>
+
+      <!-- 回炉（用户 2026-09-18 目检）：按钮保持「生成」（队列是后台的事，不必写进按钮名）；
+           旁边给「查看队列」入口，排队信息显示在进度区。 -->
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="btn-primary mv-gen" id="mv-gen" onclick="mvGenerate()">生成</button>
+        <!-- 回炉②（用户 02:46）：查看队列默认置灰，点过「生成」后才点亮 -->
+        <button class="btn-ghost" id="mv-view-queue" onclick="mvToTasks()" title="生成后可查看排队与生成情况" disabled>查看队列</button>
+      </div>
+    </div>
+
+    <div class="mv-preview">
+      <div class="mv-pvhead">
+        <span>结果预览</span>
+        <span class="hint" id="mv-status">尚未提交</span>
+      </div>
+      <div class="mv-stage">
+        <div class="mv-empty" id="mv-empty">
+          <div class="e-ic">🎬</div>
+          <div>还没有生成结果</div>
+          <div class="sub">左侧选好素材、点「生成」，完成后在这里播放</div>
+        </div>
+      </div>
+      <div class="mv-funcbar">
+        <button class="fb-btn ghost" onclick="mvToTasks()">到队列页查看</button>
+        <button class="fb-btn" onclick="mvToast('重新生成（占位）')">重新生成</button>
+        <span class="hint">占位：功能条样式照高斯泼溅页</span>
+      </div>
+    </div>
+  </div>
+</main>
+</div>
+<script src="/static/nav.js"></script>
+<script src="/static/vendor/workflow-slots.js"></script>
+<script src="/static/vendor/slot-area.js"></script>
+<script>
+  /* 动作迁移页（阶段 ⓪-2 · 步2）
+     槽位改为**共享组件按工作流声明渲染**（WorkflowSlots + SlotArea）；
+     生成前做"必填/数量"校验（合规检查的初版，格式与时长待补）。
+     **仍不发任何生成请求** —— 真实上传与提交属批次①。 */
+  function mvToast(msg, type) { if (window.toast) window.toast(msg, type || 'info'); }
+
+  var mvSlots = null;
+
+  async function mvInit() {
+    var box = document.getElementById('mv-slots');
+    if (!box || !window.SlotArea || !window.WorkflowSlots) return;
+    /* ⓪-3·步2：槽位声明改为读后端单一源（/api/workflows）——先取声明再渲染（结构/行为不变） */
+    try { await window.WorkflowSlots.load(); } catch (e) { return; }
+    mvSlots = window.SlotArea.create(box, {
+      slots: window.WorkflowSlots.get('ref2va'),
+      onAdd: function (slotKey, slot) {
+        var what = slot.type === 'video' ? '上传动作参考视频' : ('选择' + slot.label);
+        mvToast('「' + what + '」（占位：上传/选库通道待补，见待补清单）');
+      },
+      onChange: function () { mvCheck(); }
+    });
+    mvCheck();
+  }
+
+  /* 素材检查（初版）：必填 + 数量，来自组件校验结果 */
+  function mvCheck() {
+    if (!mvSlots) return;
+    var v = mvSlots.validate();
+    var tag = document.getElementById('chk-tag');
+    if (tag) {
+      tag.textContent = v.ok ? '已齐' : ('还差 ' + v.errors.length + ' 项');
+      tag.style.background = v.ok ? '#dcfce7' : '#fee2e2';
+      tag.style.color = v.ok ? '#15803d' : '#b91c1c';
+    }
+    var warn = document.getElementById('chk-warn');
+    if (warn) {
+      if (v.ok) { warn.style.display = 'none'; warn.textContent = ''; }
+      else { warn.style.display = 'block'; warn.textContent = '还差素材：' + v.errors.join('；'); }
+    }
+  }
+
+  function mvGenerate() {
+    var v = mvSlots ? mvSlots.validate() : { ok: false, errors: ['槽位未初始化'] };
+    if (!v.ok) {
+      mvCheck();
+      mvToast('素材还没齐，先补齐再生成', 'error');
+      return;
+    }
+    var st = document.getElementById('mv-status');
+    if (st) st.textContent = '排队中 · 第 3 位 · 当前排队 3 个任务';
+    var q = document.getElementById('mv-view-queue');
+    if (q) q.disabled = false;
+    mvToast('已开始生成（界面演示，尚未接入真实生成队列）', 'success');
+  }
+  function mvToTasks() { location.href = '/tasks.html'; }
+
+  mvInit();
+</script>
+</script>
+</body>
+</html>

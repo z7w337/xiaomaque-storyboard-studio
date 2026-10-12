@@ -1,0 +1,2514 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>小麻雀脚本与分镜工坊 · 场页</title>
+<link rel="stylesheet" href="/static/vendor/asset-card.css">
+<style>
+/* ============================================================
+ * 场页（正式生产化 · 实施9 批2 重来）
+ * 基底：预开发 scene-style-ref.html（v1.13 自包含原型）→ 接真实数据/API
+ * ============================================================
+ * v1.5 关键变更：
+ *   ① 顶栏：删积分+⚡合成全集（您不要）；4 选择器放最右
+ *   ② 左区标签缩小 + nowrap（不换行）
+ *   ③ 资产型 chip 悬浮预览（缩略图+名）
+ *   ④ 功能性 chip 下拉（⏱时长/🎥运镜[8 种动图]/🎬景别/✨AI）
+ *   ⑤ 🎥 运镜下拉 8 种动图预览（推近/拉远/平移/跟随/航拍/环绕/上升/下降）
+ *   ⑥ ⛶ 全屏 viewer：底部加场卡条（点击切换+播放）
+ * ============================================================ */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body { font-family: "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif; background: var(--ss-bg); color: var(--ss-text-1); font-size: 14px; line-height: 1.55; display: flex; overflow: hidden; }
+/* 正式工坊 shell：左侧全局导航（nav.js 注入 #sidebar）+ 主区（.main-wrap，内竖排） */
+.main-wrap { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; padding: 8px 16px 24px; overflow: hidden; }
+h1 { font-size: 18px; font-weight: 700; }
+.sub { font-size: 12px; color: var(--ss-text-3); margin: 4px 0 14px; }
+.sub b { color: var(--ss-green-600); }
+.sub a { color: var(--ss-green-600); text-decoration: none; border-bottom: 1px dashed var(--ss-green-300); padding-bottom: 1px; }
+.sub a:hover { border-bottom-style: solid; }
+
+/* ===== 顶栏 v1.5（删积分+合成；4 选择器放最右） ===== */
+.top-bar {
+  display: flex; align-items: center; gap: 8px; background: var(--ss-card); border: 1px solid var(--ss-border);
+  border-radius: 12px; padding: 6px 12px; box-shadow: 0 1px 2px rgba(0,0,0,.02);
+  position: relative; z-index: 100;
+}
+.tb-title { display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 700; color: var(--ss-text-1); flex-shrink: 0; }
+.tb-title .ic { font-size: 18px; }
+.tb-title .sub-t { font-size: 11px; color: var(--ss-text-3); font-weight: 400; margin-left: 4px; }
+.tb-spacer { flex: 1; }
+/* 实施9 v1.4：顶栏上一集/下一集（紧凑胶囊） */
+.tb-eps { display: flex; align-items: center; gap: 2px; font-size: 12px; color: var(--ss-text-2); background: var(--ss-bg); border-radius: 999px; padding: 2px 6px; flex-shrink: 0; }
+.tb-ep-btn { background: transparent; border: none; font-size: 14px; color: var(--ss-text-2); width: 22px; height: 22px; cursor: pointer; border-radius: 50%; line-height: 1; padding: 0; }
+.tb-ep-btn:hover { background: var(--ss-border); }
+.tb-ep-label { font-weight: 600; padding: 0 4px; }
+.tb-selectors { display: flex; gap: 6px; flex-shrink: 0; min-height: 32px; }
+.tb-sel {
+  display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--ss-text-2);
+  background: var(--ss-bg); border: 1px solid transparent; border-radius: 999px;
+  padding: 4px 10px; cursor: pointer; transition: all .12s ease; user-select: none; position: relative;
+}
+.tb-sel:hover { background: var(--ss-border); }
+.tb-sel .v { color: var(--ss-text-1); font-weight: 600; }
+.tb-sel .caret { font-size: 9px; color: var(--ss-text-4); }
+.tb-sel.style .v::before { content: '🎨 '; }
+/* v1.6 下拉改 fixed 定位（不影响文档流，避免页面抖动） */
+.tb-pop { position: fixed; background: var(--ss-card); border: 1px solid var(--ss-border); border-radius: 12px; box-shadow: 0 12px 34px rgba(0,0,0,.12); padding: 6px 0; min-width: 240px; z-index: 1000; display: none; }
+.tb-pop.show { display: block; }
+.tb-pop .pi { display: flex; align-items: center; gap: 8px; padding: 8px 14px; font-size: 12px; cursor: pointer; color: var(--ss-text-1); }
+.tb-pop .pi:hover { background: var(--ss-bg); }
+.tb-pop .pi.cur { background: var(--ss-green-50); color: var(--ss-green-700); font-weight: 600; }
+.tb-pop .pi.cur::after { content: '✓'; color: var(--ss-green-600); margin-left: auto; }
+.tb-pop .pi .name { flex: 1; }
+.tb-pop .pi .meta { font-size: 10px; color: var(--ss-text-4); }
+.tb-pop .pi.cur .meta { color: var(--ss-green-700); opacity: .7; }
+.tb-pop .sep { height: 1px; background: #eef0f2; margin: 4px 0; }
+.tb-pop .foot-note { font-size: 10px; color: var(--ss-text-4); padding: 6px 14px; border-top: 1px solid #eef0f2; margin-top: 4px; line-height: 1.5; }
+.tb-pop .foot-note b { color: var(--ss-text-3); }
+
+/* ===== 三栏 ===== */
+.scene-cols { display: flex; gap: 12px; flex: 1; min-height: 0; }
+.col { background: var(--ss-card); border: 1px solid var(--ss-border); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; min-height: 0; }
+.col-title { font-size: 12px; font-weight: 700; color: var(--ss-text-2); margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
+.col-title .hint { font-size: 11px; color: var(--ss-text-4); font-weight: 400; }
+
+/* ===== 左栏 270 ===== */
+.left-col { width: 270px; flex-shrink: 0; }
+.left-top { padding-bottom: 8px; border-bottom: 1px solid #eef0f2; margin-bottom: 8px; flex-shrink: 0; }
+.range-tabs { display: flex; align-items: center; gap: 6px; }
+.range-tab { font-size: 13px; color: var(--ss-text-3); background: transparent; border: none; padding: 4px 0; cursor: pointer; font-weight: 500; }
+.range-tab.active { color: var(--ss-text-1); font-weight: 700; }
+.range-tab.active::after { content: ''; display: block; height: 2px; background: var(--ss-green-600); margin-top: 2px; border-radius: 1px; }
+.range-plus { margin-left: auto; width: 26px; height: 26px; border-radius: 50%; background: var(--ss-green-600); color: #fff; font-size: 16px; line-height: 26px; text-align: center; cursor: pointer; transition: all .15s ease; box-shadow: 0 2px 6px rgba(58,107,87,.25); }
+.range-plus:hover { background: var(--ss-green-700); transform: scale(1.06); }
+/* v1.5 左区标签：缩小 + 不换行 */
+.left-mid { padding-bottom: 8px; border-bottom: 1px solid #eef0f2; margin-bottom: 8px; display: flex; gap: 4px; flex-shrink: 0; flex-wrap: nowrap; overflow: hidden; }
+.kind-tab { font-size: 11px; color: var(--ss-text-3); background: var(--ss-bg); border: none; border-radius: 999px; padding: 3px 8px; cursor: pointer; transition: all .15s ease; white-space: nowrap; flex-shrink: 0; }
+.kind-tab.active { background: var(--ss-green-600); color: #fff; }
+.left-bottom { flex: 1; overflow: auto; display: flex; flex-direction: column; gap: 8px; min-height: 0; }
+.kind-section-title { font-size: 11px; color: var(--ss-text-3); font-weight: 700; padding: 2px; display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+.asset-list { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+/* 实施9 修复：素材（未分类）图通常为大图，限制缩略图不撑出容器 */
+.asset-list > div { max-width: 100%; min-width: 0; }
+.asset-list .asset-card { max-width: 100%; min-width: 0; }
+/* 实施9 v1.6 修复：vendor .ac-thumb height:150px 固定会覆盖 aspect-ratio；强制覆盖为 auto 并按 layout 设比例 */
+.asset-list .ac-thumb { height: auto !important; aspect-ratio: 3/4; }
+.asset-list [data-layout="landscape"] { grid-column: 1 / -1; }
+.asset-list [data-layout="landscape"] .ac-thumb { aspect-ratio: 16/9; }
+.asset-list [data-layout="landscape"] .asset-card { aspect-ratio: 16/9; }
+.asset-list [data-layout="portrait"] .ac-thumb { aspect-ratio: 3/4; }
+.asset-list [data-layout="portrait"] .asset-card { aspect-ratio: 3/4; }
+.asset-list .ac-img { max-width: 100%; object-fit: cover; }
+
+/* AssetCard 3:4 竖向 / 16:9 横向 */
+.acard { border: 1px solid var(--ss-border); border-radius: 12px; background: var(--ss-card); cursor: pointer; transition: all .15s ease; position: relative; overflow: hidden; }
+.acard:hover { border-color: var(--ss-green-300); box-shadow: 0 4px 10px rgba(0,0,0,.08); transform: translateY(-1px); }
+.acard .a-thumb { display: block; width: 100%; height: auto; background: var(--ss-bg); object-fit: cover; }
+.acard.portrait { display: block; padding: 0; }
+.acard.portrait .a-thumb { aspect-ratio: 3/4; border-radius: 12px 12px 0 0; }
+.acard.portrait .a-info { padding: 6px 8px 8px; }
+.acard.portrait .a-name { font-size: 12px; font-weight: 700; color: var(--ss-text-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.acard.portrait .a-meta { font-size: 10px; color: var(--ss-text-4); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.acard.landscape { display: block; padding: 0; grid-column: 1 / -1; }
+.acard.landscape .a-thumb { aspect-ratio: 16/9; border-radius: 12px 12px 0 0; }
+.acard.landscape .a-info { padding: 6px 10px 8px; }
+.acard.landscape .a-name { font-size: 12px; font-weight: 700; }
+.acard.landscape .a-meta { font-size: 10px; color: var(--ss-text-3); margin-top: 2px; }
+.acard .a-br { position: absolute; bottom: 4px; right: 4px; width: 22px; height: 22px; border-radius: 6px; background: rgba(255,255,255,.94); color: var(--ss-green-600); font-size: 12px; line-height: 22px; text-align: center; cursor: pointer; opacity: 0; transition: opacity .12s ease; }
+.acard:hover .a-br { opacity: 1; }
+.unclass-badge { display: inline-block; font-size: 9px; color: #b45309; background: #fef3c7; border-radius: 4px; padding: 0 5px; margin-left: 4px; vertical-align: middle; }
+
+/* ===== 中栏 ===== */
+.mid-col { flex: 1; min-width: 0; }
+.mid-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-shrink: 0; }
+.mid-head .meta { font-size: 11px; color: var(--ss-text-3); }
+.mid-head .meta b { color: var(--ss-green-600); }
+.saved-state { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: var(--ss-success); }
+.saved-state.saving { color: #b45309; }
+.saved-state.dirty { color: var(--ss-error); }
+.saved-state.dirty::before { content: '●'; }
+.saved-state.saved::before { content: '✓'; }
+.refs-area { border: 1px solid var(--ss-border); border-radius: 10px; padding: 6px 10px; margin-bottom: 8px; min-height: 36px; background: #fafbfc; display: flex; align-items: center; flex-wrap: wrap; gap: 6px; flex-shrink: 0; }
+.refs-area .ra-label { font-size: 11px; color: var(--ss-text-3); font-weight: 700; margin-right: 4px; }
+.ref-card { display: inline-flex; align-items: center; gap: 5px; background: var(--ss-card); border: 1px solid var(--ss-border); border-radius: 999px; padding: 2px 10px 2px 4px; font-size: 12px; color: var(--ss-text-1); cursor: pointer; }
+.ref-card:hover { border-color: var(--ss-green-300); background: var(--ss-green-50); }
+.ref-card img { width: 18px; height: 18px; border-radius: 50%; object-fit: cover; }
+.ref-card .x { color: var(--ss-text-4); cursor: pointer; font-size: 12px; padding: 0 2px; }
+.ref-card .x:hover { color: var(--ss-error); }
+.refs-empty { color: var(--ss-text-4); font-size: 12px; }
+
+.pe-wrap { flex: 1; display: flex; flex-direction: column; border: 1px solid var(--ss-border); border-radius: 10px; background: var(--ss-card); overflow: hidden; min-height: 0; position: relative; }
+/* 2026-09-19 02:05 用户裁定：**恢复原实现** —— 动作迁移时编辑区**保留一半高度**（提示词要写），
+   展开区与编辑区按 1.6:1 分，**取消"收起/展开提示词"机制**（用户：撑满后还得展开，很麻烦、新用户困惑）。
+   → 回滚 01:52/01:57 两轮改动。 */
+.pe-head { padding: 8px 12px; border-bottom: 1px solid #eef0f2; background: #fafbfc; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
+.pe-head .ph-title { font-size: 13px; font-weight: 700; color: var(--ss-text-1); }
+.pe-head .ph-tools { display: flex; gap: 4px; position: relative; }
+/* v1.5 功能性 chip 下拉按钮 */
+.pe-tool { font-size: 12px; color: var(--ss-text-2); background: var(--ss-card); border: 1px solid var(--ss-border); border-radius: 6px; padding: 3px 10px; cursor: pointer; transition: all .15s ease; display: inline-flex; align-items: center; gap: 4px; }
+.pe-tool:hover { border-color: var(--ss-green-300); background: var(--ss-green-50); }
+.pe-tool .caret { font-size: 8px; color: var(--ss-text-4); }
+/* v1.9 .pe-tool-pop 改 fixed（避免 absolute 包含块错位导致下拉不可见） */
+.pe-tool-pop { position: fixed; background: var(--ss-card); border: 1px solid var(--ss-border); border-radius: 8px; box-shadow: 0 8px 20px rgba(0,0,0,.12); padding: 2px 0; min-width: 180px; max-width: 220px; max-height: 280px; overflow-y: auto; z-index: 1200; display: none; }
+.pe-tool-pop.show { display: block; }
+.pe-tool-pop .ti { display: flex; align-items: center; gap: 4px; padding: 3px 8px; font-size: 10px; cursor: pointer; color: var(--ss-text-1); }
+.pe-tool-pop .ti:hover { background: var(--ss-bg); }
+.pe-tool-pop .ti .icn { font-size: 11px; }
+/* v1.55：👁 组装预览面板（右下角固定） */
+#ap-box { position: fixed; right: 16px; bottom: 16px; width: 420px; max-width: 92vw; max-height: 70vh; overflow-y: auto; background: var(--ss-card); border: 1px solid var(--ss-green-200); border-radius: 12px; box-shadow: 0 18px 44px rgba(0,0,0,.22); padding: 12px 14px; z-index: 1300; }
+#ap-box .ap-title { font-size: 13px; font-weight: 700; color: var(--ss-green-700); margin-bottom: 8px; }
+#ap-box .ap-line { font-size: 12px; color: var(--ss-text-2); padding: 4px 8px; margin-bottom: 4px; background: var(--ss-bg); border-radius: 6px; border-left: 3px solid var(--ss-green-300); line-height: 1.6; word-break: break-all; }
+#ap-box .ap-actions { margin-top: 8px; text-align: right; }
+.pe-tool-pop .ti .lbl { flex: 1; }
+.pe-tool-pop .ti .meta { font-size: 8px; color: var(--ss-text-4); }
+.cust-row { padding: 6px 8px !important; gap: 4px !important; }
+.cust-row input { font-size: 10px !important; padding: 2px 5px !important; }
+.cust-ok { font-size: 10px !important; padding: 2px 8px !important; }
+.foot-note { font-size: 9px !important; padding: 4px 8px !important; }
+/* v1.5 运镜动图预览 */
+.cam-anim { width: 28px; height: 18px; flex-shrink: 0; background: var(--ss-bg); border-radius: 2px; position: relative; overflow: hidden; }
+.cam-anim svg { width: 100%; height: 100%; }
+.cam-anim .frame { position: absolute; width: 12px; height: 18px; border-radius: 2px; }
+.cam-anim .frame.a { background: rgba(58,107,87,.7); }
+.cam-anim .frame.b { background: rgba(245,158,11,.7); }
+.cam-anim.push-in .frame.a { animation: ci-push-in 1.6s linear infinite; }
+.cam-anim.pull-out .frame.a { animation: ci-pull-out 1.6s linear infinite; }
+.cam-anim.pan .frame.a { animation: ci-pan 1.6s linear infinite; }
+.cam-anim.follow .frame.a { animation: ci-follow 1.6s linear infinite; }
+.cam-anim.drone .frame.a { animation: ci-drone 1.6s linear infinite; }
+.cam-anim.orbit .frame.a { animation: ci-orbit 2.4s linear infinite; transform-origin: 20px 14px; }
+.cam-anim.up .frame.a { animation: ci-up 1.6s linear infinite; }
+.cam-anim.down .frame.a { animation: ci-down 1.6s linear infinite; }
+.cam-anim .frame.b { right: 4px; top: 5px; }
+@keyframes ci-push-in { 0% { left: 4px; transform: scale(.4); } 100% { left: 4px; transform: scale(1.2); } }
+@keyframes ci-pull-out { 0% { left: 4px; transform: scale(1.2); } 100% { left: 4px; transform: scale(.4); } }
+@keyframes ci-pan { 0% { left: 2px; } 50% { left: 18px; } 100% { left: 2px; } }
+@keyframes ci-follow { 0%, 100% { left: 4px; top: 4px; } 25% { left: 8px; top: 2px; } 50% { left: 16px; top: 5px; } 75% { left: 12px; top: 8px; } }
+@keyframes ci-drone { 0%, 100% { left: 10px; top: 2px; } 50% { left: 14px; top: 8px; } }
+@keyframes ci-orbit { 0% { left: 4px; top: 5px; } 25% { left: 20px; top: 2px; } 50% { left: 24px; top: 14px; } 75% { left: 8px; top: 20px; } 100% { left: 4px; top: 5px; } }
+@keyframes ci-up { 0%, 100% { top: 16px; } 50% { top: 2px; } }
+@keyframes ci-down { 0%, 100% { top: 2px; } 50% { top: 16px; } }
+
+/* pe-body */
+.pe-body { flex: 1; padding: 14px 18px; overflow: auto; line-height: 1.9; font-size: 14px; outline: none; min-height: 0; }
+.pe-body:empty::before { content: attr(data-placeholder); color: var(--ss-text-4); }
+.shot-h { display: inline-block; font-size: 11px; color: var(--ss-text-3); background: var(--ss-bg); border-radius: 6px; padding: 1px 8px; margin: 0 4px; font-weight: 600; }
+.ic-chip { display: inline-flex; align-items: center; gap: 3px; border-radius: 4px; padding: 0 5px; font-size: 12px; font-weight: 600; cursor: pointer; position: relative; }
+/* v1.5 资产型 chip（蓝色，悬浮预览） */
+.ic-chip.ref { background: var(--ss-green-50); color: var(--ss-green-700); }
+.ic-chip.ref:hover { background: var(--ss-green-100); }
+.ic-chip.ref:hover .ic-preview { display: block; }
+/* B批§九：参考即资产——截帧/未分类/参考图(按路径引用) chip 用紫色区分 */
+.ic-chip.ref.refimg { background: var(--ss-running-bg); color: #6d28d9; }
+.ic-chip.ref.refimg:hover { background: #ede9fe; }
+/* v1.6 chip 预览 fixed 定位（避免被 pe-body overflow 裁剪，智能避开四边界） */
+.ic-preview { display: none; position: fixed; z-index: 1500; background: var(--ss-card); border: 1px solid var(--ss-border); border-radius: 8px; box-shadow: 0 8px 20px rgba(0,0,0,.16); padding: 6px; min-width: 140px; }
+.ic-preview .pv-img { width: 128px; height: 80px; object-fit: cover; border-radius: 4px; display: block; background: var(--ss-bg); }
+.ic-preview .pv-name { font-size: 11px; color: var(--ss-text-1); margin-top: 4px; font-weight: 600; text-align: center; }
+/* v1.5 功能性 chip（橙色，区分资产型） */
+.ic-chip.func { background: #fef3c7; color: #b45309; }
+.ic-chip.func:hover { background: #fde68a; }
+
+.pe-foot { padding: 10px 12px; border-top: 1px solid #eef0f2; background: #fafbfc; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-shrink: 0; }
+.pe-stats { font-size: 11px; color: var(--ss-text-3); }
+.pe-actions { display: flex; gap: 8px; align-items: center; }
+.ai-btn { border: none; border-radius: 6px; padding: 6px 14px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all .15s ease; display: inline-flex; align-items: center; gap: 5px; background: linear-gradient(135deg, var(--ss-green-500), var(--ss-green-700)); color: #fff; box-shadow: 0 2px 6px rgba(46,92,76,.3); }
+.ai-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 10px rgba(46,92,76,.4); }
+.gen-btn { border: none; border-radius: 6px; padding: 6px 16px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all .15s ease; display: inline-flex; align-items: center; gap: 5px; background: var(--ss-ink-bar); color: #fff; box-shadow: 0 2px 6px rgba(0,0,0,.18); }
+.gen-btn:hover:not(:disabled) { background: var(--ss-ink-bar); }
+.gen-btn:disabled { background: var(--ss-border-strong); color: var(--ss-text-4); box-shadow: none; cursor: not-allowed; }
+.gen-btn .spinner { display: none; width: 12px; height: 12px; border: 2px solid rgba(255,255,255,.35); border-top-color: #fff; border-radius: 50%; animation: spin .8s linear infinite; }
+.gen-btn.busy .spinner { display: inline-block; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ===== 右栏 ===== */
+.right-col { width: 360px; flex-shrink: 0; }
+.video-card { position: relative; border: 1px solid var(--ss-border); border-radius: 12px; overflow: hidden; background: var(--ss-ink-bar); margin-bottom: 8px; box-shadow: 0 4px 14px rgba(0,0,0,.12); flex-shrink: 0; }
+.video-card img { width: 100%; height: 200px; object-fit: cover; display: block; opacity: .92; }
+.video-card .v-player { width: 100%; height: 200px; object-fit: contain; background: #000; display: none; }
+.video-card .v-play { position: absolute; inset: 0; z-index: 1; display: flex; align-items: center; justify-content: center; font-size: 44px; color: rgba(255,255,255,.9); cursor: pointer; text-shadow: 0 2px 8px rgba(0,0,0,.6); }
+.v-toolbar { position: absolute; top: 12px; right: 12px; z-index: 5; display: flex; align-items: center; gap: 2px; padding: 5px 7px; background: rgba(17,24,39,.78); border: 1px solid rgba(255,255,255,.08); border-radius: 999px; backdrop-filter: blur(8px); box-shadow: 0 2px 8px rgba(0,0,0,.25); }
+.v-tool-btn { width: 28px; height: 28px; border-radius: 50%; background: transparent; color: rgba(255,255,255,.92); font-size: 14px; line-height: 28px; text-align: center; cursor: pointer; transition: all .12s ease; }
+.v-tool-btn:hover { background: rgba(255,255,255,.18); color: #fff; }
+.cut-pop { position: absolute; top: 50px; right: 12px; background: rgba(17,24,39,.92); color: #fff; border-radius: 10px; padding: 6px 0; min-width: 140px; display: none; z-index: 6; box-shadow: 0 8px 24px rgba(0,0,0,.4); border: 1px solid rgba(255,255,255,.08); }
+.cut-pop.show { display: block; }
+.cut-pop .ci { padding: 7px 14px; font-size: 12px; cursor: pointer; }
+.cut-pop .ci:hover { background: rgba(255,255,255,.08); }
+.cut-pop .ci::before { content: '○ '; opacity: .6; }
+.v-zoom { position: absolute; bottom: 12px; right: 12px; z-index: 5; width: 36px; height: 36px; border-radius: 50%; background: rgba(17,24,39,.78); border: 1px solid rgba(255,255,255,.1); color: #fff; font-size: 17px; line-height: 36px; text-align: center; cursor: pointer; transition: all .15s ease; box-shadow: 0 2px 8px rgba(0,0,0,.3); }
+.v-zoom:hover { background: rgba(58,107,87,.92); transform: scale(1.06); }
+.v-meta { padding: 8px 10px; background: var(--ss-card); border: 1px solid var(--ss-border); border-radius: 10px; margin-bottom: 8px; font-size: 12px; color: var(--ss-text-3); flex-shrink: 0; }
+.v-meta .row { display: flex; justify-content: space-between; padding: 3px 0; }
+.v-meta b { color: var(--ss-text-1); font-weight: 600; }
+.v-note { font-size: 11px; color: var(--ss-text-4); line-height: 1.7; padding: 0 4px; }
+.v-note b { color: var(--ss-text-3); }
+.right-spacer { flex: 1; min-height: 0; }
+.player-bar { display: flex; align-items: center; gap: 8px; padding: 8px 10px; background: var(--ss-ink-bar); color: #fff; border-radius: 10px; font-size: 12px; margin-top: 8px; flex-shrink: 0; }
+.pb-btn { background: transparent; border: none; color: #fff; cursor: pointer; width: 26px; height: 26px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 13px; }
+.pb-btn:hover { background: rgba(255,255,255,.15); }
+.pb-progress { flex: 1; height: 4px; background: rgba(255,255,255,.18); border-radius: 2px; position: relative; cursor: pointer; }
+.pb-fill { height: 100%; width: 32%; background: var(--ss-green-400); border-radius: 2px; }
+.pb-dot { position: absolute; top: 50%; left: 32%; transform: translate(-50%,-50%); width: 10px; height: 10px; background: var(--ss-card); border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,.4); }
+.pb-time { font-size: 11px; color: rgba(255,255,255,.85); font-variant-numeric: tabular-nums; min-width: 84px; text-align: center; }
+.pb-vol { display: flex; align-items: center; gap: 4px; }
+.pb-vol .bar { width: 50px; height: 3px; background: rgba(255,255,255,.18); border-radius: 2px; position: relative; }
+.pb-vol .fill { height: 100%; width: 60%; background: rgba(255,255,255,.7); border-radius: 2px; }
+.pb-extra { margin-left: auto; display: flex; gap: 4px; }
+.pb-extra .pb-btn { font-size: 12px; }
+
+/* ===== 底部场序列条 ===== */
+.episode-strip { background: var(--ss-card); border: 1px solid var(--ss-border); border-radius: 12px; padding: 10px 12px; flex-shrink: 0; }
+.strip-title { font-size: 12px; font-weight: 700; color: var(--ss-text-2); margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+.strip-title .hint { font-size: 11px; color: var(--ss-text-4); font-weight: 400; }
+.strip { display: flex; align-items: center; gap: 0; overflow: auto; padding: 2px 0; }
+.insert-btn { flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%; background: var(--ss-bg); color: var(--ss-text-3); font-size: 16px; line-height: 28px; text-align: center; cursor: pointer; margin: 0 4px; opacity: 0; transition: all .15s ease; }
+.insert-btn:hover { background: var(--ss-green-600); color: #fff; box-shadow: 0 2px 6px rgba(58,107,87,.25); }
+.strip:hover .insert-btn { opacity: .55; }
+.insert-btn:hover { opacity: 1; }
+.scard { flex-shrink: 0; width: 140px; border: 2px solid var(--ss-border); border-radius: 12px; background: var(--ss-card); cursor: pointer; transition: all .15s ease; position: relative; overflow: hidden; }
+.scard:hover { border-color: var(--ss-green-300); box-shadow: 0 4px 10px rgba(0,0,0,.08); }
+.scard.active { border-color: var(--ss-green-600); box-shadow: 0 0 0 2px rgba(58,107,87,.15); }
+.scard img { width: 100%; height: 76px; object-fit: cover; display: block; }
+.scard .sn-num { position: absolute; top: 6px; left: 6px; background: rgba(0,0,0,.6); color: #fff; font-size: 11px; border-radius: 6px; padding: 2px 7px; font-weight: 600; }
+.scard.active .sn-num { background: var(--ss-green-600); }
+.scard .sn-name { font-size: 12px; font-weight: 700; color: var(--ss-text-1); padding: 5px 8px 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.scard .sn-dur { font-size: 11px; color: var(--ss-text-3); padding: 0 8px 6px; display: flex; align-items: center; gap: 3px; }
+.scard .sn-dur b { color: var(--ss-green-600); font-weight: 600; }
+.scard .sc-tr, .scard .sc-br { position: absolute; opacity: 0; transition: opacity .12s ease; }
+.scard:hover .sc-tr, .scard:hover .sc-br { opacity: 1; }
+.scard .sc-tr { top: 4px; right: 4px; width: 22px; height: 22px; border-radius: 6px; background: rgba(255,255,255,.92); color: var(--ss-error); font-size: 13px; line-height: 22px; text-align: center; cursor: pointer; }
+.scard .sc-br { bottom: 4px; right: 4px; width: 22px; height: 22px; border-radius: 6px; background: rgba(255,255,255,.92); color: var(--ss-text-3); font-size: 12px; line-height: 22px; text-align: center; cursor: pointer; }
+
+/* ===== @ 资产引用弹窗（新架构：中部列表 + 底部资产库级联 + 跟随预览，对齐 demo）===== */
+.atpop { position: fixed; z-index: 250; width: 430px; max-width: 96vw; height: 540px; max-height: 88vh;
+        background: var(--ss-card); border: 1px solid var(--ss-border); border-radius: 10px;
+        box-shadow: 0 18px 50px rgba(15,23,42,.16), 0 4px 14px rgba(15,23,42,.08);
+        display: none; flex-direction: column; overflow: visible; }
+.atpop.show { display: flex; }
+/* 顶部标签：资产 / 小工具 */
+.atpop .tabs { display: flex; gap: 4px; padding: 8px 12px 0; flex: 0 0 auto; }
+.atpop .tabs .tab { padding: 7px 16px; font-size: 13px; color: var(--ss-text-3); cursor: pointer; border: none;
+                    background: none; border-radius: 8px 8px 0 0; position: relative; }
+.atpop .tabs .tab:hover { background: var(--ss-bg); }
+.atpop .tabs .tab.active { color: #1f2329; font-weight: 600; }
+.atpop .tabs .tab.active::after { content: ""; position: absolute; left: 12px; right: 12px; bottom: 0;
+                                  height: 2px; background: var(--ss-warning); border-radius: 2px; }
+/* 中部归属资产：列表式，一行一个 */
+.atpop .own-wrap { flex: 1; overflow-y: auto; margin-top: 4px; padding: 2px 10px 10px; min-height: 0; }
+.atpop .own-wrap::-webkit-scrollbar { width: 6px; }
+.atpop .own-wrap::-webkit-scrollbar-thumb { background: #d8dce2; border-radius: 3px; }
+.atpop .grp-title { font-size: 12px; color: var(--ss-text-4); font-weight: 600; padding: 10px 6px 5px; letter-spacing: .5px; }
+.atpop .arow { display: flex; align-items: center; gap: 10px; padding: 6px 7px; border-radius: 8px; cursor: pointer; }
+.atpop .arow:hover { background: var(--ss-bg); }
+.atpop .arow img { width: 40px; height: 40px; border-radius: 8px; object-fit: cover; background: #eceff3;
+                   flex: 0 0 40px; display: block; }
+.atpop .arow .meta { min-width: 0; flex: 1; }
+.atpop .arow .name { font-size: 14px; color: #1f2329; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.atpop .arow .sub { font-size: 12px; color: var(--ss-text-4); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.atpop .arow .atmark { font-size: 12px; color: var(--ss-warning); opacity: 0; flex: 0 0 auto; }
+.atpop .arow:hover .atmark { opacity: 1; }
+/* 小工具 tab */
+.atpop .tools-wrap { flex: 1; overflow-y: auto; padding: 12px; display: grid; grid-template-columns: 1fr 1fr;
+                     gap: 12px; align-content: start; }
+.atpop .tool-card { border: 1px solid var(--ss-border); border-radius: 10px; padding: 16px 14px; display: flex;
+                    flex-direction: column; align-items: center; gap: 8px; background: var(--ss-card); cursor: pointer; }
+.atpop .tool-card:hover { border-color: #f0c48f; background: #fdf3e3; }
+.atpop .tool-card .tic { width: 40px; height: 40px; border-radius: 10px; background: #eef1f5;
+                         display: grid; place-items: center; color: #5b6470; }
+.atpop .tool-card .tt { font-size: 13px; font-weight: 600; color: #1f2329; }
+.atpop .tool-card .ts { font-size: 11.5px; color: var(--ss-text-4); text-align: center; }
+/* 底部 资产库 入口（固定行） */
+.atpop .lib-entry { border-top: 1px solid #eef0f3; padding: 9px 12px 10px; display: flex; align-items: center;
+                    gap: 10px; background: #fafbfc; border-radius: 0 0 10px 10px; cursor: pointer; flex: 0 0 auto;
+                    position: relative; z-index: 2; }
+.atpop .lib-entry:hover { background: var(--ss-bg); }
+.atpop .lib-entry .lic { width: 34px; height: 34px; border-radius: 8px; background: #eef1f5;
+                         display: grid; place-items: center; color: #5b6470; flex: 0 0 34px; }
+.atpop .lib-entry .lt { font-size: 14px; font-weight: 600; color: #1f2329; }
+.atpop .lib-entry .ls { font-size: 12px; color: var(--ss-text-4); }
+.atpop .lib-entry .arrow { margin-left: auto; color: var(--ss-text-4); display: flex; }
+/* 级联菜单（absolute 悬浮于弹窗内，随右侧溢出） */
+.atpop .cascade { position: absolute; top: 0; left: 100%; background: var(--ss-card); border: 1px solid var(--ss-border);
+                  border-radius: 8px; box-shadow: 0 10px 26px rgba(0,0,0,.14); padding: 5px; z-index: 5;
+                  display: none; }
+.atpop .cascade.show { display: block; }
+.atpop .cascade.lvl2 { width: 176px; }
+.atpop .cascade.lvl3 { width: 254px; }
+.atpop .c-item { display: flex; align-items: center; gap: 9px; padding: 8px 9px; border-radius: 7px;
+                 cursor: pointer; position: relative; }
+.atpop .c-item:hover, .atpop .c-item.open { background: var(--ss-bg); }
+.atpop .c-item .cic { width: 26px; height: 26px; border-radius: 6px; display: grid; place-items: center;
+                      background: #eef1f5; color: #5b6470; flex: 0 0 26px; }
+.atpop .c-item .ct { font-size: 13px; color: #1f2329; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.atpop .c-item .go { color: var(--ss-text-4); display: flex; }
+.atpop .c-item img { width: 36px; height: 36px; border-radius: 7px; object-fit: cover; background: #eceff3;
+                     flex: 0 0 36px; display: block; }
+.atpop .c-item .cmeta { min-width: 0; flex: 1; }
+.atpop .c-item .cn { font-size: 13px; color: #1f2329; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.atpop .c-item .cs { font-size: 11.5px; color: var(--ss-text-4); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.atpop .c-item .thumb-ph { width: 36px; height: 36px; border-radius: 7px; flex: 0 0 36px; }
+/* 透明底（参考图/未分类）：棋盘格 + 虚线框 + 图标 */
+.atpop .checker-ph { display: grid; place-items: center; color: #8a94a2;
+                     background: repeating-conic-gradient(#e9ebef 0% 25%, #fbfcfd 0% 50%) 0 0 / 14px 14px;
+                     border: 1px dashed #cfd4db; }
+.atpop .arow .thumb-ph { width: 40px; height: 40px; border-radius: 8px; flex: 0 0 40px; font-size: 15px; }
+.atpop .c-item .thumb-ph { width: 36px; height: 36px; border-radius: 7px; flex: 0 0 36px; font-size: 13px; }
+/* 底部小工具组 */
+.atpop .mini-group { padding: 2px 4px; }
+.atpop .mini-group .mg-title { font-size: 11px; color: var(--ss-text-4); font-weight: 600; padding: 6px 2px; }
+.atpop .mini-group .mgt { display: flex; align-items: center; gap: 8px; padding: 8px 9px; border-radius: 8px;
+                          cursor: pointer; font-size: 13px; color: #1f2329; }
+.atpop .mini-group .mgt:hover { background: var(--ss-bg); }
+.atpop .mini-group .mgt .tic { width: 26px; height: 26px; border-radius: 6px; display: grid; place-items: center;
+                               background: #eef1f5; color: #5b6470; flex: 0 0 26px; }
+/* ===== 跟随式预览浮层（fixed，非面板内；pointer-events:none 不挡交互）===== */
+.at-preview { position: fixed; z-index: 1700; width: 300px; background: var(--ss-card); border: 1px solid var(--ss-border);
+              border-radius: 12px; box-shadow: 0 10px 26px rgba(0,0,0,.18); padding: 12px; display: none;
+              pointer-events: none; }
+.at-preview.show { display: block; }
+.at-preview .pv-big { width: 100%; aspect-ratio: 1; border-radius: 9px; object-fit: cover;
+                      background: #eceff3; display: block; }
+.at-preview .pv-big-ph { width: 100%; aspect-ratio: 1; border-radius: 9px; display: grid; place-items: center;
+                         color: #8a94a2; background: repeating-conic-gradient(#e9ebef 0% 25%, #fbfcfd 0% 50%) 0 0 / 16px 16px;
+                         border: 1px dashed #cfd4db; }
+.at-preview .pv-name { font-size: 15px; font-weight: 600; color: #1f2329; margin-top: 9px; text-align: center; }
+.at-preview .pv-type { font-size: 12px; color: var(--ss-warning); background: #fdf3e3; padding: 2px 10px;
+                       border-radius: 20px; display: inline-block; margin: 6px auto 0; }
+.at-preview .pv-desc { font-size: 12.5px; color: var(--ss-text-3); line-height: 1.7; text-align: center; margin-top: 5px;
+                       word-break: break-all; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.at-preview .pv-type-wrap { text-align: center; }
+
+/* ===== 全屏视频查看器 v1.5（v1.5 加底部场卡条） ===== */
+/* v1.14 视频生成进度模态（全站统一样式，同音色样本） */
+.vid-progress-mask { position: fixed; inset: 0; background: rgba(15,17,21,.45); display: none; align-items: center; justify-content: center; z-index: 900; }
+.vid-progress-mask.show { display: flex; }
+.vid-progress-card { background: var(--ss-card); border-radius: 16px; padding: 32px 40px; width: 340px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,.25); }
+.vid-progress-icon { font-size: 40px; display: inline-block; animation: spin 1.2s linear infinite; }
+.vid-progress-title { font-size: 16px; font-weight: 700; margin: 12px 0 4px; color: var(--ss-text-1); }
+.vid-progress-stage { font-size: 13px; color: var(--ss-text-3); margin-bottom: 14px; }
+.vid-progress-bar { height: 8px; border-radius: 4px; background: var(--ss-border); overflow: hidden; }
+.vid-progress-fill { height: 100%; width: 0%; background: var(--ss-green-600); transition: width .4s; border-radius: 4px; }
+.vid-progress-time { font-size: 12px; color: var(--ss-text-4); margin-top: 8px; }
+.full-mask { position: fixed; inset: 0; background: rgba(0,0,0,.92); z-index: 400; display: none; flex-direction: column; }
+.full-mask.show { display: flex; }
+.full-close { position: absolute; top: 16px; left: 16px; z-index: 2; width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,.16); color: #fff; font-size: 18px; line-height: 36px; text-align: center; cursor: pointer; }
+.full-close:hover { background: rgba(255,255,255,.32); }
+.full-nav { position: absolute; top: 50%; transform: translateY(-50%); width: 44px; height: 44px; border-radius: 50%; background: rgba(255,255,255,.16); color: #fff; font-size: 20px; line-height: 44px; text-align: center; cursor: pointer; z-index: 2; user-select: none; }
+.full-nav:hover { background: rgba(255,255,255,.32); }
+.full-nav.prev { left: 24px; }
+.full-nav.next { right: 24px; }
+.full-video { flex: 1; display: flex; align-items: center; justify-content: center; padding: 60px 90px 0; min-height: 0; }
+.full-video img { max-width: 100%; max-height: 100%; border-radius: 10px; object-fit: contain; }
+.full-video .full-player-video { max-width: 100%; max-height: 100%; border-radius: 10px; background: #000; display: none; }
+.full-info { position: absolute; top: 16px; right: 16px; z-index: 2; display: flex; align-items: center; gap: 8px; color: rgba(255,255,255,.85); font-size: 12px; }
+.full-info .avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--ss-green-400); color: #fff; font-size: 11px; line-height: 28px; text-align: center; }
+/* v1.5 全屏底部场卡条（点击切换+播放） */
+.full-scenes { padding: 8px 60px 4px; flex-shrink: 0; }
+.full-scenes-label { font-size: 10px; color: rgba(255,255,255,.55); margin-bottom: 4px; letter-spacing: .5px; }
+.full-scenes-row { display: flex; gap: 6px; overflow: auto; padding-bottom: 2px; }
+.fscard { flex-shrink: 0; width: 96px; height: 64px; border-radius: 6px; overflow: hidden; cursor: pointer; position: relative; border: 2px solid transparent; transition: all .12s ease; }
+.fscard:hover { border-color: rgba(255,255,255,.4); }
+.fscard.active { border-color: var(--ss-green-400); box-shadow: 0 0 0 2px rgba(111,154,133,.3); }
+.fscard img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.fscard .fnum { position: absolute; top: 3px; left: 3px; background: rgba(0,0,0,.6); color: #fff; font-size: 9px; border-radius: 3px; padding: 0 4px; }
+.fscard.active .fnum { background: var(--ss-green-400); }
+
+.full-player { padding: 12px 24px 16px; background: transparent; flex-shrink: 0; }
+.full-pb { display: flex; align-items: center; gap: 10px; color: #fff; font-size: 12px; }
+.full-pb .pb-progress { flex: 1; height: 4px; background: rgba(255,255,255,.18); border-radius: 2px; position: relative; cursor: pointer; }
+.full-pb .pb-progress .pb-fill { height: 100%; background: var(--ss-green-400); border-radius: 2px; }
+.full-pb .pb-progress .pb-dot { position: absolute; top: 50%; transform: translate(-50%,-50%); width: 12px; height: 12px; background: var(--ss-card); border-radius: 50%; }
+.full-pb-time { font-variant-numeric: tabular-nums; min-width: 100px; text-align: center; opacity: .9; }
+.full-pb-extra { display: flex; gap: 6px; margin-left: auto; }
+
+/* ===== toast ===== */
+#toast { position: fixed; top: 16px; right: 16px; z-index: 1100; background: var(--ss-ink-bar); color: #fff; padding: 9px 16px; border-radius: 8px; font-size: 13px; box-shadow: 0 4px 12px rgba(0,0,0,.2); opacity: 0; pointer-events: none; transition: opacity .2s ease; max-width: 420px; }
+#toast.show { opacity: 1; }
+#toast.success { background: var(--ss-success); }
+#toast.error { background: var(--ss-error); }
+
+/* ===== 步4 深色覆盖（引用区/pe 头底的浅色字面量保留，仅深色改写）===== */
+[data-theme="dark"] .refs-area { background: var(--ss-subtle-bg); }
+[data-theme="dark"] .pe-head, [data-theme="dark"] .pe-foot { background: var(--ss-subtle-bg); border-bottom-color: var(--ss-border-soft); border-top-color: var(--ss-border-soft); }
+</style>
+</head>
+<body>
+
+<!-- 正式工坊 shell：左侧全局导航容器（nav.js init 注入）+ 主区 -->
+<aside id="sidebar"></aside>
+<div class="main-wrap">
+
+<!-- 顶栏：4 选择器 + 上一集/下一集 -->
+<div class="top-bar">
+  <div class="tb-title"><span class="ic">🎬</span><span>至交 · 第一集</span><span class="sub-t">场1 · 开场</span></div>
+  <span class="tb-spacer"></span>
+  <div class="tb-eps" title="切换集"><button class="tb-ep-btn" id="tb-prev" title="上一集">‹</button><span class="tb-ep-label" id="tb-ep-label">第一集</span><button class="tb-ep-btn" id="tb-next" title="下一集">›</button></div>
+  <span class="tb-spacer"></span>
+  <div class="tb-selectors" id="tb-selectors">
+    <div class="tb-sel" data-sel="model"><span class="v" id="sel-model-v">H3.0 Fast VIP</span><span class="caret">▾</span></div>
+    <div class="tb-sel" data-sel="quality"><span class="v" id="sel-quality-v">1080P</span><span class="caret">▾</span></div>
+    <div class="tb-sel" data-sel="style"><span class="v" id="sel-style-v">写实电影感</span><span class="caret">▾</span></div>
+    <div class="tb-sel" data-sel="ratio"><span class="v" id="sel-ratio-v">16:9</span><span class="caret">▾</span></div>
+    <div class="tb-pop" id="tb-pop"></div>
+  </div>
+</div>
+
+<div class="scene-cols">
+
+  <!-- 左栏 -->
+  <aside class="col left-col">
+    <div class="left-top">
+      <div class="range-tabs">
+        <button class="range-tab active" data-range="episode">本集</button>
+        <button class="range-tab" data-range="project">全集</button>
+        <div class="range-plus" title="新建资产（演示）" id="add-asset">+</div>
+      </div>
+    </div>
+    <div class="left-mid" id="kind-tabs">
+      <button class="kind-tab active" data-k="characters">👤 角色</button>
+      <button class="kind-tab" data-k="scenes">🏙️ 场景</button>
+      <button class="kind-tab" data-k="unclassified">🧱 素材</button>
+      <button class="kind-tab" data-k="props">🎭 道具</button>
+    </div>
+    <div class="left-bottom">
+      <div class="kind-section-title" id="kind-section-title">👤 角色</div>
+      <div class="asset-list" id="asset-list"></div>
+    </div>
+  </aside>
+
+  <!-- 中栏 -->
+  <main class="col mid-col">
+    <div class="mid-head">
+      <div class="meta">每 1 秒消耗 <b>6 积分</b> · 引用 <span id="ref-count">2</span> · <span id="saved-state" class="saved-state saved">已保存</span></div>
+      <div class="meta" style="font-size:11px"><a href="style-ref.html" target="_blank" style="color:var(--ss-green-600);border-bottom:1px dashed var(--ss-green-300);text-decoration:none">🎨 项目画风设置 →</a></div>
+    </div>
+    <div class="refs-area" id="refs-area"><span class="ra-label">📌 引用区：</span><span class="refs-empty" id="refs-empty">本场文本中 @ 的资产会显示在这里（点击 ✕ 可移除）</span></div>
+    <div class="pe-wrap">
+      <div class="pe-head">
+        <div class="ph-title" id="pe-title">📝 提示词编辑器 · 场1</div>
+        <div class="ph-tools" id="ph-tools">
+          <button class="pe-tool" data-tool="assemble">👁 组装预览</button>
+        </div>
+        <div class="pe-tool-pop" id="pe-tool-pop"></div>
+      </div>
+      <div class="pe-body" id="pe-body" contenteditable="true" data-placeholder="开始输入本场提示词…  输入 @ 插入资产；分镜用「分镜 1 (4s)」等行内小标题分隔；点击工具栏 ⏱/🎥/🎬 选时长/运镜/景别"></div>
+      <div class="pe-foot">
+        <div class="pe-stats" id="pe-stats">0 字符 · 0 引用</div>
+        <div class="pe-actions">
+          <!-- v2 升级（⓪-2 步1 回炉③，用户 03:19）：不另造「高级选项」专门 UI；
+               改成"生成方式"下拉 —— 选「动作迁移」时只多出一个动作参考视频槽，
+               参考图继续复用场页原有的 @ 引用 / 出场角色机制。 -->
+          <select id="adv-workflow" class="wf-pick" onchange="onWorkflowChange()" title="选择这一场用哪种方式生成" style="padding:5px 8px;border:1px solid var(--ss-border-strong);border-radius:8px;font-size:12px;background:var(--ss-card);color:var(--ss-text-2);cursor:pointer">
+            <option value="h3">H3（默认）</option>
+            <option value="ref2va">动作迁移</option>
+          </select>
+          <button class="ai-btn" id="ai-btn" title="AI 智能润色提示词">✨ AI 润色</button>
+          <button class="ai-btn" id="vram-free-btn" title="一键清显存：生成视频前或生成失败后，若提示显存不足就点它释放">🧹 清显存</button>
+          <button class="ai-btn" id="adv-view-queue" onclick="location.href='/tasks.html'" disabled title="生成后可查看排队与生成情况">查看队列</button>
+          <button class="gen-btn" id="gen-btn"><span class="spinner"></span><span class="lbl">↑ 生成场视频</span></button>
+        </div>
+      </div>
+      <!-- 选「动作迁移」时展开：**撑满编辑区**（用户 04:00），槽位由共享组件按工作流声明渲染。
+           用户 04:00：**不做"按本场 @ 引用自动带入"** —— 槽位默认空，由用户自己添加/上传。 -->
+      <div id="adv-video-slot" style="display:none;flex:1.6;min-height:300px;min-width:0;margin-top:10px;border:1px solid var(--ss-border);border-radius:10px;background:var(--ss-card);padding:14px 16px;overflow:auto">
+        <div style="font-size:13px;font-weight:600;color:var(--ss-text-1);margin-bottom:10px">动作迁移 · 素材</div>
+        <div id="adv-slots"></div>
+        <div style="font-size:11px;color:var(--ss-text-4);line-height:1.7;margin-top:10px">
+          请自行添加人物图 / 场景图，并上传一段动作参考视频（不需要音轨）。
+          <br>※ 上传通道与"槽位对应的节点 ID"尚未补齐，本步只到界面与校验（见待补清单）。
+        </div>
+      </div>
+      <style>
+        /* 展开区在全宽空间里的观感：槽块横向铺开，而不是挤成一列 */
+        #adv-slots .sa-wrap { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; align-items: start; }
+        #adv-slots .sa-err { grid-column: 1 / -1; }
+      </style>
+    </div>
+  </main>
+
+  <!-- 右栏 -->
+  <aside class="col right-col">
+    <div class="col-title">场视频预览 <span class="hint">点 ⛶ 进全屏查看器</span></div>
+    <div class="video-card" id="video-card">
+      <img id="video-img" alt="">
+      <video id="video-player" class="v-player" playsinline preload="metadata" style="display:none"></video>
+      <div class="v-toolbar">
+        <div class="v-tool-btn" id="cut-btn" title="截帧">✚</div>
+        <div class="v-tool-btn" id="dl-btn" title="下载视频">⬇</div>
+      </div>
+      <div class="cut-pop" id="cut-pop">
+        <div class="ci" data-cut="current">裁取当前帧</div>
+        <div class="ci" data-cut="first">裁取片段首帧</div>
+        <div class="ci" data-cut="last">裁取片段尾帧</div>
+      </div>
+      <div class="v-zoom" id="zoom-btn" title="放大/全屏">⛶</div>
+      <div class="v-play" id="v-play" title="播放（演示）">▶</div>
+    </div>
+    <div class="v-meta">
+      <div class="row"><span>场名</span><b id="m-name">场1 · 开场</b></div>
+      <div class="row"><span>时长</span><b id="m-dur">10s</b></div>
+      <div class="row"><span>引用数</span><b id="m-refs">2</b></div>
+    </div>
+    <div class="right-spacer"></div>
+    <!-- ★ ⑦ 补派（2026-10-02，界面去内部编号）：原「对接点」开发说明**已移入本注释**（不再渲染给用户）——
+         场视频 POST /api/video/generate（★ ②步2遗留：已入统一任务队列，状态/取消/重试走 /api/tasks）；
+         截帧 = 前端 canvas → POST /api/tmp-image-upload（v1.55 P0-4，写入 videos[].thumbnail；
+         后端兜底因嵌入式 Python 无 ffmpeg/cv2 降级不做）。 -->
+    <div class="v-note">生成视频需要可访问的生成节点；进度与取消可在「任务队列」页查看。</div>
+    <div class="player-bar" id="player-bar">
+      <button class="pb-btn" id="pb-play" title="播放/暂停">▶</button>
+      <div class="pb-progress" id="pb-progress"><div class="pb-fill" id="pb-fill"></div><div class="pb-dot" id="pb-dot"></div></div>
+      <span class="pb-time" id="pb-time">00:03 / 00:10</span>
+      <div class="pb-vol"><span style="font-size:12px">🔊</span><div class="bar"><div class="fill"></div></div></div>
+      <div class="pb-extra">
+        <button class="pb-btn" title="HD">HD</button>
+        <button class="pb-btn" title="倍速">1×</button>
+      </div>
+    </div>
+  </aside>
+</div>
+
+<div class="episode-strip">
+  <div class="strip-title">🎞 <span id="strip-ep-name">第一集</span> · 场序列 <span class="hint">首场前+ · 间隔+号 hover 显隐 · 🗑/🕘</span></div>
+  <div class="strip" id="strip"></div>
+</div>
+
+<!-- @ 资产引用弹窗（新架构：资产/小工具 tab + 中部归属列表 + 底部资产库级联） -->
+<div class="atpop" id="atpop">
+  <!-- 顶部标签：资产 / 小工具 -->
+  <div class="tabs" id="at-tabs">
+    <button type="button" class="tab active" data-tab="asset">资产</button>
+    <button type="button" class="tab" data-tab="tools">小工具</button>
+  </div>
+  <!-- 中部归属资产：列表式，一行一个（人物/场景/道具，当前集在前、当前项目在后）-->
+  <div class="own-wrap" id="viewAsset"></div>
+  <!-- 小工具 tab -->
+  <div class="tools-wrap" id="viewTools" style="display:none"></div>
+  <!-- 底部 资产库 入口（hover → 级联五标签） -->
+  <div class="lib-entry" id="libEntry">
+    <span class="lic" id="libIc"></span>
+    <span><div class="lt">资产库</div><div class="ls">人物 · 场景 · 道具 · 参考 · 未分类</div></span>
+    <span class="arrow"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 6l6 6-6 6"/></svg></span>
+  </div>
+  <!-- 级联：hover 资产库 → 二级(五标签) → 三级(资产)，随右侧/下方智能避让 -->
+  <div class="cascade lvl2" id="cascadeL2"></div>
+  <div class="cascade lvl3" id="cascadeL3"></div>
+</div>
+<!-- 跟随式预览浮层（fixed 于 body 级，pointer-events:none；离开资产即消失） -->
+<div class="at-preview" id="at-preview"></div>
+
+<!-- v1.14 视频生成进度模态（全站统一，同音色样本样式） -->
+<div class="vid-progress-mask" id="vid-progress-mask">
+  <div class="vid-progress-card">
+    <!-- ⓪-VI·步3（D6 首发）：生成等待 = 品牌帧线动效（logo-motion-loop），替换 ⏳ -->
+    <div class="vid-progress-icon"><img src="/static/brand/logo-motion-loop.svg" alt="生成中" style="width:72px;height:72px;display:inline-block"></div>
+    <div class="vid-progress-title" id="vid-progress-title">生成场视频中…</div>
+    <div class="vid-progress-stage" id="vid-progress-stage">提交任务…</div>
+    <div class="vid-progress-bar"><div class="vid-progress-fill" id="vid-progress-fill"></div></div>
+    <div class="vid-progress-time" id="vid-progress-time">已耗时 0 秒</div>
+  </div>
+</div>
+
+<!-- v1.5 全屏视频查看器（加底部场卡条） -->
+<div class="full-mask" id="full-mask">
+  <div class="full-close" id="full-close" title="关闭">✕</div>
+  <div class="full-nav prev" id="full-prev" title="上一集">‹</div>
+  <div class="full-nav next" id="full-next" title="下一集">›</div>
+  <div class="full-info"><span id="full-name">第一集 · 场1 · 开场</span><div class="avatar">🎬</div></div>
+  <div class="full-video"><img id="full-img" alt=""><video id="full-player" class="full-player-video" playsinline preload="metadata" style="display:none"></video></div>
+  <div class="full-scenes">
+    <div class="full-scenes-label">🎞 底部场卡（点击切换并播放）</div>
+    <div class="full-scenes-row" id="full-scenes-row"></div>
+  </div>
+  <div class="full-player">
+    <div class="full-pb">
+      <button class="pb-btn" id="full-pb-play" title="播放/暂停">▶</button>
+      <div class="pb-progress" id="full-pb-progress"><div class="pb-fill" id="full-pb-fill"></div><div class="pb-dot" id="full-pb-dot"></div></div>
+      <span class="full-pb-time" id="full-pb-time">00:00 / 00:10</span>
+      <div class="pb-vol"><span style="font-size:12px">🔊</span><div class="bar"><div class="fill"></div></div></div>
+      <div class="full-pb-extra">
+        <button class="pb-btn" title="字幕">CC</button>
+        <button class="pb-btn" title="倍速">1.0×</button>
+        <button class="pb-btn" title="全屏">⛶</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+</div><!-- /main-wrap -->
+
+<!-- 共享组件：palette（画风）/ asset-card（左区卡）/ nav（全局导航+api/toast/confirmDialog） -->
+<script src="/static/palette.js?v=1"></script>
+<script src="/static/vendor/asset-card.js?v=8"></script>
+<script src="/static/nav.js?v=14"></script>
+<!-- ★ ⑦ A-P1-3（2026-10-02）：env-guard.js 已拆除（其依赖的 IC 已下线，见 doGenerate 注释） -->
+
+<script>
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+var _toastTimer = null;
+function toast(msg, type) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'show' + (type === 'success' ? ' success' : type === 'error' ? ' error' : '');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(function () { t.className = ''; }, 2400);
+}
+function svgThumb(txt, color, w, h) {
+  w = w || 200; h = h || 120;
+  var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + w + '" height="' + h + '"><rect width="' + w + '" height="' + h + '" fill="' + color + '"/><text x="' + (w / 2) + '" y="' + (h / 2 + 6) + '" font-size="18" fill="rgba(255,255,255,.92)" text-anchor="middle" font-family="sans-serif">' + esc(txt) + '</text></svg>';
+  return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+}
+
+var KIND_COLORS = { characters: '#A5C3B1', scenes: '#86efac', materials: '#a3a3a3', props: '#fcd34d' };
+var KIND_LABELS = { characters: '👤 角色', scenes: '🏙️ 场景', unclassified: '🧱 素材（未分类资产）', props: '🎭 道具' };
+
+/* ============================================================
+ * 真实数据层（实施9：预开发基底 → 正式 API，贴现有契约）
+ * ============================================================ */
+var qs = new URLSearchParams(location.search);
+var pid = qs.get('project') || qs.get('pid') || '';
+var eid = qs.get('episode') || qs.get('eid') || '';
+var projCache = null;
+var allAssets = { characters: [], scenes: [], props: [], unclassified: [], references: [] };
+var EPISODES = [];                 /* 当前项目集列表（load 填充，含 scenes[]） */
+var SCENES = [];                   /* 当前集的场列表（切集时重新赋值） */
+var currentEpisodeIdx = 0;
+var currentSceneId = null;         /* 当前场 id（原基底 currentSceneId 改名，避免与场对象混淆） */
+var _sceneNodes = {};
+
+function api(path, options) {
+  return fetch('/api' + path, options).then(function (r) {
+    if (!r.ok) {
+      /* ⓪-VI 后修复（2026-09-18 23:4x）：原写法 (r.json()).detail 拿的是 Promise 的属性，
+         永远 undefined → 后端 400 的具体原因被吞成"请求失败"。改为先解析 json 再取 detail。 */
+      return r.json().catch(function () { return {}; }).then(function (j) {
+        return Promise.reject(new Error((j && j.detail) || ('请求失败（HTTP ' + r.status + '）')));
+      });
+    }
+    return r.json();
+  });
+}
+function jsonBody(method, data) {
+  return { method: method, headers: { 'Content-Type': 'application/json; charset=utf-8' }, body: JSON.stringify(data) };
+}
+function getCurrentScene() { return SCENES.find(function (s) { return s.id === currentSceneId; }); }
+function fullName(a) { return ((a.prefix || '') + '-' + (a.variant_name || '')).replace(/-$/, ''); }
+/* 截帧/未分类/参考图 文件名截短显示（B批§九：参考即资产，文件名过长截短）——与 assets 编辑器 refLabel 同口径 */
+function fileShort(p) { var f = String(p || '').split('/').pop(); return f.length > 12 ? f.slice(0, 12) + '…' : f; }
+/* v1.14 资产 chip 的标记类型：角色→role / 场景→scene / 道具→prop（后端按 tag 名查库，避免场景被当角色 B1 跳过） */
+function refKindOf(nm) {
+  if (allAssets.characters.some(function (a) { return fullName(a) === nm; })) return 'role';
+  if (allAssets.scenes.some(function (a) { return fullName(a) === nm; })) return 'scene';
+  if (allAssets.props.some(function (a) { return fullName(a) === nm; })) return 'prop';
+  return 'role';
+}
+function assetImg(a) { var imgs = a.images || []; return imgs.length ? ('/api/asset-file/' + encodeURIComponent(imgs[0].path)) : ''; }
+/* 无图占位（彩色渐变+卡种图标+资产名，用户裁定） */
+function placeholderThumb(name, kind) {
+  var c = { character: '#A5C3B1', scene: '#86efac', prop: '#fcd34d', unassigned: '#a3a3a3' }[kind] || '#c4b5fd';
+  var icon = kind === 'character' ? '👤' : kind === 'scene' ? '🏙️' : kind === 'prop' ? '🎭' : '🧱';
+  var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="200" height="150"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="' + c + '"/><stop offset="1" stop-color="#ffffff"/></linearGradient></defs><rect width="200" height="150" fill="url(#g)"/><text x="100" y="62" font-size="30" text-anchor="middle">' + icon + '</text><text x="100" y="104" font-size="13" fill="rgba(31,41,55,.85)" text-anchor="middle" font-weight="600">' + esc(name) + '</text></svg>';
+  return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+}
+/* 本集/全集过滤（用户裁定：项目→全部；本集→当前集；scopeFilter 逻辑正确勿改） */
+function scopeFilter(assets) {
+  var out = [];
+  assets.forEach(function (a) {
+    var scopes = a.scopes || {};
+    var projects = scopes.projects || [], episodes = scopes.episodes || [], sceneIds = scopes.scenes || [];
+    var inProj = projects.indexOf(pid) >= 0;
+    var inEp = episodes.indexOf(eid) >= 0;
+    var hitEp = false;
+    sceneIds.forEach(function (sid) { var n = _sceneNodes[sid]; if (n && n.eid === eid) hitEp = true; });
+    if (currentRange === 'project') { if (inProj || inEp || hitEp) out.push(a); }
+    else { if (inEp || hitEp) out.push(a); }
+  });
+  return out;
+}
+function buildSceneNodes(p) {
+  _sceneNodes = {};
+  (p.episodes || []).forEach(function (ep) { (ep.scenes || []).forEach(function (sc) { _sceneNodes[sc.id] = { pid: p.id, eid: ep.id, title: sc.title || '' }; }); });
+}
+function scopeLabel(a) {
+  var sc = a.scopes || {};
+  var inEp = (sc.episodes || []).indexOf(eid) >= 0;
+  var inProj = (sc.projects || []).indexOf(pid) >= 0;
+  return inEp ? '本集' : inProj ? '项目' : (sc.scenes || []).length ? '本场' : '全局';
+}
+function currentEpisode() { return EPISODES[currentEpisodeIdx] || { id: '', name: '', scenes: [] }; }
+
+var SEL_OPTIONS = {
+  model: { label: '模型', api: 'GET /api/models', options: [{ v: 'H3.0 Pro', meta: '高质量·高算力' }, { v: 'H3.0 Fast VIP', meta: '极速·VIP 通道', cur: true }, { v: 'H3.0 标准', meta: '标准版' }, { v: 'H3.0 Lite', meta: '轻量·经济' }] },
+  quality: { label: '画质', api: '项目级配置（quota 计算依据）', options: [{ v: '720P', meta: '高清' }, { v: '1080P', meta: '全高清', cur: true }, { v: '4K', meta: '超清' }] },
+  style: { label: '画风', api: 'PE_STYLES（assets.html L616，8 风格 + type）', isStyle: true, options: [{ v: '写实电影感', type: 'real', meta: '真人·胶片颗粒', cur: true }, { v: '赛博朋克', type: 'real', meta: '真人·霓虹夜景' }, { v: '日系动漫', type: '2d', meta: '2D·赛璐璐' }, { v: '水墨国风', type: '2d', meta: '2D·水墨晕染' }, { v: '古风', type: '2d', meta: '2D·工笔重彩' }, { v: '手绘插画', type: '2d', meta: '2D·铅笔质感' }, { v: '低多边形', type: '3d', meta: '3D·几何切面' }, { v: '像素风', type: '3d', meta: '3D·8-bit' }] },
+  ratio: { label: '比例', api: '枚举（aspect_ratio 字段）', options: [{ v: '16:9', meta: '横屏·电影', cur: true }, { v: '9:16', meta: '竖屏·短视频' }, { v: '1:1', meta: '方形' }, { v: '4:3', meta: '传统' }] }
+};
+/* v1.5 功能性 chip 下拉数据（含运镜动图）
+   v1.16（U9）移除 time：时长由后端台词驱动自动定（乱语护栏封顶），不再提供手动时长工具；
+   历史 <duration-ms> 标记仍由 markerToChipHtml/markersToHtml 只读渲染，chipsToMarkers 保真回写。 */
+var TOOL_OPTIONS = {
+  cam: {
+    label: '运镜',
+    items: [
+      { v: '🎥 推近', meta: '推镜头', anim: 'push-in' },
+      { v: '🎥 拉远', meta: '拉镜头', anim: 'pull-out' },
+      { v: '🎥 平移', meta: '横移', anim: 'pan' },
+      { v: '🎥 跟随', meta: '跟踪', anim: 'follow' },
+      { v: '🎥 航拍', meta: '空中', anim: 'drone' },
+      { v: '🎥 环绕', meta: '360°', anim: 'orbit' },
+      { v: '🎥 上升', meta: '仰升', anim: 'up' },
+      { v: '🎥 下降', meta: '俯降', anim: 'down' }
+    ]
+  },
+  shot: {
+    label: '景别',
+    items: [
+      { v: '🎬 特写', meta: 'CU' }, { v: '🎬 近景', meta: 'MCU' }, { v: '🎬 中景', meta: 'MS' },
+      { v: '🎬 中远景', meta: 'MLS' }, { v: '🎬 远景', meta: 'LS' }, { v: '🎬 全景', meta: 'WS' }, { v: '🎬 大远景', meta: 'ELS' }
+    ]
+  }
+};
+
+var currentRange = 'episode';
+var currentKind = 'characters';
+var currentSel = { model: 'H3.0 Fast VIP', quality: '1080P', style: '', ratio: '16:9' };
+var atFilter = 'all';
+var atSearch = '';
+var atOpen = false;
+var savedRange = null;  /* v1.11 @ 弹窗打开时保存光标 range（备用） */
+var savedAtPos = null;  /* v1.12 记录最后一个 @ 字符的 {node, offset}（不依赖 selection，100% 插回 @ 位置） */
+var lastCaretRange = null;  /* v1.14 编辑器内最近一次光标 range（工具下拉等非 @ 插入时定位用） */
+var toolPopOpen = false;
+var saveState = 'saved';
+var autoSaveTimer = null;
+var playing = false;
+var playPos = 0.32;
+var playDur = 10;
+
+function hhmm() {
+  var d = new Date();
+  return [d.getHours(), d.getMinutes()].map(function (n) { return n < 10 ? '0' + n : n; }).join(':');
+}
+function setSaveState(s) {
+  saveState = s;
+  var el = document.getElementById('saved-state');
+  if (s === 'dirty') { el.className = 'saved-state dirty'; el.textContent = ' 未保存'; }
+  else if (s === 'saving') { el.className = 'saved-state saving'; el.textContent = ' 正在保存…'; }
+  else { el.className = 'saved-state saved'; el.textContent = ' 已自动保存 ' + hhmm(); }
+}
+function doSave(silent) {
+  if (saveState === 'saved' && !silent) { toast('没有未保存修改', 'info'); return; }
+  var sc = getCurrentScene();
+  if (!sc || !pid || !eid) { setSaveState('saved'); return; }
+  setSaveState('saving');
+  var text = chipsToMarkers();
+  api('/projects/' + pid + '/episodes/' + eid + '/scenes/' + sc.id, jsonBody('PUT', { title: sc.title || '', text: text }))
+    .then(function () {
+      setSaveState('saved');
+      sc.text = text;
+      if (!silent) toast('💾 已保存', 'success');
+    })
+    .catch(function (e) { setSaveState('dirty'); toast('保存失败：' + e.message, 'error'); });
+}
+function autoSave() {
+  if (saveState !== 'dirty') return;
+  clearTimeout(autoSaveTimer);
+  autoSaveTimer = setTimeout(function () { doSave(true); }, 1500);
+}
+
+/* 顶栏选择器下拉（v1.6 fixed 定位避免页面抖动） */
+function openSelPop(key, anchor) {
+  var cfg = SEL_OPTIONS[key];
+  var pop = document.getElementById('tb-pop');
+  var r = anchor.getBoundingClientRect();
+  pop.style.left = (r.left - 8) + 'px';
+  pop.style.top = (r.bottom + 4) + 'px';
+  pop.style.minWidth = Math.max(r.width + 16, 240) + 'px';
+  var html = cfg.options.map(function (o) {
+    var cur = currentSel[key] === o.v;
+    var icon = key === 'style' ? (o.type === 'real' ? '🔴' : o.type === '2d' ? '🟣' : '🔵') : '';
+    return '<div class="pi' + (cur ? ' cur' : '') + '" data-v="' + esc(o.v) + '"><span class="name">' + esc(o.v) + '</span><span class="meta">' + (icon ? icon + ' ' : '') + esc(o.meta) + '</span></div>';
+  }).join('');
+  pop.innerHTML = html + '<div class="foot-note"><b>对接：</b>' + esc(cfg.api) + '（生产实施实现）</div>';
+  pop.classList.add('show');
+  pop.setAttribute('data-key', key);
+  pop.querySelectorAll('.pi').forEach(function (pi) {
+    pi.addEventListener('click', function () {
+      var v = pi.getAttribute('data-v');
+      currentSel[key] = v;
+      document.getElementById('sel-' + key + '-v').textContent = v;
+      pop.classList.remove('show');
+      toast(cfg.label + '：' + v, 'success');
+    });
+  });
+}
+document.querySelectorAll('.top-bar .tb-sel').forEach(function (s) {
+  s.addEventListener('click', function (e) {
+    e.stopPropagation();
+    var key = s.getAttribute('data-sel');
+    if (key === 'style') {
+      /* 实施9 修复：顶栏画风按钮跳独立画风库页（带 return= 实现"应用后自动返回场页"） */
+      var ret = encodeURIComponent(location.pathname + location.search);
+      location.href = 'style-ref.html?project=' + encodeURIComponent(pid) + '&return=' + ret;
+      return;
+    }
+    var pop = document.getElementById('tb-pop');
+    if (pop.classList.contains('show') && pop.getAttribute('data-key') === key) { pop.classList.remove('show'); return; }
+    openSelPop(key, s);
+  });
+});
+document.addEventListener('mousedown', function (e) {
+  var pop = document.getElementById('tb-pop');
+  if (!pop.classList.contains('show')) return;
+  if (!pop.contains(e.target) && !e.target.classList.contains('tb-sel')) pop.classList.remove('show');
+});
+
+/* 左区资产卡（AssetCard 统一组件渲染；icons：⋮⋮拖把手/✎跳资产库/🔍放大）
+ * 素材（未分类）卡：点卡=新建资产弹窗；拖拽=并入新资产 */
+function renderAssets() {
+  document.getElementById('kind-section-title').innerHTML = KIND_LABELS[currentKind];
+  var el = document.getElementById('asset-list');
+  el.innerHTML = '';
+  var isUnclass = currentKind === 'unclassified';
+  var list = isUnclass ? allAssets.unclassified : scopeFilter(allAssets[currentKind] || []);
+  if (!list.length) { el.innerHTML = '<div style="grid-column:1/-1;font-size:12px;color:#9ca3af;padding:8px">本范围暂无资产</div>'; return; }
+  list.forEach(function (a) {
+    var holder = document.createElement('div');
+    el.appendChild(holder);
+    var kind = currentKind === 'characters' ? 'character' : currentKind === 'scenes' ? 'scene' : currentKind === 'props' ? 'prop' : 'unassigned';
+    var name = isUnclass ? ((a.path || '').split('/').pop() || '未命名') : fullName(a);
+    var aPath = a.path || ((a.images && a.images[0]) ? a.images[0].path : '');
+    var thumb = isUnclass ? (aPath ? ('/api/asset-file/' + encodeURIComponent(aPath)) : placeholderThumb(name, 'unassigned'))
+      : (assetImg(a) || placeholderThumb(name, kind));
+    var layout = (currentKind === 'scenes') ? 'landscape' : 'portrait';
+    holder.setAttribute('data-layout', layout);  /* v1.6：用 data-layout + .asset-list [data-layout] CSS 覆盖 vendor 150px 固定高 */
+    new AssetCard(holder, {
+      kind: kind,
+      data: { id: a.id || '', path: aPath, thumbnailUrl: thumb, name: name, sub: isUnclass ? '未分类 · 待归类' : scopeLabel(a) },
+      icons: {
+        tl: { icon: '⋮⋮', title: '拖拽到编辑器插入引用（按住才可拖）', action: 'drag' },
+        tr: { icon: '✎', title: '在资产库编辑', action: 'jump' },
+        br: { icon: '🔍', title: '放大预览', action: 'zoom' }
+      },
+      onClick: function (c) {
+        if (isUnclass) openNewAsset(c.data.path);
+        else insertAtCursor(c.data.name, 'asset');
+      },
+      onAction: function (c, action, btn) {
+        if (action === 'jump') { location.href = 'assets.html?project=' + encodeURIComponent(pid) + '&tab=' + currentKind + '&id=' + encodeURIComponent(c.data.id || ''); }
+        else if (action === 'zoom') { var img = c.el.querySelector('.ac-img'); if (img && img.src) zoomAsset(img.src); }
+      }
+    });
+  });
+}
+document.querySelectorAll('#kind-tabs .kind-tab').forEach(function (k) {
+  k.addEventListener('click', function () {
+    document.querySelectorAll('#kind-tabs .kind-tab').forEach(function (x) { x.classList.toggle('active', x === k); });
+    currentKind = k.getAttribute('data-k'); renderAssets();
+  });
+});
+document.querySelectorAll('.range-tab').forEach(function (r) {
+  r.addEventListener('click', function () {
+    document.querySelectorAll('.range-tab').forEach(function (x) { x.classList.toggle('active', x === r); });
+    currentRange = r.getAttribute('data-range');
+    renderAssets();
+    toast((currentRange === 'episode' ? '本集' : '全集') + '范围', 'info');
+  });
+});
+document.getElementById('add-asset').addEventListener('click', function () { openNewAsset(''); });
+
+function insertAssetChip(name) { if (name) { insertAtCursor(name, 'asset'); } }
+function zoomAsset(img) {
+  if (!img || img.indexOf('data:') === 0) { toast('该资产暂无图片', 'error'); return; }
+  var m = document.createElement('div');
+  m.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:900;display:flex;align-items:center;justify-content:center;cursor:zoom-out';
+  m.innerHTML = '<img src="' + esc(img) + '" style="max-width:92vw;max-height:88vh;border-radius:10px;box-shadow:0 10px 40px rgba(0,0,0,.5)">';
+  m.onclick = function () { m.remove(); };
+  document.body.appendChild(m);
+}
+
+/* ==================== 素材 → 新建资产（点卡 / 拖入 / 左上 +） ==================== */
+var _newAssetPath = '';
+function openNewAsset(path) {
+  _newAssetPath = path || '';
+  var m = document.getElementById('new-asset-mask');
+  if (!m) { buildNewAssetModal(); m = document.getElementById('new-asset-mask'); }
+  document.getElementById('na-prefix').value = '';
+  document.getElementById('na-preview').src = _newAssetPath ? ('/api/asset-file/' + encodeURIComponent(_newAssetPath)) : '';
+  document.getElementById('na-preview-box').style.display = _newAssetPath ? '' : 'none';
+  document.querySelectorAll('#na-kinds .na-kind').forEach(function (k) { k.classList.toggle('active', k.getAttribute('data-k') === 'characters'); });
+  m.style.display = 'flex';
+}
+function closeNewAsset() { var m = document.getElementById('new-asset-mask'); if (m) m.style.display = 'none'; _newAssetPath = ''; }
+function buildNewAssetModal() {
+  var d = document.createElement('div');
+  d.id = 'new-asset-mask';
+  d.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:950;display:none;align-items:center;justify-content:center';
+  d.innerHTML = '<div style="background:#fff;border-radius:12px;width:420px;max-width:92vw;padding:18px 20px;box-shadow:0 14px 44px rgba(0,0,0,.22)">' +
+    '<h3 style="font-size:15px;margin:0 0 4px">新建资产</h3>' +
+    '<div id="na-preview-box" style="display:none;margin:10px 0"><img id="na-preview" style="width:120px;height:120px;object-fit:cover;border-radius:8px;border:1px solid #e5e7eb" alt=""></div>' +
+    '<div style="font-size:12px;color:#6b7280;margin:6px 0 4px">资产名称</div>' +
+    '<input id="na-prefix" style="width:100%;padding:8px 10px;border:1px solid #d1d5db;border-radius:8px;font-size:13px;outline:none;box-sizing:border-box" placeholder="如：药铺老者">' +
+    '<div style="font-size:12px;color:#6b7280;margin:12px 0 4px">资产类型</div>' +
+    '<div id="na-kinds" style="display:flex;gap:8px">' +
+      '<button class="na-kind active" data-k="characters" type="button" style="flex:1;padding:8px;border:1px solid #e5e7eb;border-radius:8px;background:#fff;font-size:13px;cursor:pointer">👤 人物</button>' +
+      '<button class="na-kind" data-k="scenes" type="button" style="flex:1;padding:8px;border:1px solid #e5e7eb;border-radius:8px;background:#fff;font-size:13px;cursor:pointer">🏙️ 场景</button>' +
+      '<button class="na-kind" data-k="props" type="button" style="flex:1;padding:8px;border:1px solid #e5e7eb;border-radius:8px;background:#fff;font-size:13px;cursor:pointer">🎭 道具</button>' +
+    '</div>' +
+    '<div style="font-size:11px;color:#9ca3af;margin:10px 0 0">将归属本集/本场及项目，图从「素材」转入该资产。</div>' +
+    '<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px">' +
+      '<button id="na-cancel" type="button" style="padding:8px 16px;border:1px solid #e5e7eb;border-radius:8px;background:#f3f4f6;color:#374151;font-size:13px;cursor:pointer">取消</button>' +
+      '<button id="na-ok" type="button" style="padding:8px 16px;border:none;border-radius:8px;background:#3A6B57;color:#fff;font-size:13px;cursor:pointer">创建并入本场</button>' +
+    '</div></div>';
+  document.body.appendChild(d);
+  d.querySelectorAll('#na-kinds .na-kind').forEach(function (k) {
+    k.addEventListener('click', function () {
+      d.querySelectorAll('#na-kinds .na-kind').forEach(function (x) { x.classList.toggle('active', x === k); });
+    });
+  });
+  d.querySelector('#na-cancel').addEventListener('click', closeNewAsset);
+  d.querySelector('#na-ok').addEventListener('click', submitNewAsset);
+  d.addEventListener('click', function (e) { if (e.target === d) closeNewAsset(); });
+}
+async function submitNewAsset() {
+  var kind = document.querySelector('#na-kinds .na-kind.active').getAttribute('data-k');
+  var name = document.getElementById('na-prefix').value.trim();
+  if (!name) { toast('请填写资产名称', 'error'); return; }
+  var variant = kind === 'characters' ? '基础形象' : '';
+  var body = {
+    prefix: name, variant_name: variant,
+    scopes: { projects: [pid], episodes: [eid], scenes: getCurrentScene() ? [getCurrentScene().id] : [] },
+    images: _newAssetPath ? [{ path: _newAssetPath, version: '', gen_prompt: '', source: 'new', added_at: new Date().toISOString().slice(0, 19) }] : [],
+    prompt: '', voice_text: '', audios: [], voice_source: 'text', voice: ''
+  };
+  try {
+    var asset = await api('/' + kind, jsonBody('POST', body));
+    closeNewAsset();
+    var nm = fullName(asset);
+    insertAssetChip(nm);
+    await reloadAssets();
+    toast('已创建' + (kind === 'characters' ? '人物' : kind === 'scenes' ? '场景' : '道具') + '「' + nm + '」并插入本场', 'success');
+  } catch (e) { toast(e.message, 'error'); }
+}
+async function reloadAssets() {
+  var r;
+  try {
+    r = await Promise.all([
+      api('/characters').catch(function () { return { items: [] }; }),
+      api('/scenes').catch(function () { return { items: [] }; }),
+      api('/props').catch(function () { return { items: [] }; }),
+      api('/assets/index/unclassified').catch(function () { return { entries: [] }; }),
+      api('/references').catch(function () { return { items: [] }; })
+    ]);
+  } catch (e) { toast(e.message, 'error'); return; }
+  allAssets.characters = r[0].items || [];
+  allAssets.scenes = r[1].items || [];
+  allAssets.props = r[2].items || [];
+  allAssets.unclassified = r[3].entries || [];
+  allAssets.references = r[4].items || [];
+  renderAssets();
+}
+
+/* ==================== 拖拽：AssetCard 拖把手 → 编辑器插 @chip / 素材 → 新建资产 ==================== */
+document.addEventListener('dragover', function (e) {
+  e.preventDefault();
+  /* v1.8 实施9：拖拽经过文本区时在鼠标位置显示 caret（插入位置提示） */
+  var t = e.target;
+  if (t && t.closest && t.closest('#pe-body') && document.caretRangeFromPoint) {
+    var cr = document.caretRangeFromPoint(e.clientX, e.clientY);
+    if (cr && cr.startContainer) {
+      var s = window.getSelection();
+      s.removeAllRanges(); s.addRange(cr);
+    }
+  }
+});
+document.addEventListener('drop', function (e) {
+  e.preventDefault();
+  var t = e.target;
+  var inEditor = !!(t && t.closest && (t.closest('#pe-body') || t.closest('.pe-wrap')));
+  var raw = e.dataTransfer.getData('text/plain');
+  var src = null;
+  try { src = raw ? JSON.parse(raw) : null; } catch (err) { }
+  var assetName = e.dataTransfer.getData('text/asset-name');
+  if (src && src.kind === 'unassigned' && src.path) { openNewAsset(src.path); return; }
+  if (inEditor && assetName) { insertAtCursor(assetName, 'asset'); toast('已插入引用 @ ' + assetName, 'success'); return; }
+});
+
+/* ==================== 中栏 · 统一编辑器（接真实 .text 尖括号标记，双向翻译） ==================== */
+/* 尖括号标记 → chip HTML（data-marker 保留原样，无失真回写） */
+function markerToChipHtml(marker, kind) {
+  var inner = marker.replace(/^<[^>]*>/, '').replace(/<\/[^>]*>$/, '');
+  var dm = ' data-marker="' + esc(marker) + '"';
+  if (kind === 'dur') inner = (Math.round(Number(inner) / 1000)) + 's';
+  if (kind === 'role') {
+    var nm = inner.replace(/-$/, '');
+    return '<span class="ic-chip ref" data-ref="' + esc(nm) + '"' + dm + ' contenteditable="false">🖼 ' + esc(nm) + '<span class="ic-preview"><img class="pv-img" src="' + refThumb(nm) + '"><div class="pv-name">' + esc(nm) + '</div></span></span>';
+  }
+  if (kind === 'reference') {
+    var rp = inner;
+    var disp = fileShort(rp);
+    var pimg = '/api/asset-file/' + encodeURIComponent(rp);
+    return '<span class="ic-chip ref refimg" data-refpath="' + esc(rp) + '"' + dm + ' contenteditable="false">🖼 ' + esc(disp) + '<span class="ic-preview"><img class="pv-img" src="' + pimg + '"><div class="pv-name">' + esc(disp) + '</div></span></span>';
+  }
+  var label = kind === 'dur' ? '⏱ ' : kind === 'cam' ? '🎥 ' : '🎬 ';
+  return '<span class="ic-chip func" data-func="' + esc(label + inner) + '" data-tool="' + esc(kind === 'dur' ? 'time' : kind === 'cam' ? 'cam' : 'shot') + '"' + dm + ' contenteditable="false">' + esc(label + inner) + '</span>';
+}
+function markersToHtml(text) {
+  var re = /<((?:role|scene|prop))\b[^>]*>[\s\S]*?<\/\1>|<duration-ms>[\s\S]*?<\/duration-ms>|<camera-move>[\s\S]*?<\/camera-move>|<shot-size>[\s\S]*?<\/shot-size>|<reference>[^<]*<\/reference>/g;
+  var last = 0, m, html = '';
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > last) html += esc(text.slice(last, m.index));
+    var mm = m[0]; var kind;
+    if (/^<reference>/.test(mm)) kind = 'reference';
+    else if (/^<(role|scene|prop)\b/.test(mm)) kind = 'role'; else if (/^<duration-ms>/.test(mm)) kind = 'dur';
+    else if (/^<camera-move>/.test(mm)) kind = 'cam'; else kind = 'shot';
+    html += markerToChipHtml(mm, kind);
+    last = m.index + mm.length;
+  }
+  if (last < text.length) html += esc(text.slice(last));
+  return html;
+}
+/* chip → 尖括号标记（保存/生成时调用，data-marker 原样回写保真） */
+function chipsToMarkers() {
+  var body = document.getElementById('pe-body');
+  var clone = body.cloneNode(true);
+  clone.querySelectorAll('.ic-chip.ref').forEach(function (c) {
+    /* 参考即资产：data-refpath(截帧/未分类/参考图按路径) → <reference>path</reference>；data-ref(资产名) → <role/scene/prop> */
+    var rp = c.getAttribute('data-refpath');
+    if (rp) { c.parentNode.replaceChild(document.createTextNode('<reference>' + rp + '</reference>'), c); return; }
+    /* v1.14 总是按类型重写（丢弃旧 data-marker 的 tag 名，纠正历史 <role> 场景标记为 <scene>） */
+    var nm = c.getAttribute('data-ref');
+    var k = refKindOf(nm);
+    var marker = '<' + k + '>' + nm + '</' + k + '>';
+    c.parentNode.replaceChild(document.createTextNode(marker), c);
+  });
+  clone.querySelectorAll('.ic-chip.func').forEach(function (c) {
+    var marker = c.getAttribute('data-marker');
+    if (marker) { c.parentNode.replaceChild(document.createTextNode(marker), c); return; }
+    var tool = c.getAttribute('data-tool'); var v = c.textContent;
+    var marker2;
+    if (tool === 'time') { var sec = parseInt((v.match(/(\d+)s/) || [])[1], 10); marker2 = '<duration-ms>' + (sec * 1000) + '</duration-ms>'; }
+    else if (tool === 'cam') marker2 = '<camera-move>' + v.replace(/^🎥\s*/, '').trim() + '</camera-move>';
+    else marker2 = '<shot-size>' + v.replace(/^🎬\s*/, '').trim() + '</shot-size>';
+    c.parentNode.replaceChild(document.createTextNode(marker2), c);
+  });
+  clone.querySelectorAll('.ph').forEach(function (p) { p.remove(); });
+  /* v1.14 清理：@ 仅作选择器触发符，残留字面 @（@<role>…/小@朋友/仰头@<camera-move>）一律清除，避免污染发往 H3 的 prompt */
+  return (clone.textContent || '').replace(/\n{3,}/g, '\n\n').replace(/@/g, '').trim();
+}
+function attachChipBehaviors() {
+  var body = document.getElementById('pe-body');
+  body.querySelectorAll('.ic-chip').forEach(function (s) {
+    if (s._bound) return; s._bound = true;
+    var preview = null;
+    s.addEventListener('mouseenter', function () {
+      preview = s.querySelector('.ic-preview'); if (!preview) return;
+      var r = s.getBoundingClientRect(); var pw = 140, ph = 110;
+      var top = r.top - ph - 6, left = r.left;
+      if (top < 8) top = r.bottom + 6;
+      if (left + pw > window.innerWidth - 8) left = window.innerWidth - pw - 8;
+      if (left < 8) left = 8;
+      preview.style.top = top + 'px'; preview.style.left = left + 'px';
+    });
+    s.addEventListener('mouseleave', function () { preview = null; });
+    if (s.classList.contains('func')) {
+      s.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var tool = s.getAttribute('data-tool'); if (!tool) return;
+        openToolPop(tool, s, function (v) {
+          s.setAttribute('data-func', v); s.textContent = v;
+          s.removeAttribute('data-marker');  /* 丢弃旧标记，chipsToMarkers 按新值重新生成 */
+          setSaveState('dirty'); autoSave(); updatePeStats();
+          toast('已更新为：' + v, 'success');
+        });
+      });
+    } else {
+      s.addEventListener('click', function (e) {
+        e.stopPropagation();
+        window.confirmDialog('删除引用', '删除引用 @' + esc(s.getAttribute('data-ref')) + '？', function () { removeRef(s.getAttribute('data-ref')); }, '删除');
+      });
+    }
+  });
+}
+function renderPeBody() {
+  var sc = getCurrentScene();
+  var body = document.getElementById('pe-body');
+  body.innerHTML = sc && sc.text ? markersToHtml(sc.text) : '<span class="ph">开始输入本场提示词…  输入 @ 插入资产；分镜用「分镜 1 (4s)」等行内小标题分隔；点击工具栏 ⏱/🎥/🎬 选时长/运镜/景别</span>';
+  attachChipBehaviors();
+  setSaveState('saved');
+  updatePeStats(); renderRefsArea();
+}
+/* U8 注：getAllRefs() 死代码已删 —— 引用数统计改数 .ic-chip.ref[data-ref]（见 updatePeStats/renderRefsArea），文本 @ 正则口径废弃 */
+function renderRefsArea() {
+  /* v1.7 修：直接从 .ic-chip.ref 元素提取（不依赖 @ 文本正则）；B批§九：含 data-ref(资产名) 与 data-refpath(截帧/参考图路径) */
+  var refs = [];
+  document.querySelectorAll('#pe-body .ic-chip.ref').forEach(function (c) {
+    var rp = c.getAttribute('data-refpath');
+    if (rp) { if (refs.indexOf('~' + rp) < 0) refs.push('~' + rp); return; }
+    var nm = c.getAttribute('data-ref');
+    if (nm && refs.indexOf(nm) < 0) refs.push(nm);
+  });
+  var bar = document.getElementById('refs-area');
+  var html = '<span class="ra-label">📌 引用区：</span>';
+  if (!refs.length) html += '<span class="refs-empty" id="refs-empty">本场文本中 @ 的资产会显示在这里</span>';
+  else refs.forEach(function (key) {
+    var isPath = key.charAt(0) === '~';
+    var rp = isPath ? key.slice(1) : '';
+    var disp = isPath ? fileShort(rp) : key;
+    var img = isPath ? ('/api/asset-file/' + encodeURIComponent(rp)) : refThumb(key);
+    html += '<span class="ref-card" data-loc="' + esc(key) + '" title="' + (isPath ? '引用图路径：' + esc(rp) : '点击定位资产「' + esc(key) + '」到左区列表') + '；✕ 移除引用">' +
+      '<img src="' + img + '" alt="">' + esc(disp) +
+      '<span class="x" data-rm="' + esc(key) + '">✕</span>' +
+      '<span class="ic-preview"><img class="pv-img" src="' + img + '"><div class="pv-name">' + esc(disp) + '</div></span>' +
+      '</span>';
+  });
+  bar.innerHTML = html;
+  /* v1.14 引用区 chip hover 预览（同编辑器内联 chip） */
+  bar.querySelectorAll('.ref-card').forEach(function (c) {
+    var preview = c.querySelector('.ic-preview');
+    if (!preview) return;
+    c.addEventListener('mouseenter', function () {
+      var r = c.getBoundingClientRect(); var pw = 140, ph = 110;
+      var top = r.top - ph - 6, left = r.left;
+      if (top < 8) top = r.bottom + 6;
+      if (left + pw > window.innerWidth - 8) left = window.innerWidth - pw - 8;
+      preview.style.top = top + 'px'; preview.style.left = left + 'px';
+      preview.style.display = 'block';
+    });
+    c.addEventListener('mouseleave', function () { preview.style.display = 'none'; });
+  });
+  bar.querySelectorAll('[data-rm]').forEach(function (x) { x.addEventListener('click', function () { removeRef(x.getAttribute('data-rm')); }); });
+  /* v1.55 P0-3b：点击引用卡（非 ✕）= 定位资产（切分类 + 高亮 2.5s），迁移自左区本场引用区（用户目检：左区不要该区，定位能力保留） */
+  bar.querySelectorAll('[data-loc]').forEach(function (el) {
+    el.addEventListener('click', function (ev) {
+      if (ev.target.closest('[data-rm]')) return;
+      var k = el.getAttribute('data-loc');
+      if (k.charAt(0) === '~') return;   // 图路径引用无资产可定位
+      locateRef(k);
+    });
+  });
+}
+/* v1.55 P0-3：点击引用资产名 → 切到资产对应分类并在列表定位（高亮 2.5s） */
+function locateRef(nm) {
+  var hit = null, hitKind = null;
+  ['characters', 'scenes', 'props'].forEach(function (k) {
+    if (hit) return;
+    hit = (allAssets[k] || []).find(function (a) { return fullName(a) === nm; });
+    if (hit) hitKind = k;
+  });
+  if (!hitKind) { toast('「' + nm + '」未匹配到资产库条目（可能为新建未保存资产）', 'info'); return; }
+  var tab = document.querySelector('#kind-tabs .kind-tab[data-k="' + hitKind + '"]');
+  if (tab) { tab.click(); }
+  setTimeout(function () {
+    var found = false;
+    document.querySelectorAll('#asset-list .asset-card').forEach(function (c) {
+      if (c.getAttribute('data-id') === hit.id) {
+        found = true;
+        flashCard(c, 2500);
+      }
+    });
+    if (!found) toast('「' + nm + '」不在当前范围（本集/全集）的资产列表中', 'info');
+  }, 60);
+}
+/* v1.55 P0-3c：定位闪烁（用户目检：高亮改闪烁效果）——2.5s 内亮/灭交替 ~4 次，结束清空 */
+function flashCard(card, duration) {
+  var flashOn = true;
+  var t0 = Date.now();
+  card.style.boxShadow = '0 0 0 2px #3A6B57';
+  card.style.transition = 'box-shadow .15s';
+  var timer = setInterval(function () {
+    if (Date.now() - t0 >= duration) {
+      clearInterval(timer);
+      card.style.boxShadow = '';
+      return;
+    }
+    flashOn = !flashOn;
+    card.style.boxShadow = flashOn ? '0 0 0 2px #3A6B57' : '';
+  }, 320);
+}
+/* 引用区缩略图：优先真实资产图（按 fullName 匹配 allAssets），否则占位 */
+function refThumb(nm) {
+  var hit = null;
+  ['characters', 'scenes', 'props'].forEach(function (k) {
+    if (hit) return;
+    hit = (allAssets[k] || []).find(function (a) { return fullName(a) === nm; });
+  });
+  return hit ? (assetImg(hit) || svgThumb(nm.split('-')[0], '#c4b5fd', 18, 18)) : svgThumb(nm.split('-')[0], '#c4b5fd', 18, 18);
+}
+function removeRef(nm) {
+  /* B批§九：~ 前缀 = 按图路径(data-refpath)引用chip；否则按资产名 data-ref */
+  var body = document.getElementById('pe-body');
+  if (nm.charAt(0) === '~') {
+    var rp = nm.slice(1);
+    body.querySelectorAll('.ic-chip.ref[data-refpath]').forEach(function (c) {
+      if (c.getAttribute('data-refpath') === rp) c.remove();
+    });
+  } else {
+    body.querySelectorAll('.ic-chip.ref[data-ref="' + CSS.escape(nm) + '"]').forEach(function (c) { c.remove(); });
+  }
+  setSaveState('dirty'); autoSave();
+  renderRefsArea(); updatePeStats();
+  toast('已移除 @ ' + (nm.charAt(0) === '~' ? nm.slice(1).split('/').pop() : nm), 'info');
+}
+function updatePeStats() {
+  var txt = (document.getElementById('pe-body').innerText || '');
+  /* U8 修复①：引用数改数 .ic-chip.ref 去重（含 data-ref 资产名 与 data-refpath 截帧图路径） */
+  var refs = [];
+  document.querySelectorAll('#pe-body .ic-chip.ref').forEach(function (c) {
+    var rp = c.getAttribute('data-refpath');
+    if (rp) { if (refs.indexOf('~' + rp) < 0) refs.push('~' + rp); return; }
+    var nm = c.getAttribute('data-ref');
+    if (nm && refs.indexOf(nm) < 0) refs.push(nm);
+  });
+  /* U8 修复②：移除「分镜数」统计与显示 —— 用户 09-03 裁定：本项目无分镜实体，数据层最小粒度是场，
+     镜头是文本形式存在于场提示词中，分镜数无意义（原 .shot-h 类从不创建→恒 0 或错计） */
+  document.getElementById('pe-stats').textContent = txt.length + ' 字符 · ' + refs.length + ' 引用';
+  document.getElementById('m-refs').textContent = refs.length;
+  document.getElementById('ref-count').textContent = refs.length;
+}
+function insertAtCursor(text, kind, cx, cy, refPath) {
+  var body = document.getElementById('pe-body');
+  body.focus();
+  var sel = window.getSelection();
+  var range = null;
+  /* v1.12 优先用 savedAtPos：在最后一个 @ 字符之后插入（100% 在 @ 位置） */
+  if (savedAtPos && savedAtPos.node && body.contains(savedAtPos.node)) {
+    var r2 = document.createRange();
+    r2.setStart(savedAtPos.node, savedAtPos.offset + 1);  /* @ 之后 */
+    r2.collapse(true);
+    range = r2;
+    savedAtPos = null;
+  }
+  /* v1.11 备用：savedRange */
+  else if (savedRange && savedRange.startContainer && body.contains(savedRange.startContainer)) {
+    range = savedRange;
+    savedRange = null;
+  }
+  /* v1.14 备用：编辑器内最近一次光标（工具下拉等 selection 已离开编辑器时，插入到原光标处而非文首/文末） */
+  else if (lastCaretRange && lastCaretRange.startContainer && body.contains(lastCaretRange.startContainer)) {
+    range = lastCaretRange.cloneRange();
+  }
+  else if (sel && sel.rangeCount && body.contains(sel.anchorNode)) {
+    range = sel.getRangeAt(0);
+  }
+  /* B批§九：参考即资产——refPath 非空 = 插截帧/未分类/参考图(按图路径)；否则角色/场景/道具/工具按原逻辑 */
+  var chipKind = 'asset';
+  if (refPath) chipKind = 'refpath';
+  else if (kind === 'func') chipKind = 'func';
+  else if (kind !== 'asset') chipKind = kind;   // 资产名(asset) 或不传
+  if (!range) {
+    /* 无有效光标：插入到末尾 + 追加零宽文本节点（v1.6 失败原因：body 末尾是 chip[contenteditable=false]，
+       caret 无法放其内；改用 textNode('\u200B') 占位让 native caret 可见） + body.focus + 滚动到末尾 */
+    var node0 = makeInsertNode(text, chipKind, refPath);
+    body.appendChild(node0);
+    var zw = document.createTextNode('\u200B');
+    body.appendChild(zw);
+    body.focus();
+    var sel0 = window.getSelection();
+    if (sel0) {
+      var rr0 = document.createRange();
+      rr0.setStart(zw, 1); rr0.setEnd(zw, 1);
+      sel0.removeAllRanges(); sel0.addRange(rr0);
+    }
+  } else {
+    range.deleteContents();
+    var node = makeInsertNode(text, chipKind, refPath);
+    range.insertNode(node);
+    range.setStartAfter(node); range.setEndAfter(node);
+    sel.removeAllRanges(); sel.addRange(range);
+  }
+  body.focus();
+  body.scrollTop = body.scrollHeight;
+  setSaveState('dirty'); autoSave();
+  renderRefsArea(); updatePeStats();
+}
+/* 统一建插入节点：refPath→截帧图引用chip / asset→资产名chip / func→工具chip */
+function makeInsertNode(text, chipKind, refPath) {
+  if (chipKind === 'refpath') return makeRefChip('', refPath);
+  if (chipKind === 'func') return makeFuncChip(text);
+  return makeRefChip(text);   // asset 按资产名
+}
+function makeRefChip(name, refPath) {
+  /* B批§九：参考即资产。refPath 存在 = 截帧/未分类/参考按图路径引用(ic-chip.ref 带 data-refpath)；
+     否则 = 角色/场景/道具按资产名引用(带 data-ref)。两者都是"@ 插一个资产"。 */
+  var isPath = !!refPath;
+  var key = isPath ? refPath : name;
+  var s = document.createElement('span');
+  s.className = 'ic-chip ref' + (isPath ? ' refimg' : '');
+  if (isPath) s.setAttribute('data-refpath', key); else s.setAttribute('data-ref', name);
+  s.setAttribute('contenteditable', 'false');
+  var imgSrc = isPath ? ('/api/asset-file/' + encodeURIComponent(refPath)) : refThumb(name);
+  var disp = isPath ? fileShort(refPath) : name;
+  s.innerHTML = '🖼 ' + disp + '<span class="ic-preview"><img class="pv-img" src="' + imgSrc + '" onerror="this.style.display=\'none\'"><div class="pv-name">' + esc(disp) + '</div></span>';
+  /* v1.6 chip 预览 fixed 智能定位（hover 时 JS 计算） */
+  var preview = null;
+  s.addEventListener('mouseenter', function () {
+    preview = s.querySelector('.ic-preview');
+    if (!preview) return;
+    var r = s.getBoundingClientRect();
+    var pw = 140, ph = 110;  // 估算预览尺寸
+    var top = r.top - ph - 6;
+    var left = r.left;
+    /* 智能避开边界：上方空间不足则改下方；右侧越界则左移 */
+    if (top < 8) top = r.bottom + 6;
+    if (left + pw > window.innerWidth - 8) left = window.innerWidth - pw - 8;
+    if (left < 8) left = 8;
+    preview.style.top = top + 'px';
+    preview.style.left = left + 'px';
+    preview.style.display = 'block';   // 显式显示（B批§九 refimg 图路径 chip hover 预览可靠）
+  });
+  s.addEventListener('mouseleave', function () { if (preview) preview.style.display = 'none'; preview = null; });
+  var delLabel = isPath ? disp : name;
+  s.addEventListener('click', function (e) { e.stopPropagation(); window.confirmDialog('删除引用', '删除引用 @' + esc(delLabel) + '？', function () { removeRef(isPath ? ('~' + refPath) : name); }, '删除'); });
+  return s;
+}
+/* 在光标 @ 位置插入一张"按图路径引用的截帧/未分类/参考" chip */
+function insertRefPathAt(refPath) {
+  insertAtCursor('', 'asset', null, null, refPath);
+}
+function makeFuncChip(text) {
+  var s = document.createElement('span');
+  s.className = 'ic-chip func';
+  s.setAttribute('data-func', text);
+  s.setAttribute('data-tool', funcToolOf(text));
+  s.setAttribute('contenteditable', 'false');
+  s.textContent = text;
+  /* v1.8 功能性 chip 点击 → 弹该类下拉（可替换选项），不再是删除确认 */
+  s.addEventListener('click', function (e) {
+    e.stopPropagation();
+    var tool = s.getAttribute('data-tool');
+    if (!tool) return;
+    openToolPop(tool, s, function (v) {
+      /* 替换 chip 文本并保持位置 */
+      s.setAttribute('data-func', v);
+      s.textContent = v;
+      setSaveState('dirty'); autoSave(); updatePeStats();
+      toast('已更新为：' + v, 'success');
+    });
+  });
+  return s;
+}
+/* v1.8 从 chip 文本推断类别（⏱→time / 🎥→cam / 🎬→shot / ✨→ai） */
+function funcToolOf(text) {
+  if (text.indexOf('⏱') >= 0) return 'time';
+  if (text.indexOf('🎥') >= 0) return 'cam';
+  if (text.indexOf('🎬') >= 0) return 'shot';
+  if (text.indexOf('✨') >= 0) return 'ai';
+  return '';
+}
+/* ==================== @ 资产引用弹窗（新架构：已选 + 资产/小工具 tab + 中部归属列表 + 底部资产库级联）==================== */
+function openAt() {
+  var pop = document.getElementById('atpop');
+  var body = document.getElementById('pe-body');
+  savedAtPos = findLastAt();
+  var sel = window.getSelection();
+  savedRange = (sel && sel.rangeCount && body.contains(sel.anchorNode)) ? sel.getRangeAt(0).cloneRange() : null;
+  var r = body.getBoundingClientRect();
+  var W = 430, H = Math.min(540, window.innerHeight - 40);
+  pop.style.width = W + 'px';
+  pop.style.maxHeight = H + 'px';
+  pop.style.height = H + 'px';
+  var l = Math.max(8, Math.min(r.left, window.innerWidth - W - 16));
+  var t = r.top + 30;
+  if (t + H > window.innerHeight - 8) t = Math.max(8, window.innerHeight - H - 8);
+  pop.style.left = l + 'px'; pop.style.top = t + 'px';
+  pop.classList.add('show'); atOpen = true;
+  switchAtTab('asset');
+  syncLibIc();
+  bindLibEntry();
+}
+/* 找 pe-body 中最后一个 @ 字符位置（保留 v1.12/v1.14 逻辑） */
+function findLastAt() {
+  var body = document.getElementById('pe-body');
+  var sel = window.getSelection();
+  if (sel && sel.rangeCount) {
+    var sc = sel.getRangeAt(0).startContainer;
+    var off = sel.getRangeAt(0).startOffset;
+    if (sc && sc.nodeType === 3 && off > 0) {
+      var idx = sc.data.lastIndexOf('@', off - 1);
+      if (idx >= 0) return { node: sc, offset: idx };
+    }
+  }
+  var walker = document.createTreeWalker(body, NodeFilter.SHOW_TEXT);
+  var node, lastNode = null, lastOff = -1;
+  while ((node = walker.nextNode())) {
+    var i2 = node.data.lastIndexOf('@');
+    if (i2 >= 0) { lastNode = node; lastOff = i2; }
+  }
+  return (lastNode && lastOff >= 0) ? { node: lastNode, offset: lastOff } : null;
+}
+function closeAt() { document.getElementById('atpop').classList.remove('show'); atOpen = false; savedRange = null; savedAtPos = null; atPvHide(); atHideCascade(); }
+/* 资产库入口图标 */
+function syncLibIc() {
+  var el = document.getElementById('libIc'); if (!el) return;
+  el.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 5h18v14H3z"/><path d="M3 9h18M7 5v14"/></svg>';
+}
+/* 占位透明缩略图（参考图/未分类：棋盘格 + 虚线框 + 图标） */
+var AT_TAB_ICONS = {
+  '人物': '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="8" r="3.4"/><path d="M5 20c.8-3.6 3.4-5.4 7-5.4s6.2 1.8 7 5.4"/></svg>',
+  '场景': '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 21h18M5 21V10l7-5 7 5v11"/><path d="M9 21v-6h6v6"/></svg>',
+  '道具': '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M5 8h14v11a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V8Z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg>',
+  '参考': '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="4" y="5" width="16" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M4 17l5-4 4 3 3-2 4 3"/></svg>',
+  '未分类': '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M12 4v16M4 12h16"/></svg>',
+  '影': '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>'
+};
+var AT_LIB_KINDS = [
+  { tab: '人物', key: 'characters', kind: 'asset' },
+  { tab: '场景', key: 'scenes', kind: 'asset' },
+  { tab: '道具', key: 'props', kind: 'asset' },
+  { tab: '参考', key: 'references', ref: true },
+  { tab: '未分类', key: 'unclassified', ref: true }
+];
+var AT_TAB_LABEL = { characters: '人物', scenes: '场景', props: '道具', references: '参考', unclassified: '未分类' };
+/* 判断资产归属：当前集(true) / 仅当前项目(false) / 不属当前(null) */
+function atScopeRank(a) {
+  var sp = a.scopes || {};
+  var inEp = (sp.episodes || []).indexOf(eid) >= 0;
+  var inProj = (sp.projects || []).indexOf(pid) >= 0;
+  var hitEp = false;
+  if (!inEp && (sp.scenes || []).length) {
+    for (var i = 0; i < sp.scenes.length; i++) { var n = _sceneNodes[sp.scenes[i]]; if (n && n.eid === eid) { hitEp = true; break; } }
+  }
+  if (inEp || hitEp) return 2;      /* 当前集 */
+  if (inProj) return 1;              /* 当前项目 */
+  return 0;
+}
+function atAssetThumb(a) { return assetImg(a); }
+function atDescOf(a) { return (a && a.prompt) ? String(a.prompt) : ''; }
+function atSubOf(a, rank) {
+  var v = (a.variant_name || '').trim();
+  if (rank === 2) return '当前集' + (v ? ' · ' + v : '');
+  if (rank === 1) return '当前项目' + (v ? ' · ' + v : '');
+  return v || (a.prefix || '');
+}
+/* ===== 跟随式预览浮层（fixed,pointer-events:none）===== */
+var atPvEl = null;
+function atPvElGet() { if (!atPvEl) atPvEl = document.getElementById('at-preview'); return atPvEl; }
+function atPvShow(opts, anchorRect) {
+  var pv = atPvElGet(); if (!pv) return;
+  var hasImg = !!opts.thumb;
+  var big = hasImg ? '<img class="pv-big" src="' + esc(opts.thumb) + '">'
+    : '<div class="pv-big-ph"><svg viewBox="0 0 24 24" width="52" height="52" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="4" y="4" width="16" height="16" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M4 17l5-4 4 3 3-2 4 3"/></svg></div>';
+  pv.innerHTML = big +
+    '<div class="pv-name">' + esc(opts.name || '') + '</div>' +
+    '<div class="pv-type-wrap"><span class="pv-type">' + esc(opts.type || '') + '</span></div>' +
+    (opts.desc ? '<div class="pv-desc">' + esc(opts.desc) + '</div>' : '');
+  pv.classList.add('show');
+  /* 智能定位：默认资产右侧；放不下或被级联遮挡 → 翻到资产左侧 */
+  var r = anchorRect;
+  var pw = 300;
+  var popRect = document.getElementById('atpop').getBoundingClientRect();
+  var l2El = document.getElementById('cascadeL2'), l3El = document.getElementById('cascadeL3');
+  var inMiddle = !l3El.classList.contains('show');           /* 中部行（非三级）预览需避开底部级联右区 */
+  var l2Open = l2El.classList.contains('show'), l3Open = l3El.classList.contains('show');
+  var cascadeRight = popRect.right;
+  if (l2Open) { var l2r = l2El.getBoundingClientRect(); cascadeRight = Math.max(cascadeRight, l2r.right); }
+  if (l3Open) { var l3r = l3El.getBoundingClientRect(); cascadeRight = Math.max(cascadeRight, l3r.right); }
+  var left = r.right + 14;
+  var wouldHit = inMiddle && (l2Open || l3Open) && left < cascadeRight + 12;
+  var overflowRight = left + pw > window.innerWidth - 8;
+  if (wouldHit || overflowRight) left = r.left - pw - 14;
+  if (left < 8) left = 8;
+  var top = r.top - 4;
+  var approxH = 390;
+  if (top + approxH > window.innerHeight - 8) top = Math.max(8, window.innerHeight - approxH - 8);
+  pv.style.left = left + 'px'; pv.style.top = top + 'px';
+}
+function atPvHide() { var pv = atPvElGet(); if (pv) pv.classList.remove('show'); }
+/* hover 绑定：资产元素 → 跟随预览 + 离开隐藏 */
+function atBindPvHover(scopeEl, getOpts) {
+  scopeEl.addEventListener('mouseenter', function () { atPvShow(getOpts(), scopeEl.getBoundingClientRect()); });
+  scopeEl.addEventListener('mouseleave', atPvHide);
+}
+/* ===== tab 切换 ===== */
+function switchAtTab(tab) {
+  document.querySelectorAll('#at-tabs .tab').forEach(function (x) { x.classList.toggle('active', x.getAttribute('data-tab') === tab); });
+  var isAsset = tab === 'asset';
+  document.getElementById('viewAsset').style.display = isAsset ? 'block' : 'none';
+  document.getElementById('viewTools').style.display = isAsset ? 'none' : 'grid';
+  atPvHide(); atHideCascade();
+  if (isAsset) renderOwnAssets(); else renderTools();
+}
+/* ===== 中部归属资产列表：人物/场景/道具分组，当前集在前、当前项目在后 ===== */
+function renderOwnAssets() {
+  var wrap = document.getElementById('viewAsset');
+  wrap.innerHTML = '';
+  var groups = [
+    { title: '人物', key: 'characters' },
+    { title: '场景', key: 'scenes' },
+    { title: '道具', key: 'props' }
+  ];
+  groups.forEach(function (g) {
+    var curEp = [], curProj = [];
+    (allAssets[g.key] || []).forEach(function (a) {
+      var rank = atScopeRank(a);
+      if (rank === 2) curEp.push(a); else if (rank === 1) curProj.push(a);
+    });
+    if (!curEp.length && !curProj.length) return;      /* 本页无该组归属资产则不显示 */
+    var title = document.createElement('div'); title.className = 'grp-title'; title.textContent = g.title; wrap.appendChild(title);
+    curEp.concat(curProj).forEach(function (a) { wrap.appendChild(atRowAsset(a, g.key, 'asset')); });
+  });
+  if (!wrap.children.length) {
+    var e = document.createElement('div'); e.className = 'grp-title'; e.textContent = '本集/本项目暂无归属资产，请展开下方「资产库」浏览全部';
+    e.style.padding = '14px 6px'; e.style.color = '#c3c8cf'; wrap.appendChild(e);
+  }
+}
+function atRowAsset(a, kindKey, insertKind) {
+  var nm = fullName(a);
+  var row = document.createElement('div'); row.className = 'arow'; row.setAttribute('data-aid', a.id || nm);
+  var thumb = atAssetThumb(a);
+  var rank = atScopeRank(a);
+  if (thumb) {
+    var im = document.createElement('img'); im.src = thumb; im.alt = ''; row.appendChild(im);
+  } else {
+    var ph = document.createElement('div'); ph.className = 'thumb-ph checker-ph';
+    ph.innerHTML = svgThumbIcon((a.prefix || nm).charAt(0), KIND_COLORS[kindKey] || '#c4b5fd'); row.appendChild(ph);
+  }
+  var meta = document.createElement('div'); meta.className = 'meta';
+  meta.innerHTML = '<div class="name">' + esc(nm) + '</div><div class="sub">' + esc(atSubOf(a, rank)) + '</div>';
+  row.appendChild(meta);
+  var atmark = document.createElement('span'); atmark.className = 'atmark'; atmark.textContent = '@'; row.appendChild(atmark);
+  atBindPvHover(row, function () { return { thumb: thumb || '', name: nm, type: AT_TAB_LABEL[kindKey] || kindKey, desc: atDescOf(a) }; });
+  row.addEventListener('click', function () { atPickAsset(kindKey, insertKind, a); });
+  return row;
+}
+/* ===== 小工具 tab（保留 scene 运镜/景别工具 chip 语义）===== */
+function renderTools() {
+  var wrap = document.getElementById('viewTools');
+  wrap.innerHTML =
+    '<div class="tool-card"><span class="tic"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3l7 3v5c0 4.5-3 7.6-7 9-4-1.4-7-4.5-7-9V6l7-3Z"/></svg></span><div class="tt">运镜工具</div><div class="ts">插入后点击可下拉选推/拉/摇/移</div></div>' +
+    '<div class="tool-card"><span class="tic"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="5" width="18" height="13" rx="2"/><path d="M8 21h8M12 18v3"/></svg></span><div class="tt">景别工具</div><div class="ts">插入后点击可下拉选特写/近/中/全景</div></div>';
+  wrap.querySelectorAll('.tool-card').forEach(function (c, i) {
+    var kind = i === 0 ? 'cam' : 'shot';
+    var marker = i === 0 ? '<camera-move>' : '<shot-size>';
+    c.addEventListener('click', function () {
+      var label = i === 0 ? '🎥 运镜工具' : '🎬 景别工具';
+      insertAtCursor(label, 'func');
+      closeAt();
+    });
+  });
+}
+/* ===== 资产库级联 ===== */
+var L2El = null, L3El = null, entryEl = null;
+var atHideTimer = null;
+function atGetL2() { if (!L2El) L2El = document.getElementById('cascadeL2'); return L2El; }
+function atGetL3() { if (!L3El) L3El = document.getElementById('cascadeL3'); return L3El; }
+function atGetEntry() { if (!entryEl) entryEl = document.getElementById('libEntry'); return entryEl; }
+function bindLibEntry() {
+  var entry = atGetEntry();
+  entry.removeEventListener('mouseenter', entry._on); entry.removeEventListener('mouseleave', entry._off);
+  entry._on = function () { atCancelHide(); atPvHide(); atBuildL2(); };
+  entry._off = function () { atScheduleHide(); };
+  entry.addEventListener('mouseenter', entry._on);
+  entry.addEventListener('mouseleave', entry._off);
+}
+function atBuildL2() {
+  var L2 = atGetL2();
+  L2.innerHTML = '';
+  AT_LIB_KINDS.forEach(function (kd) {
+    var d = document.createElement('div'); d.className = 'c-item'; d.dataset.tag = kd.tab;
+    d.innerHTML = '<span class="cic">' + AT_TAB_ICONS[kd.tab] + '</span><span class="ct">' + kd.tab + '</span>' +
+      '<span class="go"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 6l6 6-6 6"/></svg></span>';
+    d.addEventListener('mouseenter', function () { atBuildL3(kd, d); });
+    L2.appendChild(d);
+  });
+  L2.classList.add('show');
+  atPlaceL2();
+}
+function atLibItems(kd) {
+  if (kd.key === 'references') {
+    return (allAssets.references || []).map(function (r) {
+      var rp = r.path || ((r.images || [])[0] || {}).path || '';
+      return { kindKey: 'references', kind: 'ref', refPath: rp, name: String(rp).split('/').pop(), thumb: rp ? ('/api/asset-file/' + encodeURIComponent(rp)) : '' };
+    }).filter(function (x) { return x.refPath; });
+  }
+  if (kd.key === 'unclassified') {
+    return (allAssets.unclassified || []).map(function (u) {
+      return { kindKey: 'unclassified', kind: 'ref', refPath: u.path, name: String(u.path).split('/').pop(), thumb: '/api/asset-file/' + encodeURIComponent(u.path) };
+    }).filter(function (x) { return x.refPath; });
+  }
+  return (allAssets[kd.key] || []).map(function (a) {
+    return { kindKey: kd.key, kind: 'asset', asset: a, name: fullName(a), thumb: atAssetThumb(a), sub: atSubOf(a, atScopeRank(a)) };
+  });
+}
+function atBuildL3(kd, anchor) {
+  var L3 = atGetL3();
+  L3.innerHTML = '';
+  atLibItems(kd).forEach(function (it) {
+    var d = document.createElement('div'); d.className = 'c-item'; d.dataset.name = it.name;
+    var thumb;
+    if (it.kind === 'asset') {
+      thumb = it.thumb ? '<img src="' + esc(it.thumb) + '">' : '<div class="thumb-ph checker-ph">' + svgThumbIcon(it.name.charAt(0), KIND_COLORS[kd.key] || '#c4b5fd') + '</div>';
+    } else {
+      thumb = '<div class="thumb-ph checker-ph">' + AT_TAB_ICONS['参考'] + '</div>';   /* 参考/未分类：透明底 + 虚线 + 图标 */
+    }
+    d.innerHTML = thumb + '<div class="cmeta"><div class="cn">' + esc(it.name) + '</div><div class="cs">' + esc(it.sub || kd.tab) + '</div></div>';
+    var pvOpts = { thumb: it.thumb || '', name: it.name, type: kd.tab, desc: it.asset ? atDescOf(it.asset) : '' };
+    d.addEventListener('mouseenter', function () { atBuildL3Mark(anchor, d); atPvShow(pvOpts, d.getBoundingClientRect()); });
+    d.addEventListener('mouseleave', atPvHide);
+    d.addEventListener('click', function () {
+      if (it.kind === 'ref') insertRefPathAt(it.refPath);
+      else atPickAsset(it.kindKey, 'asset', it.asset);
+      closeAt();
+    });
+    L3.appendChild(d);
+  });
+  if (!L3.children.length) { var e = document.createElement('div'); e.className = 'ct'; e.textContent = '该分类暂无资产'; e.style.padding = '8px'; L3.appendChild(e); }
+  L3.classList.add('show');
+  atPlaceL3(anchor);
+}
+function atBuildL3Mark(anchor, activeEl) {
+  var L2 = atGetL2();
+  L2.querySelectorAll('.c-item').forEach(function (i) { i.classList.toggle('open', i === anchor); });
+  var L3 = atGetL3();
+  L3.querySelectorAll('.c-item').forEach(function (i) { i.classList.toggle('open', i === activeEl); });
+}
+/* 二级菜单智能定位：默认弹窗右侧；右侧空间不足 → 翻到左侧；垂直贴底部资产库入口对齐 */
+function atPlaceL2() {
+  var L2 = atGetL2(), pop = document.getElementById('atpop');
+  var entry = atGetEntry();
+  var popRect = pop.getBoundingClientRect();
+  var w2 = L2.offsetWidth;
+  var rightSpace = window.innerWidth - 8 - popRect.right;
+  var leftSpace = popRect.left - 8;
+  L2.style.left = ''; L2.style.right = ''; L2.style.top = ''; L2.style.bottom = '';
+  if (rightSpace >= w2 || rightSpace >= leftSpace) { L2.style.left = '100%'; }
+  else { L2.style.right = '100%'; }
+  /* 垂直：二级顶部对齐资产库入口上缘，底部放不下则上移 */
+  var er = entry.getBoundingClientRect();
+  var top = er.top - popRect.top - 6;
+  var h2 = L2.offsetHeight;
+  var availBottom = popRect.bottom - er.top;
+  if (availBottom < h2 - 40) top = Math.max(4, popRect.height - h2 - 4);  /* 入口到弹窗底不足 → 二级贴弹窗底 */
+  L2.style.top = top + 'px';
+}
+/* 三级菜单智能定位：默认二级右侧；右/下不足 → 翻左/上移；垂直对齐所 hover 二级项 */
+function atPlaceL3(anchor) {
+  var L3 = atGetL3(), L2 = atGetL2(), pop = document.getElementById('atpop');
+  var l2Rect = L2.getBoundingClientRect();
+  var popRect = pop.getBoundingClientRect();
+  var w3 = L3.offsetWidth, h3 = L3.offsetHeight;
+  L3.style.left = ''; L3.style.right = ''; L3.style.top = ''; L3.style.bottom = '';
+  var rightSpace = window.innerWidth - 8 - l2Rect.right;
+  var leftSpace = l2Rect.left - 8;
+  var px;
+  if (rightSpace >= w3 || rightSpace >= leftSpace) {
+    px = (l2Rect.right - popRect.left - 2) + 'px';        /* 右：与二级右缘 2px 重叠安全桥 */
+    L3.style.left = px;
+  } else {
+    var ww = l2Rect.left - w3 + 2;
+    px = Math.max(4, (ww - popRect.left)) + 'px';          /* 左：与二级左缘 2px 重叠 */
+    L3.style.left = px;
+  }
+  var rel = (anchor.offsetTop - L2.scrollTop || anchor.offsetTop);
+  var top = (l2Rect.top - popRect.top) + anchor.offsetTop - 6;
+  if (top + h3 > window.innerHeight - 8) top = Math.max(4, window.innerHeight - h3 - 8 - popRect.top + 0);
+  L3.style.top = Math.max(4, top) + 'px';
+}
+/* 防抖隐藏：移出资产库/级联短暂延迟收起，进入任一菜单取消 */
+function atScheduleHide() { atClearHide(); atHideTimer = setTimeout(function () { atHideCascade(); atPvHide(); }, 150); }
+function atCancelHide() { atClearHide(); }
+function atClearHide() { if (atHideTimer) { clearTimeout(atHideTimer); atHideTimer = null; } }
+function atHideCascade() { var l2 = atGetL2(), l3 = atGetL3(); if (l2) l2.classList.remove('show'); if (l3) l3.classList.remove('show'); }
+function atPickAsset(kindKey, insertKind, a) {
+  var nm = fullName(a);
+  atPvHide(); atHideCascade();
+  insertAtCursor(nm, 'asset');
+  closeAt();
+}
+/* 通用占位 SVG 图标（初始字母） */
+function svgThumbIcon(ch, color) {
+  var c = encodeURIComponent(color || '#c4b5fd');
+  return '<svg viewBox="0 0 24 24" width="18" height="18"><rect width="24" height="24" rx="5" fill="' + c + '" opacity=".3"/><text x="12" y="16" text-anchor="middle" font-size="11" fill="#fff">' + esc(ch) + '</text></svg>';
+}
+/* ===== 组件绑定 ===== */
+(function bindAtPopup() {
+  document.querySelectorAll('#at-tabs .tab').forEach(function (t) {
+    t.addEventListener('click', function () { switchAtTab(t.getAttribute('data-tab')); });
+  });
+  var l2 = atGetL2(), l3 = atGetL3(), entry = atGetEntry();
+  [l2, l3].forEach(function (el) {
+    el.addEventListener('mouseenter', atCancelHide);
+    el.addEventListener('mouseleave', function () { atScheduleHide(); });
+  });
+  var pop = document.getElementById('atpop');
+  pop.addEventListener('mouseleave', function (e) {
+    var to = e.relatedTarget;
+    if (to && (pop.contains(to) || l2.contains(to) || l3.contains(to))) return;
+    atScheduleHide();
+  });
+})();
+document.getElementById('pe-body').addEventListener('input', function (e) {
+  /* v1.14 修 @ 触发：不再依赖"当前文本节点末字符"——直接按本次输入字符判断，文字中间 @ 也能弹 */
+  var sel = window.getSelection();
+  if (e.data === '@') { openAt(); }
+  else if (atOpen) { /* 弹窗已开：输入搜索词保持弹窗 */ }
+  else {
+    /* 兜底：粘贴/其它方式产生的 @（末字符或 body 末字符） */
+    var text = '';
+    if (sel && sel.rangeCount) {
+      var node = sel.anchorNode;
+      if (node) {
+        if (node.nodeType === 3) text = node.data || '';
+        else {
+          var t = node;
+          while (t && !t.nextSibling) t = t.parentNode;
+          var n = t ? t.nextSibling : null;
+          if (n && n.nodeType === 3) text = n.data || '';
+          else if (node.textContent) text = node.textContent;
+        }
+      }
+    }
+    if (text && text.charAt(text.length - 1) === '@') { openAt(); }
+    else {
+      var body = document.getElementById('pe-body');
+      var fullText = body.innerText || '';
+      if (fullText.length > 0 && fullText.charAt(fullText.length - 1) === '@' && sel && sel.isCollapsed) openAt();
+    }
+  }
+  setSaveState('dirty'); autoSave();
+  renderRefsArea(); updatePeStats();
+});
+document.getElementById('pe-body').addEventListener('keydown', function (e) {
+  if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); doSave(false); }
+});
+document.addEventListener('mousedown', function (e) {
+  /* v1.12 @ 弹窗：任意非弹窗区域 mousedown 都关闭（含 pe-body 空白；之前要点文字中间才关） */
+  if (atOpen && !document.getElementById('atpop').contains(e.target)) closeAt();
+  if (toolPopOpen && !document.getElementById('pe-tool-pop').contains(e.target) && !e.target.classList.contains('pe-tool')) closeToolPop();
+});
+/* v1.14 追踪编辑器内最近一次光标位置（供非 @ 插入定位；selection 离开编辑器时保留原值） */
+document.addEventListener('selectionchange', function () {
+  var sel = window.getSelection();
+  var body = document.getElementById('pe-body');
+  if (sel && sel.rangeCount && body.contains(sel.anchorNode)) {
+    lastCaretRange = sel.getRangeAt(0).cloneRange();
+  }
+});
+
+/* v1.5 功能性 chip 下拉 */
+function openToolPop(tool, anchor, onPick) {
+  var pop = document.getElementById('pe-tool-pop');
+  var cfg = TOOL_OPTIONS[tool];
+  if (!cfg) { pop.classList.remove('show'); return; }
+  /* v1.9 fixed 定位：直接用视口坐标（r.bottom + 4 下方；right 对齐） */
+  var r = anchor.getBoundingClientRect();
+  pop.style.top = (r.bottom + 4) + 'px';
+  pop.style.right = (window.innerWidth - r.right) + 'px';
+  pop.style.left = 'auto';
+  var html = cfg.items.map(function (it) {
+    /* 运镜项带动图预览（保留）；景别无预览（用户裁定） */
+    var anim = it.anim ? '<div class="cam-anim ' + it.anim + '"><svg viewBox="0 0 40 28"><rect width="40" height="28" fill="#f3f4f6"/><line x1="0" y1="14" x2="40" y2="14" stroke="#e5e7eb" stroke-dasharray="2 2"/></svg><div class="frame a"></div><div class="frame b"></div></div>' : '';
+    return '<div class="ti" data-v="' + esc(it.v) + '">' + anim + '<span class="lbl">' + esc(it.v) + '</span><span class="meta">' + esc(it.meta) + '</span></div>';
+  }).join('');
+  pop.innerHTML = html + '<div class="foot-note" style="font-size:10px;color:#9ca3af;padding:6px 12px;border-top:1px solid #eef0f2;margin-top:4px;line-height:1.5"><b>对接：</b>运镜/景别参数存为尖括号标记，保存走 <code>PUT /projects/{pid}/episodes/{eid}/scenes/{sid}</code></div>';
+  pop.classList.add('show'); toolPopOpen = true;
+  pop.setAttribute('data-tool', tool);
+  pop.querySelectorAll('.ti').forEach(function (ti) {
+    ti.addEventListener('click', function () {
+      var v = ti.getAttribute('data-v');
+      closeToolPop();
+      if (typeof onPick === 'function') onPick(v);
+      else { insertAtCursor(v, 'func'); toast('已插入功能性 chip：' + v, 'success'); }
+    });
+  });
+}
+function closeToolPop() { document.getElementById('pe-tool-pop').classList.remove('show'); toolPopOpen = false; }
+document.querySelectorAll('.pe-tool').forEach(function (b) {
+  b.addEventListener('click', function (e) {
+    e.stopPropagation();
+    var tool = b.getAttribute('data-tool');
+    if (tool === 'ai') {
+      doAIPolish();
+      return;
+    }
+    if (tool === 'assemble') {
+      doAssemblePreview();
+      return;
+    }
+    var pop = document.getElementById('pe-tool-pop');
+    if (toolPopOpen && pop.getAttribute('data-tool') === tool) { closeToolPop(); return; }
+    pop.setAttribute('data-tool', tool);
+    openToolPop(tool, b);
+  });
+});
+
+document.getElementById('ai-btn').addEventListener('click', function () { doAIPolish(); });
+/* 👁 组装预览（v1.55：调 /api/assemble-prompt 显示 parts，含画风正向/负向注入） */
+function doAssemblePreview() {
+  var sc = getCurrentScene();
+  if (!sc || !pid || !eid) { toast('缺少场/项目上下文', 'error'); return; }
+  api('/assemble-prompt', jsonBody('POST', { pid: pid, eid: eid, sid: sc.id }))
+    .then(function (a) {
+      var parts = (a.parts || []).map(function (p) { return '<div class="ap-line">' + esc(p) + '</div>'; }).join('');
+      var old = document.getElementById('ap-box');
+      if (old) old.remove();
+      var div = document.createElement('div');
+      div.id = 'ap-box';
+      div.innerHTML = '<div class="ap-title">👁 组装预览 · ' + esc(sc.title || sc.id) + '</div>' +
+        (parts || '<div style="color:#9ca3af;padding:8px">（无组装内容）</div>') +
+        '<div class="ap-actions"><button class="btn-ghost btn-mini" onclick="closeAssemblePreview()">关闭</button></div>';
+      document.body.appendChild(div);
+    })
+    .catch(function (e) { toast(e.message, 'error'); });
+}
+function closeAssemblePreview() { var el = document.getElementById('ap-box'); if (el) el.remove(); }
+/* AI 润色（真实：/api/optimize-prompt/estimate + costRunDialog + streamLLM；内联标记先占位后回填） */
+function doAIPolish() {
+  var body = document.getElementById('pe-body');
+  var raw = (body.innerText || '').trim();
+  if (!raw) { toast('请先输入提示词', 'info'); return; }
+  if (!window.costRunDialog || !window.streamLLM) { toast('AI 组件未就绪', 'error'); return; }
+  var holders = [], markRe = /<((?:role|scene|prop))\b[^>]*>[^<]*<\/\1>|<duration-ms>[^<]*<\/duration-ms>|<camera-move>[^<]*<\/camera-move>|<shot-size>[^<]*<\/shot-size>/g;
+  var phText = raw.replace(markRe, function (mm) { holders.push(mm); return '@@REF' + holders.length + '@@'; });
+  api('/optimize-prompt/estimate', { method: 'POST', headers: { 'Content-Type': 'application/json; charset=utf-8' }, body: JSON.stringify({ text: phText }) })
+    .then(function (est) {
+      window.costRunDialog({
+        title: 'AI 润色提示词', est: est, confirmText: '开始润色',
+        run: function (progress) {
+          var acc = '';
+          progress('⏳ 正在润色…');
+          return window.streamLLM('optimize_prompt', { text: phText }, function (dd) { acc += dd; progress('⏳ ' + esc(acc)); })
+            .then(function (r) {
+              var opt = r.optimized || phText;
+              holders.forEach(function (mm, i) { opt = opt.split('@@REF' + (i + 1) + '@@').join(mm); });
+              body.innerHTML = markersToHtml(opt);
+              attachChipBehaviors();
+              setSaveState('dirty'); autoSave(); updatePeStats(); renderRefsArea();
+              return { summary: '✅ 已润色（内联标记已保留）' };
+            });
+        }
+      });
+    })
+    .catch(function (e) { toast(e.message, 'error'); });
+}
+
+/* 右栏 */
+function renderVideo() {
+  var sc = getCurrentScene();
+  var subT = document.querySelector('.tb-title .sub-t');
+  if (!sc) {
+    if (subT) subT.textContent = currentEpisode().name || '';
+    document.getElementById('strip-ep-name').textContent = currentEpisode().name || '';
+    document.getElementById('pe-title').textContent = '📝 提示词编辑器';
+    document.getElementById('m-name').textContent = '—';
+    document.getElementById('m-dur').textContent = '—';
+    playDur = 10; playPos = 0; updatePlayBar();
+    return;
+  }
+  var scName = sc.title || '场';
+  if (subT) subT.textContent = (currentEpisode().name || '') + ' · ' + scName;
+  document.getElementById('strip-ep-name').textContent = currentEpisode().name || '';
+  document.getElementById('pe-title').textContent = '📝 提示词编辑器 · ' + scName;
+  document.getElementById('m-name').textContent = scName;
+  var vids = sc.videos || [];
+  var enabled = vids.find(function (v) { return v.enabled; }) || vids[vids.length - 1];
+  var dur = (enabled && enabled.duration) || sc.duration;
+  document.getElementById('m-dur').textContent = dur ? (dur + 's') : '—';
+  var vp = document.getElementById('video-player');
+  var img = document.getElementById('video-img');
+  if (enabled && enabled.path) {
+    vp.src = '/api/asset-file/' + encodeURIComponent(enabled.path);
+    vp.style.display = 'block';  /* v1.55 P0-4：inline block 覆盖 .v-player{display:none}（此前 '' 被 CSS 类覆盖 → video-card 塌缩 2px） */
+    if (img) img.style.display = 'none';
+    playDur = parseFloat(enabled.duration) || 10;
+  } else {
+    vp.removeAttribute('src'); vp.style.display = 'none';
+    if (img) { img.style.display = ''; img.src = svgThumb(scName, '#2E5C4C', 360, 200); }
+    playDur = parseFloat(sc.duration) || 10;
+  }
+  playPos = 0; updatePlayBar();
+}
+document.getElementById('v-play').addEventListener('click', function () { togglePlay(); });
+var cutOpen = false;
+document.getElementById('cut-btn').addEventListener('click', function (e) {
+  e.stopPropagation();
+  var pop = document.getElementById('cut-pop');
+  cutOpen = !cutOpen; pop.classList.toggle('show', cutOpen);
+});
+document.querySelectorAll('#cut-pop .ci').forEach(function (ci) {
+  ci.addEventListener('click', function () {
+    var t = ci.getAttribute('data-cut');
+    var label = t === 'current' ? '当前帧' : t === 'first' ? '片段首帧' : '片段尾帧';
+    document.getElementById('cut-pop').classList.remove('show'); cutOpen = false;
+    cutFrame(t, label);
+  });
+});
+/* v1.55 P0-4：前端 canvas 截帧（主方案，v1.58 定稿）——video 取帧 → canvas → POST /api/tmp-image-upload → 写 videos[].thumbnail */
+function cutFrame(mode, label) {
+  var sc = getCurrentScene();
+  var v = sceneVideo(sc);
+  if (!v || !v.path) { toast('本场暂无视频可截帧', 'error'); return; }
+  var vp = document.getElementById('video-player');
+  var url = '/api/asset-file/' + encodeURIComponent(v.path);
+  var doSeek = function () {
+    var target = mode === 'current' ? (vp.currentTime || 0)
+      : mode === 'last' ? Math.max(0, (vp.duration || 0) - 0.05) : 0;
+    vp.currentTime = target;
+    vp.onseeked = function () { vp.onseeked = null; grabFrame(v, sc, label); };
+  };
+  var ensureReady = function () {
+    if (vp.readyState >= 1) { doSeek(); return; }
+    var to = setTimeout(function () { vp.onloadeddata = null; toast('截帧失败：视频加载超时', 'error'); }, 6000);
+    vp.onloadeddata = function () { clearTimeout(to); vp.onloadeddata = null; doSeek(); };
+    vp.load();
+  };
+  if (vp.src.indexOf(url) < 0) { vp.src = url; vp.load(); ensureReady(); }
+  else { ensureReady(); }
+}
+function grabFrame(v, sc, label) {
+  var vp = document.getElementById('video-player');
+  if (!vp.videoWidth) { toast('截帧失败：视频未就绪', 'error'); return; }
+  var w = vp.videoWidth, h = vp.videoHeight;
+  var c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  c.getContext('2d').drawImage(vp, 0, 0, w, h);
+  c.toBlob(function (blob) {
+    if (!blob) { toast('截帧失败：画布无数据', 'error'); return; }
+    var fd = new FormData();
+    fd.append('file', blob, 'frame_' + Date.now() + '.jpg');
+    var savedPath = null;  /* v1.55 P0-4c：闭包提升（rec 只在首个 then 作用域，后续 then 需保存 path） */
+    api('/tmp-image-upload', { method: 'POST', body: fd })
+      .then(function (rec) {
+        savedPath = rec.path;
+        var vids = (sc.videos || []).map(function (x) {
+          if (x.path === v.path) return Object.assign({}, x, { thumbnail: rec.path });
+          return x;
+        });
+        return api('/projects/' + pid + '/episodes/' + eid + '/scenes/' + sc.id, jsonBody('PUT', { videos: vids }));
+      })
+      .then(function () {
+        toast('✅ 已截取' + (label || '') + '并保存为该视频版本缩略图', 'success');
+        return new Promise(function (res) { setTimeout(res, 800); });  /* v1.55 P0-4c：等 uploads/ 索引扫描完成再 load */
+      })
+      .then(function () { return load(); })
+      .then(function () {
+        /* v1.55 P0-4c：截帧图自动进素材（未分类），切素材库 + 高亮闪烁帧图；索引未刷新则重试（≤3 次×600ms） */
+        var unTab = document.querySelector('#kind-tabs .kind-tab[data-k="unclassified"]');
+        if (unTab && currentKind !== 'unclassified') unTab.click();
+        var tries = 0;
+        (function tryFlash() {
+          var found = false;
+          document.querySelectorAll('#asset-list .asset-card').forEach(function (c) {
+            if (c.getAttribute('data-path') === savedPath) { found = true; flashCard(c, 2500); }
+          });
+          if (!found && tries < 3) { tries++; setTimeout(function () { load().then(tryFlash); }, 600); }
+          else if (!found) toast('帧图已进素材库（未分类），可拖入编辑器使用', 'info');
+        })();
+      })
+      .catch(function (e) { toast('截帧保存失败：' + e.message, 'error'); });
+  }, 'image/jpeg', 0.9);
+}
+document.addEventListener('mousedown', function (e) {
+  if (cutOpen && !document.getElementById('cut-pop').contains(e.target) && e.target.id !== 'cut-btn') {
+    document.getElementById('cut-pop').classList.remove('show'); cutOpen = false;
+  }
+});
+document.getElementById('dl-btn').addEventListener('click', function () {
+  var sc = getCurrentScene();
+  var vids = (sc && sc.videos) || [];
+  var enabled = vids.find(function (v) { return v.enabled; }) || vids[vids.length - 1];
+  if (!enabled || !enabled.path) { toast('本场暂无视频可下载', 'error'); return; }
+  var a = document.createElement('a');
+  a.href = '/api/asset-file/' + encodeURIComponent(enabled.path);
+  a.download = (enabled.path || 'video').split('/').pop();
+  document.body.appendChild(a); a.click(); a.remove();
+});
+document.getElementById('zoom-btn').addEventListener('click', function () { openFullViewer(); });
+
+/* ==================== 全屏视频查看器（真实 videos + 切集 + 场卡条） ==================== */
+function sceneVideo(sc) { var vids = (sc && sc.videos) || []; return vids.find(function (v) { return v.enabled; }) || vids[vids.length - 1]; }
+function openFullViewer() {
+  var sc = getCurrentScene();
+  var fv = document.getElementById('full-player');
+  var fi = document.getElementById('full-img');
+  var vid = sceneVideo(sc);
+  if (vid && vid.path) {
+    fv.src = '/api/asset-file/' + encodeURIComponent(vid.path);
+    fv.style.display = 'block'; /* U6 修复：改 'block'（原 '' 被 .full-player-video{display:none} 类覆盖 → 只声无画，同 vp:1474 先例） */
+    fi.style.display = 'none';
+  } else {
+    fv.removeAttribute('src'); fv.style.display = 'none';
+    fi.style.display = '';
+    fi.src = svgThumb((sc && sc.title) || '场', '#2E5C4C', 1280, 720);
+  }
+  document.getElementById('full-name').textContent = (currentEpisode().name || '') + ' · ' + ((sc && sc.title) || '场');
+  document.getElementById('full-pb-time').textContent = '00:00 / ' + fmtTime(playDur);
+  document.getElementById('full-pb-fill').style.width = '0%';
+  document.getElementById('full-pb-dot').style.left = '0%';
+  document.getElementById('full-pb-play').textContent = '▶';
+  renderFullScenes();
+  document.getElementById('full-mask').classList.add('show');
+  setTimeout(function () { togglePlay(); }, 100);  /* 打开即播放 */
+}
+function renderFullScenes() {
+  var row = document.getElementById('full-scenes-row');
+  row.innerHTML = '';
+  SCENES.forEach(function (sc, i) {
+    var c = document.createElement('div');
+    c.className = 'fscard' + (sc.id === currentSceneId ? ' active' : '');
+    var vid = sceneVideo(sc);
+    /* U6 续修：全屏场卡缩略图对齐 renderStrip 口径（底部场卡条）——优先 videos[].thumbnail(截帧 png)，无则视频源，再无则 SVG 占位；
+       原直接用 vid.path(mp4) 当 <img src>，img 无法渲染 mp4 → 破图无显示 */
+    var thumb = vid && vid.thumbnail ? ('/api/asset-file/' + encodeURIComponent(vid.thumbnail))
+      : (vid && vid.path ? ('/api/asset-file/' + encodeURIComponent(vid.path)) : svgThumb('场' + (i + 1), '#2E5C4C', 96, 64));
+    c.innerHTML = '<span class="fnum">场' + (i + 1) + '</span><img src="' + thumb + '" alt="">';
+    c.addEventListener('click', function () { currentSceneId = sc.id; playPos = 0; renderStrip(); renderPeBody(); renderVideo(); openFullViewer(); });
+    row.appendChild(c);
+  });
+}
+function closeFullViewer() {
+  document.getElementById('full-mask').classList.remove('show');
+  var fv = document.getElementById('full-player'); if (fv && !fv.paused) fv.pause();
+  playing = false;
+}
+document.getElementById('full-close').addEventListener('click', closeFullViewer);
+function switchEpisode(delta) {
+  if (!EPISODES.length) return;
+  currentEpisodeIdx = (currentEpisodeIdx + delta + EPISODES.length) % EPISODES.length;
+  SCENES = (EPISODES[currentEpisodeIdx] && EPISODES[currentEpisodeIdx].scenes) || [];
+  currentSceneId = SCENES.length ? SCENES[0].id : null;
+  playPos = 0;
+  renderStrip(); renderPeBody(); renderVideo(); openFullViewer();
+  toast('已切换到「' + (EPISODES[currentEpisodeIdx].name || '') + '」', 'success');
+}
+/* 顶栏上一集/下一集（仅切集不弹全屏，v1.4 实施9 新增；v1.5 切集后重渲左区按新集过滤） */
+function goEpisode(delta) {
+  if (!EPISODES.length) return;
+  if (EPISODES.length === 1) { toast('当前项目仅 1 集', 'info'); return; }
+  currentEpisodeIdx = (currentEpisodeIdx + delta + EPISODES.length) % EPISODES.length;
+  SCENES = (EPISODES[currentEpisodeIdx] && EPISODES[currentEpisodeIdx].scenes) || [];
+  currentSceneId = SCENES.length ? SCENES[0].id : null;
+  playPos = 0;
+  eid = EPISODES[currentEpisodeIdx].id;  /* 同步 eid 以便保存/生成 API 用新集 id */
+  buildSceneNodes(projCache);
+  setSaveState('saved');
+  renderStrip(); renderPeBody(); renderVideo(); renderAssets();
+  var el = document.getElementById('tb-ep-label'); if (el) el.textContent = EPISODES[currentEpisodeIdx].name || '';
+  toast('已切换到「' + (EPISODES[currentEpisodeIdx].name || '') + '」', 'success');
+}
+document.getElementById('full-prev').addEventListener('click', function () { switchEpisode(-1); });
+document.getElementById('full-next').addEventListener('click', function () { switchEpisode(1); });
+document.getElementById('full-pb-play').addEventListener('click', function () { togglePlay(); });
+
+/* ==================== 播放条（真实 <video> 驱动） ==================== */
+function fmtTime(sec) { if (!isFinite(sec)) sec = 0; var m = Math.floor(sec / 60), s = Math.floor(sec % 60); return (m < 10 ? '0' + m : m) + ':' + (s < 10 ? '0' + s : s); }
+function activePlayer() {
+  var fv = document.getElementById('full-player');
+  if (document.getElementById('full-mask').classList.contains('show') && fv && fv.src) return fv;
+  var vp = document.getElementById('video-player');
+  return (vp && vp.src) ? vp : null;
+}
+function updatePlayBar() {
+  var p = activePlayer();
+  var cur = p ? p.currentTime : playPos * playDur;
+  var dur = p ? (p.duration || playDur) : playDur;
+  var pos = dur ? cur / dur : 0;
+  document.getElementById('pb-fill').style.width = (pos * 100) + '%';
+  document.getElementById('pb-dot').style.left = (pos * 100) + '%';
+  document.getElementById('pb-time').textContent = fmtTime(cur) + ' / ' + fmtTime(dur);
+  var fpb = document.getElementById('full-pb-fill');
+  if (fpb) {
+    fpb.style.width = (pos * 100) + '%';
+    document.getElementById('full-pb-dot').style.left = (pos * 100) + '%';
+    document.getElementById('full-pb-time').textContent = fmtTime(cur) + ' / ' + fmtTime(dur);
+  }
+}
+function setPlayIcons() {
+  document.getElementById('pb-play').textContent = playing ? '⏸' : '▶';
+  document.getElementById('v-play').textContent = playing ? '⏸' : '▶';
+  var fpb = document.getElementById('full-pb-play'); if (fpb) fpb.textContent = playing ? '⏸' : '▶';
+}
+function togglePlay() {
+  var p = activePlayer();
+  if (!p || !p.src) { playing = false; setPlayIcons(); toast('本场暂无视频', 'info'); return; }
+  if (p.paused) { var pr = p.play(); if (pr) pr.catch(function () { }); playing = true; }
+  else { p.pause(); playing = false; }
+  setPlayIcons();
+}
+['video-player', 'full-player'].forEach(function (id) {
+  var v = document.getElementById(id);
+  v.addEventListener('timeupdate', updatePlayBar);
+  v.addEventListener('ended', function () { playing = false; setPlayIcons(); updatePlayBar(); });
+  /* U7 修复：视频元数据加载后，右区「时长」标签改显示真实视频时长（原读 videos[].duration 记录值，可能被请求时长/台词改写 ≠ 产物实测） */
+  v.addEventListener('loadedmetadata', function () {
+    if (id !== 'video-player') return;
+    var real = (typeof v.duration === 'number' && isFinite(v.duration)) ? v.duration : null;
+    if (real && real > 0) { document.getElementById('m-dur').textContent = real.toFixed(1) + 's'; playDur = real; updatePlayBar(); }
+  });
+});
+document.getElementById('pb-play').addEventListener('click', togglePlay);
+document.getElementById('pb-progress').addEventListener('click', function (e) {
+  var r = this.getBoundingClientRect();
+  var p = activePlayer();
+  if (p && p.src) { var d = p.duration || playDur; p.currentTime = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * d; }
+  else { playPos = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)); updatePlayBar(); }
+});
+document.getElementById('full-pb-progress').addEventListener('click', function (e) {
+  var r = this.getBoundingClientRect();
+  var p = activePlayer();
+  if (p && p.src) { var d = p.duration || playDur; p.currentTime = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * d; }
+  else { playPos = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)); updatePlayBar(); }
+});
+document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && document.getElementById('full-mask').classList.contains('show')) closeFullViewer(); });
+
+/* v1.14 生成场视频：成本确认（costRunDialog，积分=时长×6）→ 提交 → 全站进度模态 → 轮询 */
+function doGenerate() {
+  var sc = getCurrentScene();
+  if (!sc || !pid || !eid) { toast('缺少场/项目上下文', 'error'); return; }
+  var btn = document.getElementById('gen-btn');
+  if (btn.disabled) return;
+  /* ★ ⑦ A-P1-3（2026-10-02）：原「7-1 环境守护」`envGuard.ensure('video')` 已**拆除** ——
+     它查的 `/api/ic/health` 对应 IC（Infinite Canvas）**已下线** ⇒ 每次生成视频都会去
+     `POST /api/ic/boot` 拉起一个不存在的服务，并在成功时弹「已自动启动配音服务」的**误导提示**。
+     生成前的环境检查**后端已有一份更准的**（`routers_video._preflight_video_generate`：
+     参考音频合规 / 参考图存在 / 生成节点可达，fail-fast 且走节点池解析）⇒ 前端这层是过时重复实现。
+     拆除后：生成流程与守卫前完全一致（守卫在原环境下恒返回 ok:true）。 */
+  _doGenerate();
+}
+function _doGenerate() {
+  var sc = getCurrentScene();
+  if (!sc) return;
+  var btn = document.getElementById('gen-btn');
+  /* v1.14 比例短格式→工作流全称（340 ResolutionSelector COMBO 选项；'16:9' 不在列表会 node_errors） */
+  var RATIO_FULL = { '1:1': '1:1 (Square)', '2:3': '2:3 (Portrait Photo)', '3:2': '3:2 (Photo)', '3:4': '3:4 (Portrait Standard)', '4:3': '4:3 (Standard)', '9:16': '9:16 (Portrait Widescreen)', '16:9': '16:9 (Widescreen)', '21:9': '21:9 (Ultrawide)' };
+  var payload = {
+    pid: pid, eid: eid, sid: sc.id,
+    prompt: chipsToMarkers(),
+    duration: Math.max(1, Math.round(playDur)),
+    aspect_ratio: RATIO_FULL[currentSel.ratio] || currentSel.ratio,
+    workflow: 'custom/minimax_h3_t8.json'
+  };
+  var dur = payload.duration || 1;
+  if (window.costRunDialog) {
+    window.costRunDialog({
+      title: '生成场视频',
+      unit: '积分',
+      est: {
+        chars: (payload.prompt || '').length,
+        model_name: 'MiniMax H3（T2V 视频）',
+        tokens: 0,
+        cost: dur * 6
+      },
+      confirmText: '开始生成',
+      run: function (progress) {
+        progress('⏳ 正在提交生成任务…');
+        return startVideoTask(payload);
+      }
+    });
+  } else {
+    startVideoTask(payload);
+  }
+}
+function startVideoTask(payload) {
+  var btn = document.getElementById('gen-btn');
+  btn.disabled = true; btn.classList.add('busy');
+  showVideoProgress('生成场视频中…');
+  return api('/video/generate', jsonBody('POST', payload))
+    .then(function (res) {
+      if (!res || !res.task_id) {
+        hideVideoProgress(false); btn.classList.remove('busy'); btn.disabled = false;
+        toast('已提交生成任务', 'success');
+        return { summary: '已提交' };
+      }
+      return new Promise(function (resolve, reject) {
+        /* ★ ②步2遗留：VIDEO_TASKS 已退役 —— 统一查 GET /api/tasks/{id}
+           （state=queued/running/done/fail/cancelled；进度在 meta.progress，产物在 meta.result）。
+           取消/重试同样走统一队列页，本页不再有自己的轮询契约。 */
+        var iv = setInterval(function () {
+          api('/tasks/' + res.task_id).then(function (t) {
+            var st = String(t.state || '');
+            var meta = t.meta || {};
+            var pr = String(meta.progress || '');
+            if (pr) document.getElementById('vid-progress-stage').textContent = pr;
+            if (st === 'done' || (meta.result && meta.result.path)) {
+              clearInterval(iv); hideVideoProgress(true); btn.classList.remove('busy'); btn.disabled = false;
+              toast('↑ 场视频生成完成', 'success');
+              load();
+              /* v1.55 P0-4：生成完成自动截首帧写该版本 thumbnail（前端 canvas，场景①） */
+              setTimeout(function () { cutFrame('first', '片段首帧'); }, 1200);
+              resolve({ summary: '✅ 视频已生成并归档，可在右栏/场序列播放' });
+            } else if (st === 'fail' || meta.error) {
+              clearInterval(iv); hideVideoProgress(false); btn.classList.remove('busy'); btn.disabled = false;
+              var msg = (meta.error || st);
+              toast('生成失败：' + msg, 'error');
+              reject(new Error(msg));
+            } else if (st === 'cancelled') {
+              clearInterval(iv); hideVideoProgress(false); btn.classList.remove('busy'); btn.disabled = false;
+              toast('生成已取消（未入库）', 'info');
+              resolve({ summary: '已取消' });
+            }
+          }).catch(function () { });
+        }, 2500);
+      });
+    })
+    .catch(function (err) {
+      hideVideoProgress(false); btn.classList.remove('busy'); btn.disabled = false;
+      /* 7-1：视频生成服务中途不可达 → 自然语言兜底（技术细节只进日志） */
+      var m = String(err && err.message || err);
+      if (/不可达|refused|拒绝|connect|无法连接/i.test(m)) {
+        if (window.console) console.log('[video-gen] 视频服务不可达：', m);
+        toast('视频生成服务连不上，请检查远程电脑是否开机、软件是否已启动', 'error');
+      } else { toast(m, 'error'); }
+      throw err;
+    });
+}
+document.getElementById('gen-btn').addEventListener('click', doGenerate);
+
+/* §十四 B-c 清显存：一键代理 ComfyUI /free（卸载模型+释放显存）。H3 生成前/失败后显存不足时用。 */
+document.getElementById('vram-free-btn').addEventListener('click', function () {
+  var b = this;
+  if (b.disabled) return;
+  b.disabled = true; var old = b.textContent; b.textContent = '清显存中…';
+  api('/comfy/free', { method: 'POST' })
+    .then(function (r) {
+      toast((r && r.msg) || '显存已释放', 'success');
+      if (window.playBtnFreeHint) playBtnFreeHint('显存已释放，可重新生成');
+    })
+    .catch(function (e) {
+      /* 7-1：视频生成服务不可达 → 自然语言兜底（技术细节只进日志） */
+      var m = String(e && e.message || e);
+      if (/不可达|refused|拒绝|connect/i.test(m)) {
+        if (window.console) console.log('[clear-vram] 视频服务不可达：', m);
+        toast('视频生成服务连不上，请检查远程电脑是否开机、软件是否已启动', 'error');
+      } else { toast('清显存失败：' + m, 'error'); }
+    })
+    .finally(function () { b.disabled = false; b.textContent = old; });
+});
+
+/* v1.14 视频生成进度模态（全站统一：阶段文字+进度条+计时） */
+var _vidPgTimer = null, _vidPgT0 = 0;
+var VIDEO_STAGES = [
+  { at: 0, text: '提交任务…', pct: 5 },
+  { at: 3000, text: '上传参考资源（图 + 音色）…', pct: 12 },
+  { at: 10000, text: '直连 ComfyUI 生成视频…', pct: 30 },
+  { at: 35000, text: 'H3 视频推理中（约 60-110 秒）…', pct: 55 },
+  { at: 65000, text: '拉取产物并校验…', pct: 85 },
+  { at: 95000, text: '归档并回填场数据…', pct: 96 }
+];
+function showVideoProgress(title) {
+  _vidPgT0 = Date.now();
+  document.getElementById('vid-progress-title').textContent = title || '生成场视频中…';
+  document.getElementById('vid-progress-mask').classList.add('show');
+  document.getElementById('vid-progress-fill').style.width = '2%';
+  document.getElementById('vid-progress-time').textContent = '已耗时 0 秒';
+  clearInterval(_vidPgTimer);
+  _vidPgTimer = setInterval(function () {
+    var el = Date.now() - _vidPgT0;
+    var cur = VIDEO_STAGES[VIDEO_STAGES.length - 1];
+    for (var i = 0; i < VIDEO_STAGES.length; i++) if (el >= VIDEO_STAGES[i].at) cur = VIDEO_STAGES[i];
+    document.getElementById('vid-progress-stage').textContent = cur.text;
+    document.getElementById('vid-progress-fill').style.width = cur.pct + '%';
+    document.getElementById('vid-progress-time').textContent = '已耗时 ' + Math.floor(el / 1000) + ' 秒';
+  }, 200);
+}
+function hideVideoProgress(final) {
+  clearInterval(_vidPgTimer);
+  if (final) {
+    document.getElementById('vid-progress-stage').textContent = '完成 ✓';
+    document.getElementById('vid-progress-fill').style.width = '100%';
+    setTimeout(function () { document.getElementById('vid-progress-mask').classList.remove('show'); }, 600);
+  } else {
+    document.getElementById('vid-progress-mask').classList.remove('show');
+  }
+}
+
+/* 底部场序列条（真实场 API：缩略图=场视频；🗑删除；🕘历史；首场前/间隔 + 插入） */
+function renderStrip() {
+  var strip = document.getElementById('strip');
+  strip.innerHTML = '';
+  var insFirst = document.createElement('div');
+  insFirst.className = 'insert-btn'; insFirst.title = '在首场前插入新场'; insFirst.textContent = '+';
+  insFirst.addEventListener('click', function () { insertScene(); });
+  strip.appendChild(insFirst);
+  SCENES.forEach(function (sc, i) {
+    if (i > 0) {
+      var ins = document.createElement('div');
+      ins.className = 'insert-btn';
+      ins.title = '在「' + ((SCENES[i - 1].title) || '') + '」与「' + (sc.title || '') + '」之间插入新场';
+      ins.textContent = '+';
+      ins.addEventListener('click', function () { insertScene(); });
+      strip.appendChild(ins);
+    }
+    var card = document.createElement('div');
+    card.className = 'scard' + (sc.id === currentSceneId ? ' active' : '');
+    var vid = sceneVideo(sc);
+    /* v1.55 P0-4：场卡条缩略图优先 videos[].thumbnail（截帧产物），无则视频源（浏览器取首帧） */
+    var thumb = vid && vid.thumbnail ? ('/api/asset-file/' + encodeURIComponent(vid.thumbnail))
+      : (vid && vid.path ? ('/api/asset-file/' + encodeURIComponent(vid.path)) : svgThumb('场' + (i + 1), '#2E5C4C', 140, 76));
+    var dur = (vid && vid.duration) || sc.duration;
+    card.innerHTML = '<span class="sn-num">场' + (i + 1) + '</span><img src="' + thumb + '" alt=""><div class="sn-name">' + esc(sc.title || '') + '</div><div class="sn-dur">⏱ <b>' + esc(dur ? dur + 's' : '—') + '</b></div><div class="sc-tr" title="删除场">🗑</div><div class="sc-br" title="历史版本">🕘</div>';
+    card.addEventListener('click', function (e) {
+      if (e.target.classList.contains('sc-tr')) { delScene(sc.id); return; }
+      if (e.target.classList.contains('sc-br')) { openHist(sc); return; }
+      currentSceneId = sc.id; playPos = 0;
+      renderStrip(); renderPeBody(); renderVideo();
+      togglePlay();  /* 底部场卡点击 → 右区自动播放 */
+      toast('已切换到' + (sc.title || '') + ' · ▶ 播放', 'success');
+    });
+    strip.appendChild(card);
+  });
+  var ins = document.createElement('div');
+  ins.className = 'insert-btn'; ins.textContent = '+';
+  ins.addEventListener('click', function () { insertScene(); });
+  strip.appendChild(ins);
+}
+function insertScene() {
+  if (!pid || !eid) { toast('缺少项目/集上下文', 'error'); return; }
+  api('/projects/' + pid + '/episodes/' + eid + '/scenes', jsonBody('POST', { title: '场景 ' + (SCENES.length + 1) }))
+    .then(function (sc) {
+      toast('✨ 已插入新场：' + (sc.title || ''), 'success');
+      load();
+    })
+    .catch(function (e) { toast('插入失败：' + e.message, 'error'); });
+}
+function delScene(sid) {
+  if (!pid || !eid) return;
+  window.confirmDialog('删除场', '确认删除该场？此操作不可撤销。', function () {
+    api('/projects/' + pid + '/episodes/' + eid + '/scenes/' + sid, { method: 'DELETE' })
+      .then(function () { toast('🗑 已删除场', 'success'); load(); })
+      .catch(function (e) { toast('删除失败：' + e.message, 'error'); });
+  }, '删除');
+}
+/* 历史版本（真实 videos[]；点"设为当前"→ PUT scenes/{sid} videos 重排 enabled） */
+function openHist(sc) {
+  var vids = (sc.videos || []);
+  if (!vids.length) { window.confirmDialog('历史版本', '本场暂无视频版本', function () { }); return; }
+  var html = vids.map(function (v, i) {
+    var cur = !!v.enabled;
+    var note = (v.created_at || v.added_at || '') + (v.version ? ' · ' + v.version : '');
+    return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 4px;border-bottom:1px solid #eef0f2' + (i === vids.length - 1 ? ';border-bottom:none' : '') + '"><div style="display:flex;align-items:center;gap:8px"><img src="/api/asset-file/' + encodeURIComponent(v.path || '') + '" style="width:72px;height:40px;object-fit:cover;border-radius:6px;border:1px solid #e5e7eb" alt=""><div><b style="color:#1f2937">版本 ' + (vids.length - i) + '</b>' + (cur ? ' <span style="font-size:10px;background:#3A6B57;color:#fff;padding:1px 6px;border-radius:999px;margin-left:4px">当前</span>' : '') + '<div style="font-size:11px;color:#6b7280;margin-top:2px">' + esc(note || (v.path || '').split('/').pop()) + '</div></div></div><div style="display:flex;gap:6px"><button class="cut-btn" data-i="' + i + '" data-act="use" style="font-size:11px;border:1px solid #e5e7eb;background:#fff;border-radius:4px;padding:3px 8px;cursor:pointer' + (cur ? ';opacity:.4;pointer-events:none' : '') + '">设为当前</button></div></div>';
+  }).join('');
+  var modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;display:flex;align-items:center;justify-content:center';
+  modal.innerHTML = '<div style="background:#fff;border-radius:12px;padding:16px;min-width:420px;max-width:520px"><h3 style="font-size:14px;font-weight:700;margin-bottom:10px">🕘 历史版本 · ' + esc(sc.title || '') + '</h3>' + html + '<div style="margin-top:12px;text-align:right"><button id="hist-close" style="border:1px solid #e5e7eb;background:#f3f4f6;border-radius:6px;padding:5px 14px;font-size:12px;cursor:pointer">关闭</button></div></div>';
+  document.body.appendChild(modal);
+  modal.addEventListener('click', function (e) {
+    if (e.target === modal || e.target.id === 'hist-close') document.body.removeChild(modal);
+    if (e.target.getAttribute && e.target.getAttribute('data-act') === 'use') {
+      var i = Number(e.target.getAttribute('data-i'));
+      var reorder = (sc.videos || []).map(function (v, idx) { return { path: v.path, enabled: idx === i, version: v.version, created_at: v.created_at }; });
+      api('/projects/' + pid + '/episodes/' + eid + '/scenes/' + sc.id, jsonBody('PUT', { videos: reorder }))
+        .then(function () { toast('✓ 已切换视频版本', 'success'); document.body.removeChild(modal); load(); })
+        .catch(function (err) { toast('切换失败：' + err.message, 'error'); });
+    }
+  });
+}
+
+/* ==================== 初始化：接真实数据 ==================== */
+async function load() {
+  if (!pid || !eid) {
+    document.getElementById('asset-list').innerHTML = '<div style="grid-column:1/-1;padding:40px;font-size:13px;color:#9ca3af;text-align:center">缺少 project/episode 参数（请在剧本摘要页进入场页）</div>';
+    document.getElementById('pe-body').innerHTML = '<span class="ph">缺少 project/episode 参数，无法加载</span>';
+    setSaveState('saved');
+    return;
+  }
+  localStorage.setItem('ss_current_project', pid);
+  var styleLink = document.querySelector('.mid-head a[href*="style-ref"]');
+  if (styleLink) {
+    var ret = encodeURIComponent(location.pathname + location.search);
+    styleLink.href = 'style-ref.html?project=' + encodeURIComponent(pid) + '&return=' + ret;
+  }
+  try {
+    var result = await Promise.all([
+      api('/projects/' + pid),
+      api('/characters').catch(function () { return { items: [] }; }),
+      api('/scenes').catch(function () { return { items: [] }; }),
+      api('/props').catch(function () { return { items: [] }; }),
+      api('/assets/index/unclassified').catch(function () { return { entries: [] }; }),
+      api('/references').catch(function () { return { items: [] }; })
+    ]);
+    var p = result[0];
+    projCache = p;
+    allAssets.characters = result[1].items || [];
+    allAssets.scenes = result[2].items || [];
+    allAssets.props = result[3].items || [];
+    allAssets.unclassified = result[4].entries || [];
+    allAssets.references = result[5].items || [];
+    buildSceneNodes(p);
+    EPISODES = (p.episodes || []).map(function (ep) { return { id: ep.id, name: ep.title || ep.name || ep.id, scenes: ep.scenes || [] }; });
+    var epIdx = EPISODES.findIndex(function (x) { return x.id === eid; });
+    currentEpisodeIdx = epIdx >= 0 ? epIdx : 0;
+    SCENES = (EPISODES[currentEpisodeIdx] && EPISODES[currentEpisodeIdx].scenes) || [];
+    currentSceneId = SCENES.length ? SCENES[0].id : null;
+    var t1 = document.querySelector('.tb-title span:nth-child(2)');
+    if (t1) t1.textContent = p.name || '';
+    currentSel.style = (p.art_style || '');
+    var sv = document.getElementById('sel-style-v');
+    if (sv) sv.textContent = currentSel.style || '未设置';
+    var sm = document.getElementById('sel-model-v');
+    if (sm) sm.textContent = currentSel.model;
+    var sr = document.getElementById('sel-ratio-v');
+    if (sr) sr.textContent = currentSel.ratio;
+    if (SCENES.length) { renderStrip(); renderPeBody(); renderVideo(); }
+    else {
+      document.getElementById('pe-body').innerHTML = '<span class="ph">本集暂无场次，点下方 ＋ 新增场</span>';
+      document.getElementById('m-name').textContent = '—';
+      document.getElementById('m-dur').textContent = '—';
+      renderStrip(); renderVideo();
+      setSaveState('saved');
+    }
+    renderAssets();
+  } catch (e) { toast(e.message, 'error'); }
+}
+load();
+setSaveState('saved');
+/* 顶栏上一集/下一集按钮绑定（实施9 v1.4 新增） */
+document.getElementById('tb-prev').addEventListener('click', function () { goEpisode(-1); });
+document.getElementById('tb-next').addEventListener('click', function () { goEpisode(1); });
+</script>
+<script src="/static/vendor/workflow-slots.js"></script>
+<script src="/static/vendor/slot-area.js"></script>
+<script>
+/* v2 升级（⓪-2 步2）：场页"生成方式"下拉 + 共享槽位组件
+   用户 03:19：不另造专门 UI → 下拉切换工作流；选「动作迁移」时用**同一个** SlotArea 组件
+   渲染槽位（声明来自 vendor/workflow-slots.js），人物图/场景图按本场引用**自动带入**。
+   注意：本块**不发任何生成请求**；真实上传与按工作流提交属批次①。 */
+var advSlotApi = null;
+
+function onWorkflowChange() {
+  var sel = document.getElementById('adv-workflow');
+  var slot = document.getElementById('adv-video-slot');
+  var isRef2va = !!(sel && sel.value === 'ref2va');
+  if (slot) slot.style.display = isRef2va ? 'block' : 'none';
+  var lbl = document.querySelector('#gen-btn .lbl');
+  if (lbl) lbl.textContent = isRef2va ? '↑ 生成（动作迁移）' : '↑ 生成场视频';
+  if (isRef2va) advEnsureSlots();
+}
+
+async function advEnsureSlots() {
+  if (advSlotApi || !window.SlotArea || !window.WorkflowSlots) return;
+  var box = document.getElementById('adv-slots');
+  if (!box) return;
+  /* ⓪-3·步2：槽位声明改为读后端单一源（/api/workflows）——先取声明再渲染（结构/行为不变） */
+  try { await window.WorkflowSlots.load(); } catch (e) { return; }
+  if (!window.WorkflowSlots.get('ref2va').length) return;   /* 声明缺失不静默渲染空槽 */
+  advSlotApi = window.SlotArea.create(box, {
+    slots: window.WorkflowSlots.get('ref2va'),
+    onAdd: function (slotKey, slot) {
+      advPlaceholder(slot.type === 'video' ? '上传动作参考视频' : ('选择' + slot.label));
+    }
+  });
+}
+/* 用户 04:00 定：**不做"按本场 @ 引用自动带入"** —— 槽位默认空。
+   （原 advFillFromScene() 已按此裁定移除；若日后要恢复，规则是：
+     人物卡→人物参考图、场景卡→场景参考图、道具卡不代入。） */
+
+function advPlaceholder(what) {
+  if (window.toast) window.toast('「' + what + '」（占位：上传通道待补，见待补清单）', 'info');
+}
+/* 「查看队列」默认灰；点过生成后点亮（与 motion 页同口径） */
+document.addEventListener('DOMContentLoaded', function () {
+  var g = document.getElementById('gen-btn');
+  if (g) g.addEventListener('click', function () {
+    var q = document.getElementById('adv-view-queue');
+    if (q) q.disabled = false;
+  });
+});
+</script>
+</body>
+</html>

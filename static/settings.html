@@ -1,0 +1,450 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>小麻雀脚本与分镜工坊 - 设置</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "Microsoft YaHei", "PingFang SC", sans-serif; background: var(--ss-bg); color: #333; display: flex; min-height: 100vh; }
+  .main-wrap { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  main { max-width: 1000px; margin: 20px auto; padding: 0 16px; }
+  .sec { background: var(--ss-card); border: 1px solid var(--ss-border); border-radius: 12px; margin-bottom: 14px; overflow: hidden; }
+  .sec-head { display: flex; align-items: center; gap: 8px; padding: 13px 16px; cursor: pointer; user-select: none; }
+  .sec-head .arrow { transition: transform .15s; color: var(--ss-text-4); font-size: 12px; }
+  .sec.open .sec-head .arrow { transform: rotate(90deg); }
+  .sec-head h2 { font-size: 15px; flex: 1; }
+  .sec-head .hint { font-size: 12px; color: var(--ss-text-4); }
+  .sec-body { display: none; padding: 4px 16px 16px; border-top: 1px solid var(--ss-bg); }
+  .sec.open .sec-body { display: block; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { padding: 8px 6px; border-bottom: 1px solid var(--ss-bg); text-align: left; vertical-align: middle; }
+  th { color: var(--ss-text-3); font-weight: 500; font-size: 12px; }
+  input, select { padding: 6px 9px; border: 1px solid var(--ss-border-strong); border-radius: 8px; font-size: 13px; width: 100%; box-sizing: border-box; }
+  td input[type=text], td input[type=password], td input[type=number], td select { min-width: 0; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
+  .row .lbl { font-size: 13px; color: var(--ss-text-3); width: 110px; flex: none; }
+  .row input { flex: 1; min-width: 120px; }
+  .row select { flex: 1; min-width: 120px; }
+  .btn { padding: 7px 16px; border: none; border-radius: 8px; cursor: pointer; font-size: 13px; white-space: nowrap; }
+  .btn-primary { background: var(--ss-green-600); color: #fff; }
+  .btn-ghost { background: var(--ss-bg); color: var(--ss-text-2); border: 1px solid var(--ss-border); }
+  .btn-danger { background: var(--ss-error-bg); color: var(--ss-error); }
+  .btn-mini { padding: 4px 10px; font-size: 12px; border-radius: 6px; white-space: nowrap; }
+  /* ★ ④ F5c（用户 09-30）：保存按钮"有改动才点亮"——禁用态灰显 */
+  .btn:disabled { opacity: .45; cursor: not-allowed; filter: grayscale(1); }
+  .tip { font-size: 12px; color: var(--ss-text-4); margin-top: 6px; }
+  .bar { display: flex; justify-content: flex-end; gap: 10px; margin-top: 14px; }
+  .placeholder { background: var(--ss-bg); color: var(--ss-text-4); border: 1px dashed var(--ss-border-strong); cursor: not-allowed; }
+  .empty { color: var(--ss-text-4); font-size: 13px; padding: 20px 0; text-align: center; }
+</style>
+</head>
+<body>
+<aside id="sidebar"></aside>
+<div class="main-wrap">
+<main>
+
+  <div class="sec open" id="sec-llm">
+    <div class="sec-head" onclick="toggleSec('sec-llm')">
+      <span class="arrow">▶</span>
+      <h2>LLM 模型列表</h2>
+      <span class="hint">拆解 / AI 优化用</span>
+    </div>
+    <div class="sec-body">
+      <table id="model-table">
+        <thead><tr><th style="width:110px" title="模型名称，用于识别">名称</th><th style="width:170px" title="OpenAI 兼容的接口地址">API 地址</th><th style="width:130px" title="实际调用的模型标识">模型名</th><th style="width:150px" title="API 密钥，仅本机保存、不显示明文">Key</th><th style="width:70px" title="温度越高，输出越随机多样；越低越稳定保守">温度</th><th style="width:90px" title="每千 token 费用，用于拆解/生成前成本预估。免费模型填 0；按量计费模型请填服务商官网公布的实际单价（元/千token），预估仅供参考，以官网为准">单价</th><th style="width:70px" title="勾选后，拆解与生成默认使用该模型">默认</th><th style="width:40px"></th></tr></thead>
+        <tbody id="model-tbody"></tbody>
+      </table>
+      <div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <span style="font-size:12px;color:var(--ss-text-4)">用预置模板新建模型（Key 由您填写）</span>
+        <select id="tpl" style="flex:none;width:230px" onchange="applyTemplate()">
+          <option value="">— 选择模板（选择即新建） —</option>
+          <option value="qwen_small">⓪ Modelscope Qwen 小·快（默认档）</option>
+          <option value="qwen">① Modelscope Qwen（免费/低成本档）</option>
+          <option value="openai">② 通用 OpenAI 兼容（付费档）</option>
+          <option value="blank">③ 空模板（自填）</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec open" id="sec-nodes">
+    <div class="sec-head" onclick="toggleSec('sec-nodes')">
+      <span class="arrow">▶</span>
+      <h2>本地平台</h2>
+      <span class="hint">ComfyUI 节点池 · 可添加多台</span>
+    </div>
+    <div class="sec-body">
+      <div class="row" style="gap:8px;flex-wrap:wrap">
+        <input id="set-node-name" placeholder="名称，如：备用生成机 1" style="flex:0 0 200px">
+        <input id="set-node-url" placeholder="地址（主机:端口），如 192.168.1.9:8188" style="flex:0 0 300px">
+        <button class="btn btn-ghost btn-mini" onclick="nmAdd()">＋ 添加</button>
+        <span class="tip" style="flex:1">添加后自动探活；任务按忙闲自动分配。</span>
+      </div>
+      <div id="node-list" style="margin-top:8px"></div>
+      <div class="tip">名称与地址（主机:端口）必填，不得重名或同址；「本机」不可删改。</div>
+    </div>
+  </div>
+
+  <div class="sec open" id="sec-cloud">
+    <div class="sec-head" onclick="toggleSec('sec-cloud')">
+      <span class="arrow">▶</span>
+      <h2>云端平台</h2>
+      <span class="hint">Modelscope 云端出图</span>
+    </div>
+    <div class="sec-body">
+      <div class="row"><span class="lbl">访问令牌</span><input id="set-ms-token" type="password" placeholder="粘贴服务商访问令牌" style="flex:0 0 280px" oninput="msBadgeRefresh()"><span id="ms-token-badge" style="color:#16a34a;font-size:11px;margin-left:6px;display:none" title="已配置令牌（保存后沿用；留空保存不覆盖）">✓ 已配置</span><span class="tip" style="flex:1">只存本机。获取：<a href="https://www.modelscope.cn/my/access/token" target="_blank" rel="noopener">modelscope.cn/my/access/token</a></span></div>
+      <div class="tip">云端只走手工指定（生成时选「Modelscope」）；不填令牌则完全不使用云端。</div>
+    </div>
+  </div>
+
+  <div class="sec open" id="sec-other">
+    <div class="sec-head" onclick="toggleSec('sec-other')">
+      <span class="arrow">▶</span>
+      <h2>其他设置</h2>
+      <span class="hint">路径 / 监听</span>
+    </div>
+    <div class="sec-body">
+      <div class="row"><span class="lbl">资产库路径</span><input id="set-shared"><button type="button" class="btn btn-ghost btn-mini" onclick="pickSharedFolder()">选择…</button></div>
+      <!-- v2 升级（⓪-2 步1 回炉）：IC 路径行按用户要求从界面去掉；保留隐藏字段以免影响保存逻辑（值原样带回） -->
+      <input type="hidden" id="set-ic">
+      <div class="row"><span class="lbl">监听地址</span><select id="set-listen" style="flex:0 0 180px"><option value="127.0.0.1">仅本机 127.0.0.1</option><option value="0.0.0.0" disabled>局域网 0.0.0.0（本版本不开放 · 安全整改中）</option></select><span class="tip" id="set-listen-tip" style="flex:1">本版本强制仅本机：即使配置里写了 0.0.0.0 也不生效</span></div>
+      <div class="row"><span class="lbl">拆解阈值(字)</span><input id="set-threshold" type="number" min="500" max="50000" style="flex:0 0 160px"><span class="tip" style="flex:1">剧本短于该字数就整本一次拆解，否则按集分批。</span></div>
+    </div>
+  </div>
+
+  <div class="bar">
+    <button class="btn btn-primary" id="btn-save-settings" onclick="saveSettings()" disabled>保存设置</button>
+  </div>
+</main>
+<div id="inline-tip" style="position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:200;display:none;padding:8px 14px;border-radius:8px;font-size:13px;box-shadow:0 2px 10px rgba(0,0,0,.18)"></div>
+
+<script>
+const API = '/api';
+let models = [];
+
+/* ★ ④ F5c（用户 09-30）：保存按钮默认禁用（灰），有任何改动才点亮；保存成功后回到灰。
+   实现：委托监听整页的 input/change（含动态渲染的 LLM 表格行），改过即 markDirty。 */
+function markDirty() { const b = document.getElementById('btn-save-settings'); if (b && b.disabled) b.disabled = false; }
+function markClean() { const b = document.getElementById('btn-save-settings'); if (b) b.disabled = true; }
+document.addEventListener('input', e => { if (e.target && e.target.id !== 'btn-save-settings') markDirty(); }, true);
+document.addEventListener('change', e => { if (e.target && e.target.id !== 'btn-save-settings') markDirty(); }, true);
+
+function esc(s) { return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+function tip(text, type) {
+  // v1.42：信息通知统一用全局悬浮 toast（nav.js window.toast），不再用 Inline
+  if (window.toast) { window.toast(text, type); return; }
+  const el = document.getElementById('inline-tip');
+  el.textContent = text;
+  el.style.background = type === 'success' ? '#dcfce7' : '#fee2e2';
+  el.style.color = type === 'success' ? '#16a34a' : '#dc2626';
+  el.style.display = 'block';
+  clearTimeout(el._t);
+  el._t = setTimeout(() => { el.style.display = 'none'; }, 3200);
+}
+async function api(path, options) {
+  const resp = await fetch(API + path, options);
+  if (!resp.ok) { let d = '请求失败'; try { d = (await resp.json()).detail || d; } catch (e) {} throw new Error(d); }
+  return resp.json();
+}
+function jsonBody(method, body) { return { method, headers: { 'Content-Type': 'application/json; charset=utf-8' }, body: JSON.stringify(body) }; }
+
+function toggleSec(id) { document.getElementById(id).classList.toggle('open'); }
+
+/* ── ③ 步2a 生成节点管理（真数据：/api/nodes；合规校验在后端 fail-closed）── BEGIN */
+/* 零硬编码纪律：本区**不写任何 host/port 字面量**，一切数据来自 GET /api/nodes（注册表）。 */
+function nmDot(n) { return '<span class="nd-dot ' + (n.online ? 'on' : 'off') + '"></span>'; }
+function nmState(n) {
+  if (!n.enabled) return '已停用（不参与调度）';
+  if (!n.online) return '离线 · 调度已跳过';
+  /* ★ 用户 2026-10-01：槽数从界面去掉（后端能力保留，默认 1 = 节点内串行） */
+  var run = (n.running || 0);
+  return run > 0 ? ('在线 · 在制 ' + run + ' 个任务') : '在线 · 空闲';
+}
+function nmCapText(n) {
+  /* ★ A-P1-1：能力标签展示。空 = 全能力（单机部署的默认形态）。 */
+  var cap = n.capability || [];
+  return cap.length ? ('能力：' + cap.join('、')) : '能力：全部';
+}
+function nmRender(nodes) {
+  var box = document.getElementById('node-list');
+  if (!box) return;
+  if (!nodes.length) { box.innerHTML = '<div class="tip">节点池为空（异常：本机节点应恒在）</div>'; return; }
+  box.innerHTML = nodes.map(function (n) {
+    var isLocal = n.id === 'local';
+    return '<div class="row" style="gap:8px;align-items:center" data-nid="' + esc(n.id) + '">' +
+      '<span class="lbl" style="flex:0 0 200px">' + nmDot(n) + ' ' + esc(n.name) +
+        (isLocal ? ' <span class="tip">（本机）</span>' : '') + '</span>' +
+      '<span style="flex:0 0 240px;color:#6b7280;font-size:12px">' + esc(n.resolved_url || n.url || '随设置') + '</span>' +
+      '<span style="flex:1;font-size:12px;color:' + (n.online && n.enabled ? '#16a34a' : '#9ca3af') + '">' +
+        esc(nmState(n)) + '</span>' +
+      /* ★ A-P1-1：能力标签（决定该节点能被派发哪些工作流；空 = 全能力） */
+      '<span class="tip" style="flex:0 0 auto;font-size:12px" title="该节点能跑哪些工作流；空 = 全部能力">' +
+        esc(nmCapText(n)) + '</span>' +
+      '<button class="btn btn-ghost btn-mini" title="设置能力标签：该节点能跑哪些工作流（逗号分隔；留空 = 全部）" ' +
+        'onclick="nmCapability(\'' + esc(n.id) + '\',\'' + esc(n.name) + '\',\'' + esc((n.capability || []).join(',')) + '\')">能力</button>' +
+      '<button class="btn btn-ghost btn-mini" onclick="nmProbe(\'' + esc(n.id) + '\')">探活</button>' +
+      /* ★ 用户 10-01 Q2：本机地址改在这里（设置页原「ComfyUI 地址」已删）。
+         local 不可删，所以「可改」是必须的 —— 否则本机地址一旦写错就锁死了。 */
+      (isLocal ? '<button class="btn btn-ghost btn-mini" title="改本机 ComfyUI 地址" ' +
+        'onclick="nmUrl(\'' + esc(n.id) + '\',\'' + esc(n.name) + '\',\'' + esc(n.resolved_url || n.url || '') + '\')">改地址</button>' : '') +
+      (isLocal ? '' :
+        '<button class="btn btn-ghost btn-mini" onclick="nmToggle(\'' + esc(n.id) + '\',' + (n.enabled ? 'false' : 'true') + ')">' +
+          (n.enabled ? '停用' : '启用') + '</button>' +
+        '<button class="btn btn-ghost btn-mini" title="删除这台机器" onclick="nmRemove(\'' + esc(n.id) + '\',\'' + esc(n.name) + '\')">✕ 删除</button>') +
+      '</div>';
+  }).join('');
+}
+async function nmLoad() {
+  try {
+    var j = await api('/nodes');
+    nmRender((j && j.nodes) || []);
+  } catch (e) { tip('读取节点失败：' + e.message, 'error'); }
+}
+async function nmAdd() {
+  var nEl = document.getElementById('set-node-name'), uEl = document.getElementById('set-node-url');
+  var name = (nEl && nEl.value || '').trim(), url = (uEl && uEl.value || '').trim();
+  if (!name) { tip('请填写节点名称', 'error'); return; }          /* 前端先拦一道，后端仍 fail-closed 兜底 */
+  if (!url) { tip('请填写节点地址（主机+端口）', 'error'); return; }
+  try {
+    var node = await api('/nodes', jsonBody('POST', { name: name, url: url }));
+    if (nEl) nEl.value = ''; if (uEl) uEl.value = '';
+    tip((node.online ? '已添加「' + node.name + '」· 在线' : '已添加「' + node.name + '」· 当前不可达（调度会跳过）'),
+        node.online ? 'success' : 'info');
+    nmLoad();
+  } catch (e) { tip('添加失败：' + e.message, 'error'); }          /* 400 内容 = 具体违规原因 */
+}
+async function nmProbe(id) {
+  try {
+    var r = await api('/nodes/' + encodeURIComponent(id) + '/probe', { method: 'POST' });
+    tip(r.online ? ('探活：在线（在制 ' + (r.load || 0) + ' 个任务）') : '探活：不可达', r.online ? 'success' : 'error');
+    nmLoad();
+  } catch (e) { tip('探活失败：' + e.message, 'error'); }
+}
+/* ★ 用户 2026-10-01：界面上的「槽数」按钮与设置入口已去掉（后端 `POST /api/nodes/{id}/slots`
+   与 slots 字段保留不动 —— 默认 1 即"节点内串行"，与旧行为等价；将来需要再从后端调）。 */
+
+/* ★ 用户 10-01 Q2：改节点地址（本机 ComfyUI 地址从此在这里改）。
+   校验在后端 fail-closed 兜底：host+port 成对、端口范围、不与他人重复 → 违规 400 且零写入。 */
+async function nmUrl(id, name, cur) {
+  var v = window.prompt('「' + name + '」的地址（主机:端口，如 127.0.0.1:8188）', cur || '');
+  if (v === null) return;
+  try {
+    await api('/nodes/' + encodeURIComponent(id) + '/url', jsonBody('POST', { url: String(v).trim() }));
+    tip('已更新「' + name + '」的地址（热生效）', 'success');
+    nmLoad();
+  } catch (e) { tip('改地址失败：' + e.message, 'error'); }
+}
+/* ★ A-P1-1：设置节点能力标签（能跑哪些 workflow_type；留空 = 全能力）。
+   用途：双机单部署下两机模型不重叠 —— 声明后调度器只把任务派给具备该能力的节点，否则明确报错。 */
+async function nmCapability(id, name, cur) {
+  var v = window.prompt('「' + name + '」能跑哪些工作流？（逗号分隔，如 qwen21,qwen21_edit；留空 = 全部能力）', cur || '');
+  if (v === null) return;
+  var cap = String(v).split(',').map(function (s) { return s.trim(); }).filter(function (s) { return s; });
+  try {
+    await api('/nodes/' + encodeURIComponent(id) + '/capability', jsonBody('POST', { capability: cap }));
+    tip('已更新「' + name + '」的能力标签（热生效）' + (cap.length ? '：' + cap.join('、') : '：全部能力'), 'success');
+    nmLoad();
+  } catch (e) { tip('设置能力失败：' + e.message, 'error'); }
+}
+async function nmToggle(id, enabled) {
+  try {
+    await api('/nodes/' + encodeURIComponent(id) + '/enabled', jsonBody('POST', { enabled: enabled }));
+    tip(enabled ? '已启用（重新参与调度）' : '已停用（不再被自动选中）', 'info');
+    nmLoad();
+  } catch (e) { tip(e.message, 'error'); }
+}
+function nmRemove(id, name) {
+  var doIt = function () {
+    api('/nodes/' + encodeURIComponent(id) + '/remove', { method: 'POST' })
+      .then(function () { tip('已删除「' + name + '」', 'success'); nmLoad(); })
+      .catch(function (e) { tip('删除失败：' + e.message, 'error'); });
+  };
+  if (window.confirmDialog) {
+    window.confirmDialog('删除生成节点', '确认从节点池删除「' + name + '」？', doIt, '删除');
+  } else { doIt(); }
+}
+/* 打开该区块时自动拉一次（配置页不常驻轮询，操作后即时刷新） */
+(function () {
+  var sec = document.getElementById('sec-nodes');
+  if (sec) {
+    var head = sec.querySelector('.sec-head');
+    if (head) head.addEventListener('click', function () { nmLoad(); });
+  }
+  nmLoad();
+})();
+/* ── ③ 步2a END ── */
+
+function renderRows() {
+  const tb = document.getElementById('model-tbody');
+  tb.innerHTML = models.map((m, i) => `
+    <tr>
+      <td><input value="${esc(m.name || '')}" placeholder="名称" data-k="name" title="给这个模型起个好记的名字（只用于界面识别），如「主力·润色」「拆解专用」"></td>
+      <td><input value="${esc(m.base_url || '')}" placeholder="API 地址" data-k="base_url" title="服务商的 OpenAI 兼容地址，要带 /v1。例：https://api-inference.modelscope.cn/v1"></td>
+      <td><input value="${esc(m.model || '')}" placeholder="模型名" data-k="model" title="服务商实际调用的模型标识（区分大小写），如 Qwen/Qwen3.5-27B。填错会直接报 400"></td>
+      <td style="white-space:nowrap">
+        <input type="password" value="${esc(m.api_key || '')}" placeholder="Key" data-k="api_key" style="width:110px" title="该服务商的密钥，仅存本机、不回显明文。留空保存＝沿用已配的 Key（不会清空）">
+        ${m.api_key_set ? '<span style="color:#16a34a;font-size:11px;margin-left:4px" title="已配置 Key（保存后沿用；留空保存不覆盖）">✓ 已配置</span>' : ''}
+        ${m.key_url ? `<a href="${esc(m.key_url)}" target="_blank" title="打开服务商的密钥申请页" style="font-size:12px;color:#3A6B57;margin-left:6px;text-decoration:none">获取 Key ↗</a>` : ''}
+      </td>
+      <td><input type="number" value="${m.temperature ?? 0.7}" step="0.1" data-k="temperature" title="随机度：0～1。越低越稳定保守（拆解/结构化输出建议 0.3~0.7），越高越发散（创意润色可高些）"></td>
+      <td><input type="number" value="${m.price_per_1k ?? 0}" step="0.01" data-k="price_per_1k" title="每千 token 的费用（元），仅用于生成前的成本预估。免费模型填 0；按量计费请填服务商官网单价，预估仅供参考"></td>
+      <td style="text-align:center"><input type="radio" name="def" ${m.is_default ? 'checked' : ''} title="勾选后，剧本拆解 / AI 优化 / 智能推荐默认用这个模型"></td>
+      <td><button class="btn btn-danger btn-mini" onclick="removeRow(${i})">删</button></td>
+    </tr>`).join('') || '<tr><td colspan="8" class="empty">暂无模型，请从下方模板新建</td></tr>';
+}
+function addRow() { markDirty();
+  models.push({ id: 'm_' + Date.now().toString(36), name: '', base_url: '', model: '', api_key: '', temperature: 0.7, price_per_1k: 0, is_default: models.length === 0 });
+  renderRows();
+}
+function removeRow(i) { models.splice(i, 1); renderRows(); markDirty(); }
+
+/* ★ 派单 001 · T2（2026-10-11）：云端令牌「✓ 已配置」徽标。
+   脱敏后 `api_key` 恒为空串 ⇒ **不能再靠它判断**，改看后端给的 `api_key_set`。 */
+let msTokenWasSet = false;
+function msBadgeRefresh() {
+  const b = document.getElementById('ms-token-badge');
+  if (!b) return;
+  const typed = (document.getElementById('set-ms-token') || {}).value || '';
+  b.style.display = (msTokenWasSet || typed.trim()) ? '' : 'none';
+}
+function msBadgeShow(on) { msTokenWasSet = !!on; msBadgeRefresh(); }
+
+async function loadSettings() {
+  try {
+    const s = await api('/settings');
+    models = (s.llm_models || []).map(m => ({ ...m }));
+    renderRows();
+    document.getElementById('set-shared').value = s.shared_assets_path || '';
+    document.getElementById('set-ic').value = s.ic_path || '';
+    /* ★ 派单 002 · T7-2（2026-10-12）：**显示实际生效值**。
+       后端强制 `host="127.0.0.1"`（不读 settings.listen）⇒ 下拉恒显示 127.0.0.1；
+       配置里若写着 0.0.0.0，用提示文字讲清"为什么不生效"，避免"显示 0.0.0.0 却只在本机"的错位。 */
+    var cfgListen = s.listen || '127.0.0.1';
+    document.getElementById('set-listen').value = '127.0.0.1';
+    var listenTip = document.getElementById('set-listen-tip');
+    if (listenTip) {
+      listenTip.textContent = (cfgListen === '127.0.0.1')
+        ? '本版本强制仅本机（服务端固定 127.0.0.1）'
+        : ('配置里写的是 ' + cfgListen + '，但本版本强制仅本机 ⇒ 实际生效 127.0.0.1（该配置不生效）');
+    }
+    document.getElementById('set-threshold').value = s.analyze_threshold || 8000;
+    window.gSettings = s || {};
+    const ms = s.ms_image || {};
+    document.getElementById('set-ms-token').value = ms.api_key || '';
+    /* ★ 派单 001 · T2：脱敏后 `api_key` 恒为空 ⇒ 用 `api_key_set` 判「是否已配置」
+       （否则令牌框看起来是空的，用户会以为 Key 丢了）。 */
+    msBadgeShow(ms.api_key_set);
+    markClean();                       // ★ 载入完成 = 无未保存改动（保存按钮回到灰）
+  } catch (e) { tip(e.message, 'error'); }
+}
+async function saveSettings() {
+  // 收集表格
+  const rows = [...document.querySelectorAll('#model-tbody tr')];
+  models = rows.map((tr, i) => {
+    const m = models[i] || { id: 'm_' + Date.now().toString(36) + '_' + i };
+    tr.querySelectorAll('input[data-k]').forEach(inp => { m[inp.dataset.k] = inp.type === 'number' ? parseFloat(inp.value) || 0 : inp.value; });
+    m.is_default = tr.querySelector('input[name=def]').checked;
+    return m;
+  });
+  /* ★ 派单 002 · T7-3（2026-10-12）：本版本监听恒为 127.0.0.1 ⇒ 上送了别的值就明确提示"不生效"
+     （选项已置灰，正常路径取不到 0.0.0.0；此处为防御性兜底，提示口径与 run.bat 一致）。 */
+  const chosenListen = document.getElementById('set-listen').value;
+  if (chosenListen !== '127.0.0.1') {
+    tip('监听地址 ' + chosenListen + ' 本版本不生效（服务端强制仅本机 127.0.0.1）', 'error');
+  }
+  try {
+    await api('/settings', jsonBody('PUT', {
+      llm_models: models,
+      ic_path: document.getElementById('set-ic').value.trim(),
+      listen: chosenListen,
+      analyze_threshold: parseInt(document.getElementById('set-threshold').value) || 8000
+      /* ★ 用户 10-01 Q2：本机 ComfyUI 地址不再由设置页配置 —— 改在「本地平台」里改
+         （local 节点的「改地址」按钮 → POST /api/nodes/local/url）；此处不再上送 comfyui_url。 */
+      // ④ F5c：云端只保留令牌（模型/并发/开关改为系统预置，不再上屏）
+      , ms_image: Object.assign({}, (window.gSettings || {}).ms_image || {},
+          { api_key: document.getElementById('set-ms-token').value })
+    }));
+    tip('设置已保存', 'success');
+    markClean();
+  } catch (e) { tip(e.message, 'error'); }
+}
+/* ④ F5c：云端区已按用户要求收敛为"只留访问令牌"（模型/并发/开关/用量均不再上屏；
+   用量仍可由 GET /api/cloud/status 取，只是不在设置页展示）。 */
+async function applyTemplate() {  const tpl = document.getElementById('tpl').value;
+  if (!tpl) { tip('请先选择模板', 'error'); return; }
+  try {
+    const s = await api('/settings/apply-template', jsonBody('POST', { template: tpl }));
+    models = (s.llm_models || []).map(m => ({ ...m }));
+    renderRows();
+    document.getElementById('tpl').value = '';
+    tip('已用模板新建模型（请填写 Key）', 'success');
+  } catch (e) { tip(e.message, 'error'); }
+}
+
+loadSettings();
+</script>
+</div>
+<script src="/static/nav.js?v=14"></script>
+
+<!-- ★ 用户 2026-10-01：资产库路径「选择…」→ 浏览器内目录选择器（不依赖系统弹窗） -->
+<div id="fs-mask" style="position:fixed;inset:0;background:rgba(17,24,39,.45);z-index:900;display:none;align-items:center;justify-content:center">
+  <div style="background:var(--ss-card);border-radius:12px;width:560px;max-width:92vw;max-height:84vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.28)">
+    <div style="padding:14px 16px;border-bottom:1px solid var(--ss-border);font-weight:600;font-size:14px">选择文件夹</div>
+    <div id="fs-path" style="padding:8px 16px;font-size:12px;color:var(--ss-text-3);word-break:break-all;background:var(--ss-bg)">—</div>
+    <div id="fs-list" style="flex:1;overflow:auto;padding:6px 8px;min-height:200px"></div>
+    <div style="padding:12px 16px;border-top:1px solid var(--ss-border);display:flex;gap:8px;align-items:center">
+      <button type="button" class="btn btn-ghost btn-mini" onclick="fsUp()">↑ 上级</button>
+      <button type="button" class="btn btn-ghost btn-mini" onclick="fsHome()">⌂ 盘符</button>
+      <span style="flex:1"></span>
+      <button type="button" class="btn btn-ghost btn-mini" onclick="fsClose()">取消</button>
+      <button type="button" class="btn btn-primary btn-mini" onclick="fsPick()">选定此文件夹</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ── 资产库路径：浏览器内目录选择器（用户 2026-10-01）──
+   为什么不用系统原生弹窗：服务可能由后台/非交互会话启动，系统框不保证能出来，且无法自动化验证。 */
+var FS_CUR = '', FS_PARENT = '';
+function pickSharedFolder() {
+  document.getElementById('fs-mask').style.display = 'flex';
+  fsOpen((document.getElementById('set-shared').value || '').trim());
+}
+async function fsOpen(path) {
+  var box = document.getElementById('fs-list');
+  box.innerHTML = '<div style="padding:16px;font-size:12px;color:var(--ss-text-4)">读取中…</div>';
+  try {
+    var j = await api('/fs/dirs?path=' + encodeURIComponent(path || ''));
+    FS_CUR = j.path || ''; FS_PARENT = j.parent || '';
+    document.getElementById('fs-path').textContent = j.path ? ('当前位置：' + j.path) : '请选择盘符';
+    if (j.error) { box.innerHTML = '<div style="padding:12px;font-size:12px;color:#b45309">' + esc(j.error) + '</div>'; return; }
+    if (!j.dirs.length) { box.innerHTML = '<div style="padding:12px;font-size:12px;color:var(--ss-text-4)">没有子文件夹</div>'; return; }
+    box.innerHTML = j.dirs.map(function (d) {
+      return '<div class="fs-row" data-p="' + esc(d.path) + '" style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;cursor:pointer;font-size:13px">'
+        + '<span>📁</span><span style="flex:1;word-break:break-all">' + esc(d.name) + '</span>'
+        + '<span style="font-size:11px;color:var(--ss-text-4)">进入 ›</span></div>';
+    }).join('');
+    Array.prototype.forEach.call(box.querySelectorAll('.fs-row'), function (r) {
+      r.addEventListener('mouseenter', function () { r.style.background = 'var(--ss-subtle-bg)'; });
+      r.addEventListener('mouseleave', function () { r.style.background = ''; });
+      r.addEventListener('click', function () { fsOpen(r.getAttribute('data-p')); });
+    });
+  } catch (e) {
+    box.innerHTML = '<div style="padding:12px;font-size:12px;color:#b91c1c">读取失败：' + esc(e.message) + '</div>';
+  }
+}
+function fsUp() { FS_PARENT ? fsOpen(FS_PARENT) : fsOpen(''); }
+function fsHome() { fsOpen(''); }
+function fsClose() { document.getElementById('fs-mask').style.display = 'none'; }
+function fsPick() {
+  if (!FS_CUR) { tip('请先进入某个文件夹再选定', 'error'); return; }
+  document.getElementById('set-shared').value = FS_CUR;
+  markDirty();                       // 程序化赋值不触发 input 事件 → 需显式点亮保存按钮
+  fsClose();
+  tip('已选择：' + FS_CUR + '（记得点「保存设置」生效）', 'success');
+}
+</script>
+</body>
+</html>
+

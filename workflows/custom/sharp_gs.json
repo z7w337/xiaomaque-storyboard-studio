@@ -1,0 +1,28 @@
+{
+  "1": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "input_image.png"
+    }
+  },
+  "2": {
+    "class_type": "LoadSharpModel",
+    "inputs": {
+      "device": "auto"
+    }
+  },
+  "3": {
+    "class_type": "SharpPredict",
+    "inputs": {
+      "model": ["2", 0],
+      "image": ["1", 0]
+    }
+  },
+  "4": {
+    "class_type": "SaveText",
+    "inputs": {
+      "text": ["3", 0],
+      "filename_prefix": "sharp_ply_path"
+    }
+  }
+}

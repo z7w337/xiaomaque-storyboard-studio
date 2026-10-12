@@ -1,0 +1,49 @@
+# 嵌入式解释器与离线依赖包（可重建，不进版本库）
+python/
+packages/
+
+# 运行时缓存
+__pycache__/
+*.pyc
+.venv/
+
+# 运行时数据目录（data 数据文件不属于代码回滚范围，见计划书 2.5；由 main.py 启动时自动确保存在）
+data/
+handoff/outbox/
+
+# F4(审计20260909) git 卫生：临时调试/备份/许可文件
+# .bak 备份、临时文本、调试截图与临时脚本、启动日志——均非版本交付物
+*.bak_*
+commit_msg_*.txt
+tmp-docs/
+# 收尾A⑤(2026-09-10): 覆盖全部启动日志(startup2*/startup3*/startup_f1*等)
+startup*.log
+# LICENSE=A 批豁免，归 C 新仓发布(见 F4/LICENSE 登记)，原仓不提交
+LICENSE
+# === v2 追加（2026-09-17）===
+.workbuddy/
+测试专区/
+mini-keel.txt
+_skill_scan_root.txt
+工坊升版功能候选评估-20260915.md
+
+# 记录文档（append-only 日志）—— ★ 2026-09-21 用户定：**收进 git**（原按"§十 文档即代码只覆盖规则文档"排除）。
+# 理由：**用户原话是不可再生的义务记录**，必须有版本历史（同 keel/3-tech-pitfalls/ 的处理）。
+
+# 看板的生成物与临时文件（原始件 看板.hta / 看板循环.ps1 进 git，这些不进）
+keel/2-看板/看板.html
+keel/2-看板/看板循环.pid
+keel/2-看板/灯状态.txt
+
+# 资产库二进制不进仓（2026-09-18 用户定）；0-inbox 中转区不进 git
+SharedAssets/
+keel/0-inbox/
+
+# 同步回收产生的备份 / 临时副本（2026-09-20 加）
+# · static/_backup_*/  = VI 专家在 24 侧执行步1/步2 前留下的代码与素材备份（源素材在 samples\logo 可复现）
+# · *.18bak.*          = 架构-2 pull 时对本地旧版的自动备份（保留一段时间供回退，不进仓）
+static/_backup_*/
+*.18bak.*
+
+# VI 素材工作区（24 侧专家的中间产物：状态图标 mp4/png 试做、批2/批3 接触表；正式素材已落 static\brand\task-states）
+samples/logo/

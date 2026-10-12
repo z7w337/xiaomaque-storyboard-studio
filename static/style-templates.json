@@ -1,0 +1,14 @@
+{
+  "version": "1.0",
+  "source": "PALETTE.STYLES 迁移 + v1.55 新增 positive/negative_template（供 4.4 组装注入）",
+  "items": [
+    { "id": "写实电影感", "name": "写实电影感", "type": "real", "desc": "胶片颗粒 · 光影写实 · 电影级质感", "color": "#78716c", "color2": "#292524", "pat": "film", "positive_template": "写实电影质感，胶片颗粒，真实光影，电影级色彩分级，高动态范围，自然景深", "negative_template": "卡通风格，插画感，塑料质感，过度锐化，卡通化角色" },
+    { "id": "赛博朋克", "name": "赛博朋克", "type": "real", "desc": "霓虹夜景 · 高饱和对比 · 未来都市", "color": "#7c3aed", "color2": "#0f172a", "pat": "film", "positive_template": "赛博朋克，霓虹夜景，高饱和对比，未来都市，霓虹灯反射，赛博格元素，雨夜反光路面", "negative_template": "田园乡村，自然光线，复古怀旧，日常写实" },
+    { "id": "日系动漫", "name": "日系动漫", "type": "2d", "desc": "赛璐璐上色 · 日系线条 · 明快", "color": "#60a5fa", "color2": "#1e40af", "pat": "anime", "positive_template": "日系动漫风格，赛璐璐上色，清晰线条，明快色彩，大眼睛角色，干净背景", "negative_template": "写实摄影，真人照片，暗黑风格，复杂纹理" },
+    { "id": "水墨国风", "name": "水墨国风", "type": "2d", "desc": "水墨晕染 · 留白意境 · 写意", "color": "#57534e", "color2": "#111827", "pat": "ink", "positive_template": "中国水墨画风格，水墨晕染，留白意境，写意笔触，宣纸质感，淡雅配色", "negative_template": "油画质感，写实照片，金属质感，艳丽色彩" },
+    { "id": "古风", "name": "古风", "type": "2d", "desc": "工笔重彩 · 古装意象 · 典雅", "color": "#d97706", "color2": "#7c2d12", "pat": "anime", "positive_template": "中国古风，工笔重彩，古装意象，典雅配色，古建背景，传统服饰", "negative_template": "现代都市，科技元素，西方风格，朋克元素" },
+    { "id": "手绘插画", "name": "手绘插画", "type": "2d", "desc": "铅笔质感 · 手绘笔触 · 温暖", "color": "#f59e0b", "color2": "#b45309", "pat": "ink", "positive_template": "手绘插画风格，铅笔质感，手绘笔触，温暖色调，儿童绘本感，手工感", "negative_template": "数字渲染，照片写实，3D 效果，锐利边缘" },
+    { "id": "低多边形", "name": "低多边形", "type": "3d", "desc": "几何切面 · 明快色块 · 立体构成", "color": "#10b981", "color2": "#065f46", "pat": "film", "positive_template": "低多边形风格，几何切面，明快色块，立体构成，抽象简约，游戏低模", "negative_template": "高模细节，写实质感，复杂纹理，精细雕刻" },
+    { "id": "像素风", "name": "像素风", "type": "3d", "desc": "复古像素 · 8-bit 质感 · 游戏记忆", "color": "#ef4444", "color2": "#7f1d1d", "pat": "pixel", "positive_template": "像素风格，8-bit 复古，像素方块，游戏记忆，怀旧质感，限量色板", "negative_template": "高分辨率细节，写实渲染，照片感，矢量平滑" }
+  ]
+}

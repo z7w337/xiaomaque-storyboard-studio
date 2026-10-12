@@ -1,0 +1,15 @@
+# 剧本分镜工坊 — Python 依赖（离线安装，来源：Infinite Canvas\packages + 随 python 复制的 site-packages）
+# ★ 运行环境约束：本包随带 Python 3.10.11（见 README「运行环境」）；audioop 自 3.13 起移除（PEP 594），
+#   换用 3.13+ 会让音频校验路径 ImportError ⇒ 勿换解释器。
+fastapi==0.141.1
+uvicorn==0.52.3
+requests==2.34.2
+pydantic==2.13.4
+python-multipart==0.0.32
+pillow==12.3.0
+watchfiles==1.2.0
+# 音色样本 / 音频校验（main.py 的 edge-tts 试听 + asset_validator 的时长·RMS）
+# —— 随包 python 里早已装好，此处补登记（版本取随包实装值）
+edge-tts==7.2.8
+soundfile==0.14.0
+numpy==2.2.6

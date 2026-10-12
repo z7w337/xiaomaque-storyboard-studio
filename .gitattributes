@@ -1,0 +1,21 @@
+# 统一行尾：源码一律 LF（跨平台一致），批处理 CRLF
+# ★ 立此文件的来由：第三方复核 P1-4 —— 仓库 CRLF / 工作树 LF 会在 clone 后产生永久 diff 噪声
+* text=auto eol=lf
+
+*.bat  text eol=crlf
+*.cmd  text eol=crlf
+
+# 二进制（不做行尾转换）
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.webp binary
+*.mp4  binary
+*.mov  binary
+*.woff binary
+*.woff2 binary
+*.ttf  binary
+*.otf  binary
+*.zip  binary
+*.ply  binary

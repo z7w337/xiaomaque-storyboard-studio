@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>小麻雀脚本与分镜工坊 - 任务队列</title>
+<style>
+  /* ===== 页面骨架（与工坊各页一致：侧栏 nav.js + 主区）===== */
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "Microsoft YaHei", "PingFang SC", sans-serif; background: var(--ss-bg); color: #333; display: flex; min-height: 100vh; }
+  .main-wrap { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  main { max-width: 1180px; margin: 18px auto; padding: 0 18px; width: 100%; }
+  button { padding: 8px 16px; border: none; border-radius: 8px; cursor: pointer; font-size: 13px; }
+  .btn-ghost { background: var(--ss-bg); color: var(--ss-text-2); border: 1px solid var(--ss-border); }
+  .btn-ghost:hover { background: var(--ss-border); }
+  .btn-mini { padding: 4px 10px; font-size: 12px; border-radius: 6px; }
+  .panel { background: var(--ss-card); border: 1px solid var(--ss-border); border-radius: 12px; padding: 16px; }
+  .page-title { font-size: 18px; font-weight: 700; color: var(--ss-text-1); margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
+  .page-title .sub { font-size: 12px; font-weight: 400; color: var(--ss-text-4); }
+  .banner { font-size: 12px; color: var(--ss-green-700); background: var(--ss-green-50); border: 1px solid var(--ss-green-200); border-radius: 8px; padding: 6px 12px; margin: 8px 0 14px; line-height: 1.7; }
+  .blk-t { font-size: 12px; font-weight: 600; color: var(--ss-text-2); margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+  .blk-t .n { color: var(--ss-text-4); font-weight: 400; }
+
+  .tk-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+  .tk-bar .hint { font-size: 12px; color: var(--ss-text-4); }
+
+  /* 本地平台状态 */
+  .nd-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
+  .nd-card { border: 1px solid var(--ss-border); border-radius: 10px; padding: 10px 12px; font-size: 12px; color: #4b5563; line-height: 1.8; background: var(--ss-card); }
+  .nd-card .nm { font-weight: 600; color: var(--ss-text-1); font-size: 13px; display: flex; align-items: center; gap: 6px; }
+  .nd-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ss-text-4); flex: none; }
+  .nd-dot.on { background: var(--ss-success); }
+  .nd-dot.off { background: var(--ss-error); }
+  .nd-card .k { color: var(--ss-text-4); }
+
+  /* 任务卡网格（卡片本体在共享组件 vendor/task-card.js 里） */
+  .tk-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+  .tk-empty { grid-column: 1 / -1; text-align: center; color: var(--ss-text-4); font-size: 13px; padding: 36px 0; line-height: 1.9; }
+
+  /* ② F5a 步2·UI（需求补单 §二）：点队列卡 → 任务详情弹层
+     用途：多任务排队时，用户能分辨「哪个是我要的那个」。判据 5 项见 tkDetailRows()。 */
+  #tk-detail-mask { position: fixed; inset: 0; background: rgba(17,24,39,.45); z-index: 800; display: none; align-items: center; justify-content: center; }
+  .tk-detail { background: var(--ss-card); border-radius: 12px; width: 540px; max-width: 92vw; max-height: 84vh; overflow: auto; padding: 18px 20px 18px; box-shadow: 0 20px 60px rgba(0,0,0,.28); }
+  .tk-detail h2 { margin: 0 0 2px; font-size: 15px; color: var(--ss-text-1); }
+  .tk-detail .tk-d-sub { font-size: 11.5px; color: var(--ss-text-4); margin-bottom: 6px; word-break: break-all; }
+  .tk-detail dt { font-size: 11px; color: var(--ss-text-4); margin-top: 12px; letter-spacing: .3px; }
+  .tk-detail dd { margin: 3px 0 0; font-size: 13px; color: var(--ss-text-1); line-height: 1.65; white-space: pre-wrap; word-break: break-all; }
+  .tk-detail .tk-d-actions { margin-top: 18px; display: flex; gap: 8px; justify-content: flex-end; }
+  #tk-list .tkc { cursor: pointer; }   /* 卡片可点（拖拽仍由 draggable 负责，互不干扰） */
+  /* 拖拽反馈（2026-09-23 用户批：甲+乙）——原先 drop-hint/dragging 只有 JS 引用、无样式，等于无反馈 */
+  #tk-list .tkc.dragging { opacity: .45; }
+  #tk-list .tkc.drop-hint { outline: 2px dashed var(--ss-brand, #22c55e); outline-offset: 2px; }
+  #tk-list .tkc.drop-deny { outline: 2px dashed #ef4444; outline-offset: 2px; cursor: no-drop; }
+  /* 乙：running 与等待队列之间的视觉分隔（仅当 running 之后还有排队任务时才渲染）
+     ⚠ #tk-list 是 grid —— 必须 grid-column 跨满，否则分隔条只占一列、文字被挤成竖条 */
+  .tk-sep { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px;
+            margin: 2px 0; font-size: 11.5px; color: var(--ss-text-4); white-space: nowrap; }
+  .tk-sep .ln { flex: 1; height: 1px; background: var(--ss-line, #334155); opacity: .55; }
+  .tk-note { font-size: 11px; color: var(--ss-text-4); line-height: 1.7; margin-top: 10px; }
+  /* 队列方向指示：长线 + 仅左端单向箭头（指向队头；用户 14:01 定：右端不要箭头） */
+  .tk-arrow { display: flex; align-items: center; gap: 10px; margin-top: 14px; font-size: 12px; }
+  .tk-arrow .cap { white-space: nowrap; }
+  .tk-arrow .line { flex: 1; height: 2px; background: #94a3b8; position: relative; }
+  .tk-arrow .line:before { content: ""; position: absolute; left: -1px; top: -4px; border-right: 8px solid #94a3b8; border-top: 5px solid transparent; border-bottom: 5px solid transparent; }
+</style>
+</head>
+<body>
+<aside id="sidebar"></aside>
+<div class="main-wrap">
+<main>
+  <div class="page-title">📋 任务队列 <span class="sub">（拖动调序 / 取消 / 失败重试）</span></div>
+  <div class="banner">
+    这里能看到<b>排队和正在生成的任务</b>、以及每台生成机器的状态。点「生成」后任务会排到这里，按顺序执行；<b>拖动卡片可调整顺序</b>。
+  </div>
+
+  <div class="tk-bar">
+    <button class="btn-ghost btn-mini" onclick="tkClearFailed()">清理失败记录</button>
+    <span class="hint">拖动卡片可调整执行顺序（生成中的不可拖）；悬停卡片出现「⊘ 取消」（移出队列）/「↻ 重试」</span>
+  </div>
+
+  <div class="panel" style="margin-bottom:14px">
+    <div class="blk-t">生成节点 <span class="n">（派发时自动选负载最小的节点；排队中不绑定节点）</span></div>
+    <div class="nd-grid" id="nd-list"><div class="nd-card">加载中…</div></div>
+    <div class="tk-note">※ 生成节点由系统自动选择（优先负载最小的节点，排队中不绑定）；任务实际在哪个节点跑的，点任务卡看详情。节点的增删 / 启停 / 改地址在「设置 → 本地平台」里操作。</div>
+  </div>
+
+  <div class="panel">
+    <div class="blk-t">任务 <span class="n" id="tk-count">（加载中…）</span></div>
+    <div class="tk-grid" id="tk-list"></div>
+    <!-- 队列方向指示（用户 13:56 加；14:01 改左单向；14:09 去文字，只留线+左箭头） -->
+    <div class="tk-arrow">
+      <span class="line"></span>
+    </div>
+    <div class="tk-note">
+      ※ <b>越靠左上，越先执行</b>（队头在左上）；<b>新任务排在右端（队尾）</b>。<b>拖动卡片</b>可改变顺序（生成中的除外）。
+      <b>任务完成即离队</b>（「已完成」不留在本页）；<b>取消 = 移出队列</b>（排队中的永不开始，生成中的立即打断，都不落库）。
+    </div>
+  </div>
+</main>
+</div>
+<script src="/static/nav.js"></script>
+<script src="/static/vendor/task-card.js?v=2"></script>
+<script>
+  /* 任务队列页（批次② F5a）：数据源 = **GET /api/tasks**（真实队列，与导航栏角标同源同帧）。
+     与导航栏共用同一份数据：**订阅 nav.js 的统一轮询广播 __onQueuePoll**，本页不再自己起定时器
+     （避免双份请求，也保证角标与本页永远一致）。?demo=1 = 页内示例（卡片观感/四态目检），不连后端。 */
+  function tkToast(msg, type) { if (window.toast) window.toast(msg, type || 'info'); }
+
+  var IS_DEMO = /[?&]demo=1/.test(location.search);
+  var TK_ITEMS = [];          /* 当前渲染的任务数组（演示=页内示例；真实=接口返回） */
+
+  /* 界面演示数据（?demo=1）—— 四态 = 运行中/排队中/失败/已取消
+     （「已完成」不在队列里：任务完成即离队 —— 用户 2026-09-20 口径；
+      ★ 2026-10-02 更正：原"五态"含「暂停」，而**暂停功能已按用户裁定删除** ⇒ 演示数据同步去掉该态，
+        免得演示里出现产品不存在的东西） */
+  var TK_MOCK = [
+    { kind: 'video', icon: '🎬', title: '第 3 场 · 动作迁移', state: 'running', pct: 42, meta: '主生成机 · 已 1 分 32 秒' },
+    { kind: 'video', icon: '🎬', title: '第 4 场 · 生成场视频', state: 'queued', pct: 0, meta: '前面还有 1 个任务' },
+    /* 这一条带真实缩略图（演示"有图就满铺真图"；没有图时组件走状态插画/色块海报）
+       ⚠ 24 沙箱无 SharedAssets/uploads，原来指的 /api/asset-file/... 会 404
+         → 改用仓库内真实存在的图片，否则 404 会露出类型色底、看起来像坏卡 */
+    { kind: 'image', icon: '🖼', title: '测试场景 · 生成图片', state: 'queued', pct: 0,
+      meta: '前面还有 2 个任务', thumb: '/static/styles/style_shixian_dianying.png' },
+    { kind: 'audio', icon: '🎙', title: '测试角色 · 生成音色样本', state: 'queued', pct: 0, meta: '前面还有 3 个任务' },
+    { kind: 'image', icon: '🖼', title: '测试角色 · 增强细节', state: 'fail', pct: 0, meta: '机器内存不足，未完成' },
+    /* ★ ③ 步4-③：取消留痕后列表里会出现的第 5 态 —— 供目检（真实数据同样走这套渲染）*/
+    { kind: 'image', icon: '🖼', title: '测试场景 · 指令编辑', state: 'cancelled', pct: 0, meta: '已取消（未执行）' }
+  ];
+
+  /* 后端任务 kind（生成域）→ 组件 kind（决定类型色底与类型角标） */
+  var TK_KIND = { edit: 'image', enhance: 'image', motion: 'video', video: 'video', image: 'image', audio: 'audio',
+                  voice: 'audio', gsplat: 'image' };
+
+  /* 后端任务记录 → TaskCard 入参（排队位次在这里成为「前面还有 N 个」文案） */
+  function tkMap(t) {
+    var st = (t.state === 'fail') ? 'fail' : t.state;
+    var meta;
+    if (st === 'running')     meta = (t.meta && t.meta.progress) || '生成中…';
+    else if (st === 'queued') meta = '前面还有 ' + Math.max(0, (t.position || 1) - 1) + ' 个任务';
+    else                      meta = String((t.meta && t.meta.error) || '未完成，可重试').slice(0, 42);
+    /* raw = 后端原始记录（弹层要用 created_at / position / meta.payload —— 组件入参里没有这些） */
+    return { id: t.id, kind: TK_KIND[t.kind] || 'image', title: t.title || '生成任务',
+             state: st, pct: t.pct || 0, meta: meta, thumb: t.thumb || '', raw: t };
+  }
+
+  /* ── ② F5a 步2·UI（需求补单 §二）：队列任务详情弹层 ──────────────────────
+     判据：点队列中的任务卡 → 弹层显示「足够识别该任务」的信息，至少含
+     任务类型 / 目标资产 / 指令或参数摘要 / 提交时间 / 当前状态。 */
+  var TK_ASSET_NAME = {};          /* 资产 id → 名称（boot 时拉三库建立，避免只看到 ch_xxx） */
+
+  function tkTypeName(k) {
+    return { edit: '指令编辑（图像）', enhance: '细节增强（图像）',
+             motion: '动作迁移（视频）' }[k] || (k || '未知类型');
+  }
+  function tkParamText(pl) {
+    var parts = [];
+    if (pl.instruction) parts.push(pl.instruction);
+    if (pl.prompt) parts.push(pl.prompt);
+    if (pl.strength != null) parts.push('强度：' + pl.strength);
+    if (pl.duration != null) parts.push('时长：' + pl.duration + ' 秒');
+    ['char_image', 'scene_image', 'motion_video'].forEach(function (k) {
+      if (pl[k]) parts.push({ char_image: '人物参考', scene_image: '场景参考', motion_video: '动作参考' }[k]
+                            + '：' + String(pl[k]).split('/').pop());
+    });
+    if (!parts.length) {
+      var keys = Object.keys(pl || {}).filter(function (k) { return pl[k] != null && pl[k] !== ''; });
+      parts.push(keys.length ? keys.map(function (k) { return k + '：' + String(pl[k]).slice(0, 60); }).join('\n')
+                             : '（无参数记录）');
+    }
+    return parts.join('\n');
+  }
+  function tkStateText(t) {
+    var st = t.state, m = t.meta || {};
+    if (st === 'queued')  return '排队中 · 前面还有 ' + Math.max(0, (t.position || 1) - 1) + ' 个任务';
+    if (st === 'running') return '生成中' + (m.progress ? ' · ' + m.progress : '');
+    if (st === 'fail')    return '失败 · ' + String(m.error || '未知原因').slice(0, 180);
+    return '已完成';
+  }
+  function tkEsc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+    });
+  }
+
+  function tkDetailRows(t) {
+    var pl = (t.meta || {}).payload || {};
+    var aid = pl.source_id || '';
+    return [
+      ['任务类型', tkTypeName(t.kind)],
+      ['目标资产', (TK_ASSET_NAME[aid] || '（未在资产库中找到）') + '\n' + (pl.source_kind || '—') + ' / ' + (aid || '—')],
+      ['指令 / 参数', tkParamText(pl)],
+      ['提交时间', t.created_at || '—'],
+      ['当前状态', tkStateText(t)],
+    ];
+  }
+
+  function tkDetailOpen(i) {
+    var it = TK_ITEMS[i];
+    var t = (it && it.raw) || null;
+    if (!t) { tkToast('这条任务没有可展示的详情（演示数据）', 'info'); return; }
+    var mask = document.getElementById('tk-detail-mask');
+    if (!mask) {
+      mask = document.createElement('div');
+      mask.id = 'tk-detail-mask';
+      mask.innerHTML =
+        '<div class="tk-detail">' +
+          '<h2 id="tk-d-title"></h2><div class="tk-d-sub" id="tk-d-sub"></div><dl id="tk-d-body"></dl>' +
+          '<div class="tk-d-actions"><button class="btn-ghost btn-mini" onclick="tkDetailClose()">关闭</button></div>' +
+        '</div>';
+      document.body.appendChild(mask);
+      mask.addEventListener('click', function (e) { if (e.target === mask) tkDetailClose(); });
+    }
+    document.getElementById('tk-d-title').textContent = t.title || '生成任务';
+    document.getElementById('tk-d-sub').textContent = '任务 ID：' + (t.id || '—');
+    document.getElementById('tk-d-body').innerHTML = tkDetailRows(t).map(function (r) {
+      return '<dt>' + tkEsc(r[0]) + '</dt><dd>' + tkEsc(r[1]) + '</dd>';
+    }).join('');
+    mask.style.display = 'flex';
+  }
+  function tkDetailClose() {
+    var m = document.getElementById('tk-detail-mask');
+    if (m) m.style.display = 'none';
+  }
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') tkDetailClose(); });
+
+  /* 资产名映射：三库各拉一次（失败静默，弹层退化为显示 id） */
+  function tkLoadAssetNames() {
+    ['characters', 'scenes', 'props'].forEach(function (k) {
+      fetch('/api/' + k).then(function (r) { return r.json(); }).then(function (j) {
+        var list = Array.isArray(j) ? j : ((j && j.items) || []);
+        list.forEach(function (a) {
+          if (a && a.id) TK_ASSET_NAME[a.id] = a.name || a.prefix || a.id;
+        });
+      }).catch(function () {});
+    });
+  }
+
+  function tkRender() {
+    var box = document.getElementById('tk-list');
+    box.innerHTML = '';
+    if (!TK_ITEMS.length) {
+      box.innerHTML = '<div class="tk-empty">队列是空的<br><span style="font-size:12px">去资产库、场页或生图工具点「生成」，任务会排到这里</span></div>';
+      return;
+    }
+    TK_ITEMS.forEach(function (t, i) {
+      var el = window.TaskCard.render(
+        { kind: t.kind, title: t.title, state: t.state, meta: t.meta, pct: t.pct, order: i, thumb: t.thumb },
+        { onOp: tkOp }
+      );
+      /* ② F5a 步2·UI（需求补单 §二）：整卡可点看详情（按钮已 stopPropagation，这里再兜一道） */
+      el.addEventListener('click', function (ev) {
+        if (ev.target && ev.target.closest && ev.target.closest('.tkc-op')) return;
+        tkDetailOpen(i);
+      });
+      box.appendChild(el);
+      /* 乙（用户 2026-09-23 批）：生成中 → 等待队列 分界，让"插不进 running 前"一眼可见 */
+      if (t.state === 'running') {
+        var rest = TK_ITEMS.slice(i + 1).some(function (x) { return x.state === 'queued'; });
+        if (rest) {
+          var sep = document.createElement('div');
+          sep.className = 'tk-sep';
+          sep.innerHTML = '<span class="ln"></span><span>生成中，以下为等待队列</span><span class="ln"></span>';
+          box.appendChild(sep);
+        }
+      }
+    });
+    var cEl = document.getElementById('tk-count');
+    if (cEl) {
+      var nq = TK_ITEMS.filter(function (t) { return t.state === 'queued'; }).length;
+      var nr = TK_ITEMS.filter(function (t) { return t.state === 'running'; }).length;
+      var nf = TK_ITEMS.filter(function (t) { return t.state === 'fail'; }).length;
+      cEl.textContent = '（运行中 ' + nr + ' · 排队中 ' + nq + ' · 失败 ' + nf + '）';
+    }
+    tkBindDrag();
+  }
+
+  function tkOp(op, task, el) {
+    if (IS_DEMO) {                       /* 演示模式：页内演出 */
+      if (op === '删除') {
+        TK_ITEMS.splice(Number(el.getAttribute('data-i')), 1);
+        tkRender();
+        tkToast('已删除「' + task.title + '」（演示）');
+        return;
+      }
+      tkToast('「' + op + '」（演示）');
+      return;
+    }
+    /* 真实模式：统一任务 API（/api/tasks/{id}/cancel|retry|remove） */
+    var raw = TK_ITEMS[Number(el.getAttribute('data-i'))] || {};
+    var tid = raw.id || task.id;
+    if (!tid) { tkToast('任务已离线，正在刷新'); if (window.__refreshQueue) window.__refreshQueue(); return; }
+    var tail = { '取消': '/cancel', '重试': '/retry', '删除': '/remove' }[op];
+    if (!tail) { tkToast('「' + op + '」暂不支持'); return; }
+    fetch('/api/tasks/' + encodeURIComponent(tid) + tail, { method: 'POST' })
+      .then(function (r) {
+        return r.json().catch(function () { return {}; }).then(function (j) {
+          if (!r.ok) throw new Error((j && j.detail) || ('操作失败 ' + r.status));
+          return j;
+        });
+      })
+      .then(function () {
+        tkToast({ '取消': '已取消并移出队列', '重试': '已重新排队（排到队尾）', '删除': '已删除该记录' }[op] || '已执行', 'success');
+        if (window.__refreshQueue) window.__refreshQueue();   /* 立刻拉新帧（不等 4s） */
+      })
+      .catch(function (e) { tkToast('「' + op + '」失败：' + (e.message || e)); });
+  }
+
+  /* 批量清理失败记录（逐个 remove；期间按钮禁用防连点） */
+  function tkClearFailed() {
+    if (IS_DEMO) { TK_ITEMS = TK_ITEMS.filter(function (t) { return t.state !== 'fail'; }); tkRender(); return; }
+    var ids = TK_ITEMS.filter(function (t) { return t.state === 'fail' && t.id; }).map(function (t) { return t.id; });
+    if (!ids.length) { tkToast('没有失败记录', 'info'); return; }
+    Promise.all(ids.map(function (id) {
+      return fetch('/api/tasks/' + encodeURIComponent(id) + '/remove', { method: 'POST' }).catch(function () {});
+    })).then(function () {
+      tkToast('已清理 ' + ids.length + ' 条失败记录', 'success');
+      if (window.__refreshQueue) window.__refreshQueue();
+    });
+  }
+
+  /* 拖动重排（只影响 queued 顺序）——提交全量 queued ids 给 /api/tasks/reorder。
+     ⚠ 后端语义：ids 里没有的 queued = 移出（中止）。所以必须带上**当前所有 queued**，
+       否则「刚入队、本页还没渲染到」的任务会被误删 —— 下面用最新广播帧补全。 */
+  var tkDragFrom = null;
+  function tkBindDrag() {
+    document.querySelectorAll('#tk-list .tkc').forEach(function (c) {
+      var i = Number(c.getAttribute('data-i'));
+      var cur = TK_ITEMS[i];
+      /* ★ 甲（用户 2026-09-23 批）：running 卡不可作放置目标。
+         原先直接 return → 既不绑 dragover/drop，浏览器也接受不到 → **拖上去毫无反应**（静默失败）。
+         现改为绑定"拒绝"分支：接住拖拽 → 红框 + 明确文案，但绝不重排。
+         文案用户指定：「生成中的任务不可被插队」。 */
+      if (cur && cur.state === 'running') {
+        c.addEventListener('dragover', function (e) {
+          if (tkDragFrom === null) return;                  /* 非本页拖拽（如拖文件）不干预 */
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'none';
+          c.classList.add('drop-deny');
+        });
+        c.addEventListener('dragleave', function () { c.classList.remove('drop-deny'); });
+        c.addEventListener('drop', function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          c.classList.remove('drop-deny');
+          tkToast('生成中的任务不可被插队', 'error');       /* ★ 文案用户指定，勿改；type 用 error 与红框呼应（toast 仅认 success/error） */
+        });
+        return;
+      }
+      c.addEventListener('dragstart', function (e) {
+        tkDragFrom = i;
+        c.classList.add('dragging');
+        try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', String(i)); } catch (err) {}
+      });
+      c.addEventListener('dragend', function () {
+        c.classList.remove('dragging');
+        document.querySelectorAll('#tk-list .drop-hint').forEach(function (x) { x.classList.remove('drop-hint'); });
+        document.querySelectorAll('#tk-list .drop-deny').forEach(function (x) { x.classList.remove('drop-deny'); });   /* 甲：拖拽中断也别留红框 */
+      });
+      c.addEventListener('dragover', function (e) { e.preventDefault(); c.classList.add('drop-hint'); });
+      c.addEventListener('dragleave', function () { c.classList.remove('drop-hint'); });
+      c.addEventListener('drop', function (e) {
+        e.preventDefault();
+        c.classList.remove('drop-hint');
+        var to = i;
+        if (tkDragFrom === null || tkDragFrom === to) return;
+        var moved = TK_ITEMS.splice(tkDragFrom, 1)[0];
+        TK_ITEMS.splice(to, 0, moved);
+        tkDragFrom = null;
+        tkRender();
+        tkSyncOrder();
+      });
+    });
+  }
+
+  function tkSyncOrder() {
+    var ids = TK_ITEMS.filter(function (t) { return t.state === 'queued'; }).map(function (t) { return t.id; });
+    var known = {};
+    ids.forEach(function (id) { known[id] = 1; });
+    ((window.__qLast && window.__qLast.tasks) || []).forEach(function (t) {
+      if (t.state === 'queued' && !known[t.id]) { ids.push(t.id); known[t.id] = 1; }   /* 补全新任务 → 排到尾部而非被删 */
+    });
+    fetch('/api/tasks/reorder', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids: ids })
+    }).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (j) {
+        if (!r.ok) throw new Error((j && j.detail) || ('排序失败 ' + r.status));
+        return j;
+      });
+    }).then(function () {
+      tkToast('已调整执行顺序', 'success');
+      if (window.__refreshQueue) window.__refreshQueue();
+    }).catch(function (e) {
+      tkToast('排序失败：' + (e.message || e));
+      if (window.__refreshQueue) window.__refreshQueue();
+    });
+  }
+
+  /* 渲染真实队列帧（订阅 nav.js 统一轮询）。**完成即离队**：done 不留卡片（用户 09-20 口径）。 */
+  function tkRefresh(j) {
+    if (IS_DEMO) return;
+    TK_ITEMS = ((j && j.tasks) || [])
+      .filter(function (t) { return t.state !== 'done'; })
+      .map(tkMap);
+    tkRender();
+  }
+
+  /* ── ③ F5b 步1：生成节点区（真数据）—— 6s 轮询 /api/nodes（探活带 10s 服务端缓存，开销可控）── */
+  function ndEsc(s) {   /* tasks.html 无全局 esc（task-card 的 esc 是 IIFE 私有）→ 局部转义 */
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function ndRender(nodes) {
+    var box = document.getElementById('nd-list');
+    if (!box) return;
+    if (!nodes.length) {
+      box.innerHTML = '<div class="nd-card">节点池为空（异常，本机节点应恒在）</div>';
+      return;
+    }
+    box.innerHTML = nodes.map(function (n) {
+      var on = !!n.online;
+      var loadTxt = on ? (n.load > 0 ? ('在制 ' + n.load + ' 个任务') : '空闲') : '不可达（已跳过调度）';
+      return '<div class="nd-card">' +
+        '<div class="nm"><span class="nd-dot ' + (on ? 'on' : 'off') + '"></span>' + ndEsc(n.name) +
+        (n.id === 'local' ? ' <span class="k">（本机）</span>' : '') + '</div>' +
+        '<div><span class="k">地址：</span>' + ndEsc(n.resolved_url || n.url || '（随设置）') + '</div>' +
+        '<div><span class="k">状态：</span>' + (on ? '在线 · ' : '离线 · ') + loadTxt + '</div>' +
+        '</div>';
+    }).join('');
+  }
+  function ndRefresh() {
+    fetch('/api/nodes').then(function (r) { return r.json(); }).then(function (j) {
+      ndRender((j && j.nodes) || []);
+    }).catch(function () { /* 探活失败保持上一次渲染 */ });
+  }
+  ndRefresh();
+  setInterval(ndRefresh, 6000);
+
+  function boot() {
+    if (window.TaskCard) window.TaskCard.inject();
+    if (IS_DEMO) {
+      /* 演示数据补 raw：让「点卡看详情」（需求补单 §二）在 ?demo=1 下也能目检 */
+      var DEMO_KIND = ['motion', 'edit', 'edit', 'audio', 'enhance'];
+      var DEMO_SK = ['characters', 'scenes', 'characters', 'characters', 'characters'];
+      TK_ITEMS = TK_MOCK.map(function (m, i) {
+        return Object.assign({}, m, { raw: {
+          id: 'demo_task_' + (i + 1), kind: DEMO_KIND[i] || m.kind, title: m.title, state: m.state, pct: m.pct,
+          created_at: '2026-09-21 20:0' + i, position: i + 1,
+          meta: {
+            payload: { source_kind: DEMO_SK[i], source_id: 'ch_demo_' + (i + 1),
+                       instruction: '（演示数据）' + m.meta,
+                       strength: DEMO_KIND[i] === 'enhance' ? 0.5 : undefined,
+                       duration: DEMO_KIND[i] === 'motion' ? 5 : undefined },
+            progress: m.state === 'running' ? m.meta : '',
+            error: m.state === 'fail' ? m.meta : '',
+          },
+        } });
+      });
+      tkRender();
+      return;
+    }
+    if (!window.__onQueuePoll) { setTimeout(boot, 300); return; }   /* nav.js 未就绪 → 短重试（脚本顺序解耦） */
+    window.__onQueuePoll(tkRefresh);                                /* 订阅（含立即补发上一帧） */
+    if (window.__refreshQueue) window.__refreshQueue();             /* 主动拉一次：首屏不等 4s */
+    tkLoadAssetNames();                                             /* 详情弹层要用资产名 */
+  }
+
+  boot();
+</script>
+</body>
+</html>

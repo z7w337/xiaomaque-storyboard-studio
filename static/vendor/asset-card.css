@@ -1,0 +1,159 @@
+/* 
+预开发·参考用（v1.3 · 2026-08-28）
+统一资产卡片组件样式 —— 全局卡片统一、共享组件化（AssetCard）
+规格依据：《架构环境-页面规格表》全局统一原则（所有卡片含四角图标全局统一/共享组件化）
+  +《UI设计规范》v1.11 + 批1任务书 + 用户裁定（v1.3：统一为一种卡片组件，配置驱动差异）
+
+本组件取代 components/reference-card.* 与 components/unassigned-card.*（两者已并入，仅存档参考）。
+
+四角图标（全局统一、权限收拢，悬停显现）：
+- tl 左上：⋮⋮ 拖拽把手（仅把手可拖，卡面默认不可拖）
+- tr 右上：✎ 跳转 / 🕘 历史 / ⬆ 上传 / 🏷️ 归类（按 kind/配置）
+- br 右下：🗑 删除 / ⋯ 元数据（按 kind/配置）
+卡面点击 → onClick 回调（普通资产=浮出提示词编辑器；参考/未分类=无）
+
+样式关键值：
+- 卡片：白底 #fff / 边框 #e5e7eb / 圆角 12px / padding 12px 14px / hover 阴影 0 4px 12px rgba(0,0,0,.1)
+- 缩略图：100% 宽 / 圆角 8px / 固定高 150px / object-fit cover
+- 主文字 #1f2937 / 次级 #6b7280 / 辅助 #9ca3af / 强调 #3A6B57 / 危险 #dc2626
+- 四角图标：24×24 / 圆角 6px / 白底灰边 / hover 淡入显现（opacity 0→1 .18s）
+- zero 态（参考类计数0）：计数与标签 #dc2626 + 加粗
+*/
+
+.asset-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: var(--ss-card);
+  border: 1px solid var(--ss-border);
+  border-radius: 12px;
+  padding: 12px 14px 10px;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  transition: box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.asset-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border-color: var(--ss-border-strong);
+}
+
+/* 拖拽中态 */
+.asset-card.dragging {
+  opacity: 0.6;
+  border-style: dashed;
+  border-color: var(--ss-green-600);
+}
+
+/* 缩略图 */
+.ac-thumb {
+  position: relative;
+  width: 100%;
+  height: 150px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--ss-bg);
+  margin-bottom: 10px;
+}
+
+.ac-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* 卡片内容 */
+.ac-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.ac-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ss-text-1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ac-sub {
+  font-size: 12px;
+  color: var(--ss-text-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 快速定位命中高亮 */
+.ac-name mark {
+  background: #fef9c3;
+  color: var(--ss-text-1);
+  border-radius: 2px;
+  padding: 0 1px;
+}
+
+/* ===== 四角图标（全局统一：悬停显现、24×24、白底灰边） ===== */
+.ac-icon {
+  position: absolute;
+  background: var(--ss-card);
+  border: 1px solid var(--ss-border);
+  border-radius: 6px;
+  width: 24px;
+  height: 24px;
+  font-size: 13px;
+  line-height: 1;
+  color: var(--ss-text-4);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.18s ease, background-color 0.18s ease, color 0.18s ease;
+  z-index: 2;
+}
+
+.asset-card:hover .ac-icon { opacity: 1; }
+
+/* 左上 ⋮⋮ 拖拽把手 */
+.ac-tl {
+  top: 8px;
+  left: 8px;
+  cursor: move;
+  letter-spacing: -1px;
+}
+.ac-tl:hover { color: var(--ss-green-600); background: var(--ss-green-50); border-color: var(--ss-green-600); }
+
+/* 右上（✎ 跳转 / 🕘 历史 / ⬆ 上传 / 🏷️ 归类） */
+.ac-tr {
+  top: 8px;
+  right: 8px;
+}
+.ac-tr:hover { color: var(--ss-green-600); background: var(--ss-green-50); border-color: var(--ss-green-600); }
+
+/* 左下（B 批四角统一：🔗 查看引用/归属） */
+.ac-bl {
+  bottom: 8px;
+  left: 8px;
+}
+.ac-bl:hover { color: var(--ss-green-600); background: var(--ss-green-50); border-color: var(--ss-green-600); }
+
+/* 右下（🗑 删除 / ⋯ 元数据） */
+.ac-br {
+  bottom: 8px;
+  right: 8px;
+}
+.ac-br:hover { color: var(--ss-error); background: #fef2f2; border-color: var(--ss-error); }
+/* ⋯ 元数据 hover 用主蓝而非红（与删除区分） */
+.ac-br[data-action="meta"]:hover { color: var(--ss-green-600); background: var(--ss-green-50); border-color: var(--ss-green-600); }
+
+/* zero 态（参考类计数=0：标红"⚠️ 无用可删除"——仅作用于文字区标签，四角图标仍统一悬停显现） */
+.asset-card.zero .ac-count,
+.asset-card.zero .ac-count-label {
+  color: var(--ss-error);
+  font-weight: 700;
+}

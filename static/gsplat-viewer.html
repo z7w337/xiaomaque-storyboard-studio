@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>3D 预览 · 高斯泼溅</title>
+<!-- 工坊版 3D 预览（阶段4 后端 /api/gsplat/viewer 返回；源自 gsplat-preview viewer.html，BSD 前端库 gsplat.js）：
+     改动：ply 加载路径 → /api/gsplat/ply/（工坊后端远程代理 ComfyUI）；gsplat-bundle.js → /static/vendor/；
+     新增"保存"按钮 → canvas 截图 POST /api/gsplat/save（写素材区 kind=reference，落地即资产）。 -->
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:#1a1a1a; color:#eee; font-family:-apple-system,"Microsoft YaHei",sans-serif; overflow:hidden; height:100vh; }
+  #container { width:100vw; height:100vh; }
+  #canvas { display:block; width:100%; height:100%; }
+  #bar { position:fixed; top:10px; left:50%; transform:translateX(-50%);
+         background:rgba(0,0,0,.75); padding:8px 16px; border-radius:8px; font-size:13px;
+         display:flex; gap:12px; align-items:center; z-index:10; flex-wrap:wrap; }
+  #err { position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
+         color:#ff6b6b; padding:20px; text-align:center; display:none; max-width:80%; }
+  #loading { position:fixed; inset:0; background:rgba(20,22,26,.92); color:var(--ss-text-4); z-index:5;
+             display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; }
+  #loading .sp { width:34px; height:34px; border:3px solid #334155; border-top-color:#378ADD; border-radius:50%;
+                 animation:spin 1s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  #loading .lt { font-size:13px; letter-spacing:.5px; }
+  #loading .ld { font-size:12px; color:#7b8794; }
+  button { background:#378ADD; color:#fff; border:0; padding:6px 14px; border-radius:4px; cursor:pointer; }
+  button:hover { background:#185FA5; }
+  #bar label { opacity:.7; }
+  #bar input[type=number] { width:60px; background:#333; color:#eee; border:1px solid #555;
+                           padding:4px 6px; border-radius:3px; }
+  .spacer { opacity:.3; }
+</style>
+</head>
+<body>
+<div id="bar">
+  <span id="filename">加载中…</span>
+  <label>Scale: <input type="number" id="scaleInput" value="1.0" min="0.01" max="100" step="0.1"></label>
+  <button onclick="resetView()">重置视角</button>
+  <button onclick="saveShot()">💾 保存</button>
+  <button onclick="copyShot()">📋 复制</button>
+  <span class="spacer">|</span><span style="opacity:.6">左键旋转 · 中键平移 · 滚轮缩放 · 保存=截图入素材区(参考类) · 复制=剪贴板</span>
+</div>
+<div id="container"><canvas id="canvas"></canvas></div>
+<div id="loading"><div class="sp"></div><div class="lt" id="loadingText">正在加载 3D 点云…</div><div class="ld" id="loadingDetail"></div></div>
+<div id="err"></div>
+
+<script src="/static/vendor/gsplat-bundle.js?v=1"></script>
+<script type="module">
+const G = window.GSPLAT;
+const params = new URLSearchParams(location.search);
+const file = params.get("file") || "";
+/* ★ ③ 步2c：优先 `src` 参数 = 工坊代理的**完整 url**（可含 ?node=<id>，跨节点产物按节点回源）；
+   无 src 时回退旧拼法（向后兼容：老链接只有 ?file= 仍可用 = 本机口径）。 */
+const loadUrl = params.get("src") || ("/api/gsplat/ply/" + encodeURIComponent(file));
+const hideBar = params.get("toolbar") === "0";   // 内嵌(工坊 GS 页)时隐藏顶部工具栏，用外层 funcbar
+document.getElementById("filename").textContent = file ? ("文件: " + file) : "未指定 file";
+if (hideBar) { const b = document.getElementById("bar"); if (b) b.style.display = "none"; }
+
+let canvas = null, container = null, scene = null;
+// 加载遮罩：默认显示；成功/失败时隐藏。计时器每秒更新"已加载秒数"以便区分"慢"与"卡死"。
+const loadingEl = document.getElementById("loading");
+const loadingText = document.getElementById("loadingText");
+const loadingDetail = document.getElementById("loadingDetail");
+const _ld0 = Date.now();
+const _ldTimer = setInterval(() => {
+  if (loadingDetail) loadingDetail.textContent = "已加载 " + Math.floor((Date.now() - _ld0) / 1000) + " 秒 · 文件较大可能需数分钟";
+}, 1000);
+function _hideLoading() { if (_ldTimer) clearInterval(_ldTimer); if (loadingEl) loadingEl.style.display = "none"; }
+function _showErr(msg) { _hideLoading(); const el = document.getElementById("err"); if (el) { el.style.display = "block"; el.textContent = msg; } console.error(msg); }
+
+if (!file) {
+  _showErr("URL 需要带 ?file=xxx.ply");
+} else {
+  try {
+    container = document.getElementById("container");
+    canvas = document.getElementById("canvas");
+    canvas.width = container.clientWidth;
+    canvas.height = container.clientHeight;
+
+    const renderer = new G.WebGLRenderer(canvas);
+    scene = new G.Scene();
+    const cameraData = new G.CameraData();
+    cameraData.setSize(canvas.width, canvas.height);
+    const camera = new G.Camera(cameraData);
+    camera.position.x = 0; camera.position.y = 0; camera.position.z = 3;
+
+    // ── 中键平移：中键按下时，模拟右键 mousedown 事件，让 OrbitControls 自己处理平移 ──
+    container.addEventListener("contextmenu", e => e.preventDefault());
+    canvas.addEventListener("mousedown", (e) => {
+      if (e.button === 1) {            // 中键：模拟右键平移
+        e.preventDefault();
+        e.stopPropagation();
+        // 模拟右键 mousedown 事件，让 OrbitControls 进入平移模式
+        const fakeEvent = new MouseEvent("mousedown", {
+          bubbles: true,
+          cancelable: true,
+          button: 2,  // 右键
+          clientX: e.clientX,
+          clientY: e.clientY
+        });
+        container.dispatchEvent(fakeEvent);
+      } else if (e.button === 2) {     // 右键：屏蔽（避免浏览器手势）
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    }, true);  // capture: true
+
+    let controls = new G.OrbitControls(camera, container);
+
+    await G.PLYLoader.LoadAsync(loadUrl, scene);   // ★ 步2c：用 loadUrl（含节点参数）
+
+    // Scale 滑块：gsplat.js 原生 scale 上乘系数；remove+add 强传 buffer（100ms 防抖）
+    let splatObj = null;
+    for (const obj of (scene.objects || [])) {
+      if (obj && obj.data && obj.data.scales) { splatObj = obj; break; }
+    }
+    // ── 相机自适应：SHARP 产 ply 坐标/尺度不固定，若点云不在原点附近会"黑屏看不见"。
+    //    用各高斯中心的 AABB 把相机放到包围盒外看向中心，保证首帧能看见。
+    let _fit = { cx: 0, cy: 0, cz: 0, radius: 1 };
+    if (splatObj) {
+      // 高斯中心数组：gsplat.js 暴露 getter .positions（对应内部 _positions）
+      const c = splatObj.data.positions || splatObj.data.centers;
+      const n = c ? Math.floor(c.length / 3) : 0;
+      if (c && n > 0) {
+        let mnx = Infinity, mny = Infinity, mnz = Infinity, mxx = -Infinity, mxy = -Infinity, mxz = -Infinity;
+        for (let i = 0; i < n; i++) {
+          const x = c[i * 3], y = c[i * 3 + 1], z = c[i * 3 + 2];
+          if (x < mnx) mnx = x; if (x > mxx) mxx = x;
+          if (y < mny) mny = y; if (y > mxy) mxy = y;
+          if (z < mnz) mnz = z; if (z > mxz) mxz = z;
+        }
+        _fit.cx = (mnx + mxx) / 2; _fit.cy = (mny + mxy) / 2; _fit.cz = (mnz + mxz) / 2;
+        _fit.radius = Math.max(mxx - mnx, mxy - mny, mxz - mnz) / 2 || 0.5;
+        camera.position.x = _fit.cx; camera.position.y = _fit.cy; camera.position.z = _fit.cz + _fit.radius * 2.6;
+        console.log("fit: center", _fit.cx.toFixed(2), _fit.cy.toFixed(2), _fit.cz.toFixed(2), "radius", _fit.radius.toFixed(2));
+      }
+    }
+    let baseScales = null;
+    if (splatObj) {
+      baseScales = new Float32Array(splatObj.data.scales.length);
+      baseScales.set(splatObj.data.scales);
+    }
+    const scaleInput = document.getElementById("scaleInput");
+    let scaleTimer = null;
+    scaleInput.addEventListener("input", e => {
+      if (!splatObj || !baseScales) return;
+      const m = parseFloat(e.target.value) || 1.0;
+      const s = splatObj.data.scales;
+      for (let i = 0; i < s.length; i++) s[i] = baseScales[i] * m;
+      if (scaleTimer) clearTimeout(scaleTimer);
+      scaleTimer = setTimeout(() => { scene.removeObject(splatObj); scene.addObject(splatObj); }, 100);
+    });
+
+    function loop() {
+      controls.update();
+      renderer.render(scene, camera);
+      requestAnimationFrame(loop);
+    }
+    loop();
+    // 等首帧渲染后隐藏加载遮罩（若仍在加载则不变）
+    requestAnimationFrame(() => _hideLoading());
+
+    // 滚轮缩放由 OrbitControls 处理；防触控板 ctrl+wheel 触发浏览器整页缩放
+    container.addEventListener("wheel", e => { if (e.ctrlKey) e.preventDefault(); }, { passive: false });
+
+    window.resetView = () => {
+      camera.position.x = _fit.cx; camera.position.y = _fit.cy; camera.position.z = _fit.cz + _fit.radius * 2.6;
+      controls.dispose?.();
+      controls = new G.OrbitControls(camera, container);
+    };
+
+    // 保存当前视角截图 → POST /api/gsplat/save（写素材区 kind=reference）
+    window.saveShot = async () => {
+      try {
+        const blob = await new Promise(res => canvas.toBlob(res, "image/png"));
+        if (!blob) throw new Error("截图失败");
+        const fd = new FormData();
+        fd.append("file", blob, "gs_" + (file || "view").replace(/\.ply$/, "") + ".png");
+        const r = await fetch("/api/gsplat/save", { method: "POST", body: fd });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(j.detail || ("HTTP " + r.status));
+        alert("已保存到素材区（参考类）：" + (j.path || ""));
+      } catch (e) {
+        alert("保存失败：" + e.message);
+      }
+    };
+
+    // 复制当前视角截图到剪贴板（ClipboardItem PNG）
+    window.copyShot = async () => {
+      try {
+        const blob = await new Promise(res => canvas.toBlob(res, "image/png"));
+        if (!blob) throw new Error("截图失败");
+        if (!navigator.clipboard || !window.ClipboardItem) throw new Error("当前浏览器不支持剪贴板写入");
+        await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+        alert("已复制到剪贴板");
+      } catch (e) {
+        alert("复制失败：" + e.message);
+      }
+    };
+  } catch (e) {
+    _showErr("加载失败: " + (e && e.message ? e.message : e));
+  }
+}
+</script>
+</body>
+</html>

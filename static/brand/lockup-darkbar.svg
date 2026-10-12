@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 104" role="img">
+  <g transform="translate(8,10) scale(0.84)">
+    <line x1="8.6" y1="55" x2="57.7" y2="55" stroke="#A5C3B1" stroke-width="9.1" stroke-linecap="round"/>
+    <line x1="8.6" y1="71.4" x2="44.1" y2="71.4" stroke="#A5C3B1" stroke-width="9.1" stroke-linecap="round"/>
+    <line x1="8.6" y1="87.8" x2="32.9" y2="87.8" stroke="#A5C3B1" stroke-width="9.1" stroke-linecap="round"/>
+    <circle cx="72.3" cy="27.7" r="23.7" fill="#F4F1EA"/>
+    <circle cx="79.6" cy="20.4" r="5.5" fill="#1F2937"/>
+  </g>
+  <!-- 22:5x 两处目检回炉：① 间距拉开 ② 中文字标放大（30→38，英文 11.5→13.5） -->
+  <text x="108" y="56" font-family="'Microsoft YaHei','PingFang SC',sans-serif" font-size="38" font-weight="600" fill="#FFFFFF">小麻雀脚本与分镜工坊</text>
+  <text x="110" y="86" font-family="'Segoe UI',Arial,sans-serif" font-size="13.5" letter-spacing="1.2" fill="#93A79B">SPARROW SCRIPT &amp; STORYBOARD STUDIO</text>
+</svg>

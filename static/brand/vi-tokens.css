@@ -1,0 +1,158 @@
+/* ============================================================
+   vi-tokens.css · 小麻雀脚本与分镜工坊
+   Sparrow Script & Storyboard Studio · VI v1.0 (2026-09-18)
+   零构建：任何页面 <link rel="stylesheet" href="/static/brand/vi-tokens.css">
+   后即可用 var(--ss-*) 引用。深色模式仅预留（D4），未实现界面。
+   ============================================================ */
+
+:root {
+  /* ---- 品牌绿阶（D2：全站换绿，替代 Tailwind 蓝 #2563eb） ---- */
+  --ss-green-50:  #F0F4F1;
+  --ss-green-100: #DCE7E1;   /* 替代原 #dbeafe 选中底 */
+  --ss-green-200: #BCD2C7;
+  --ss-green-300: #A5C3B1;   /* sage · Logo 帧线/点缀 */
+  --ss-green-400: #6F9A85;
+  --ss-green-500: #4A7D68;
+  --ss-green-600: #3A6B57;   /* ★交互主色（按钮/链接/焦点），替代 #2563eb */
+  --ss-green-700: #2E5C4C;   /* ★品牌深绿（图形/强调文字），替代 hover #1d4ed8 */
+  --ss-green-800: #24483B;
+  --ss-green-900: #1C382E;
+
+  /* ---- 中性色（沿用现状，收编命名） ---- */
+  --ss-bg:        #f5f6f8;   /* 页面底 */
+  --ss-card:      #ffffff;   /* 卡片/面板 */
+  --ss-border:    #e5e7eb;   /* 描边 */
+  --ss-border-strong: #d1d5db;
+  --ss-text-1:    #1f2937;   /* 主文字 */
+  --ss-text-2:    #374151;
+  --ss-text-3:    #6b7280;   /* 次要文字 */
+  --ss-text-4:    #9ca3af;   /* 弱化/占位 */
+  --ss-ink-bar:   #1f2937;   /* 侧边栏顶栏深条（Logo 反白落位） */
+  --ss-hover-bg:  #ffffff;   /* hover 底（决策2-B）；深色下 #2A3230 */
+
+  /* ---- 语义色（沿用现状；成功色与品牌绿已拉开明度） ---- */
+  --ss-success:   #16a34a;
+  --ss-success-bg: #dcfce7;
+  --ss-error:     #dc2626;
+  --ss-error-bg:  #fee2e2;
+  --ss-warning:   #d97706;
+  --ss-running:   #7c3aed;
+  --ss-running-bg:#f5f3ff;
+  --ss-disabled:  #9ca3af;
+  --ss-subtle-bg: #f3f4f6;       /* 步4：弱 hover/次级底（prompt-editor hover、scene 面板头底） */
+  --ss-border-soft: #eef0f2;     /* 步4：更柔的隔断线 */
+  --ss-warning-bg: #fefce8;      /* 步4：警示底（assets 体检条黄态） */
+  --ss-warning-border: #fde68a;  /* 步4：警示边 */
+
+  /* ---- 圆角三档（收敛现状 6/8/10/12 混用） ---- */
+  --ss-radius-s: 6px;    /* 控件内元素：chip、badge */
+  --ss-radius-m: 10px;   /* 按钮、输入框、下拉 */
+  --ss-radius-l: 14px;   /* 卡片、模态 */
+
+  /* ---- 间距（4px 基） ---- */
+  --ss-space-1: 4px;
+  --ss-space-2: 8px;
+  --ss-space-3: 12px;
+  --ss-space-4: 16px;
+  --ss-space-6: 24px;
+  --ss-space-8: 32px;
+
+  /* ---- 字阶（对齐现状用量） ---- */
+  --ss-font-sans: "Microsoft YaHei", "PingFang SC", sans-serif;
+  --ss-font-mono: Consolas, monospace;
+  --ss-text-xs: 11px;
+  --ss-text-sm: 12px;
+  --ss-text-base: 13px;
+  --ss-text-md: 15px;
+  --ss-text-lg: 17px;
+  --ss-text-xl: 22px;
+
+  /* ---- 品牌 ---- */
+  --ss-logo-ivory: #F4F1EA;
+  --ss-nav-wide: 240px;
+  --ss-nav-narrow: 56px;
+}
+
+/* ---- 深色模式（D4 预留 → 步2 落地）----
+   启用方式：<html data-theme="dark"> 时变量整体切换
+   （由 nav.js 的切换开关 + <head> 引导片段写入 documentElement.dataset.theme）。
+   依据 keel\script\vi-tokens-dark-patch.css；
+   --ss-ink-bar 取用户裁定「乙 #232A28」（亮度比 1.20:1，边界刚可见、不抢戏）。 */
+[data-theme="dark"] {
+  /* 1. 中性层 */
+  --ss-bg:            #171a19;   /* 页面底 */
+  --ss-card:          #222826;   /* 卡片/面板 */
+  --ss-border:        #343b38;
+  --ss-border-strong: #46504b;
+  --ss-text-1:        #E9EFE9;   /* 主文字 15.01:1 ✓ */
+  --ss-text-2:        #C7D2CB;   /* 次文字 11.27:1 ✓ */
+  --ss-text-3:        #B4C4B9;   /* 弱文字 ~9.1:1 ✓（原提案 #6F8577 卡片上仅 3.79:1，不足） */
+  --ss-text-4:        #93A79B;   /* 占位 6.88:1 ✓ */
+  --ss-ink-bar:       #232A28;   /* ★用户裁定「乙」 */
+  --ss-hover-bg:      #2A3230;   /* hover 提亮一档（决策2-B），其上 text-1 11.26:1 ✓ */
+
+  /* 2. 品牌绿阶：明度轴倒置
+     ★ 绿阶编号是「浅→深」，深色下**语义必须对调**：
+       -50 被 21 处用作「选中态浅底」→ 深色须给深绿底；
+       -700 被 25 处用作「品牌深绿文字」→ 深色须给亮绿字。 */
+  --ss-green-50:      #1C382E;
+  --ss-green-100:     #24483B;
+  --ss-green-200:     #2A5545;
+  --ss-green-300:     #6E9C86;
+  --ss-green-400:     #6F9A85;
+  --ss-green-500:     #7FB39C;
+  --ss-green-600:     #5E9B83;   /* ★交互主色 5.42:1 ✓ */
+  --ss-green-700:     #7FAE9B;   /* ★品牌深绿→提亮 7.04:1 ✓（原 #2E5C4C 深底仅 2.0:1 失明） */
+  --ss-green-800:     #9CC7B4;
+  --ss-green-900:     #BCD2C7;
+
+  /* 3. 语义色（深底提亮） */
+  --ss-success:       #4ADE80;   /* 原 #16a34a → 10.06:1 ✓ */
+  --ss-success-bg:    #12351f;
+  --ss-error:         #F87171;   /* 原 #dc2626 仅 3.63:1 不足 → 6.34:1 ✓ */
+  --ss-error-bg:      #3a1414;
+  --ss-warning:       #FBBF24;   /* 原 #d97706 → 10.50:1 ✓ */
+  --ss-running:       #A78BFA;   /* 原 #7c3aed 仅 3.08:1 不足 → 6.44:1 ✓ */
+  --ss-running-bg:    #241a3d;
+  --ss-disabled:      #6F8577;
+  --ss-subtle-bg:     #2A3230;   /* 步4 */
+  --ss-border-soft:   #303835;   /* 步4 */
+  --ss-warning-bg:    #332a12;   /* 步4 */
+  --ss-warning-border: #5c4a1a;  /* 步4 */
+
+  /* 4. 预留（当前无 var() 引用；为步3「JS 硬编码色收敛」备位） */
+  --ss-shadow:        0 1px 2px rgba(0,0,0,.4);
+  --ss-shadow-lg:     0 4px 14px rgba(0,0,0,.5);
+  --ss-on-accent:     #101312;
+}
+
+/* ---- 决策1 → 方案 D「暗彩底 + 亮彩字」（2026-09-19 用户定）----
+   实测：空闲 5.89:1 · 生成中 7.98:1 · 排队 6.79:1 · 失败 8.58:1（全部 PASS）
+   不选 B（亮底深字）因与深色主题直觉相反；不选 C（写死深色）因与变量化方向相悖。 */
+[data-theme="dark"] .ql-badge.q-idle  { background: var(--ss-border-strong); color: var(--ss-text-3); }
+[data-theme="dark"] .ql-badge.q-run   { background: var(--ss-running-bg);    color: var(--ss-running); }
+[data-theme="dark"] .ql-badge.q-queue { background: var(--ss-green-50);      color: var(--ss-green-800); }
+[data-theme="dark"] .ql-badge.q-fail  { background: var(--ss-error-bg);      color: var(--ss-error); }
+[data-theme="dark"] .mp-ver-badge,
+[data-theme="dark"] .btn-primary,
+[data-theme="dark"] .g-btn.g-ok { background: var(--ss-green-50); color: var(--ss-green-800); }
+[data-theme="dark"] .g-btn.g-ok:hover { background: var(--ss-green-100); }
+/* 进度条三态同为「彩底 + 彩字」的近亲，一并按 D 处理 */
+[data-theme="dark"] #g-modal-mask .g-modal .g-progress.running { color: var(--ss-running); background: var(--ss-running-bg); border-color: #3a2f5c; }
+[data-theme="dark"] #g-modal-mask .g-modal .g-progress.success { color: var(--ss-success); background: var(--ss-success-bg); border-color: #1d4a2c; }
+[data-theme="dark"] #g-modal-mask .g-modal .g-progress.error   { color: var(--ss-error);   background: var(--ss-error-bg);   border-color: #5c2020; }
+
+/* ---- 深色下表单控件兜底（⓪-VI-二期 步2 实测补丁）----
+   浅色假设：input/textarea/select 未声明 background，靠 UA 默认白与白色卡底同色。
+   深色下该假设失效 → 出现「白斑」。此处统一兜底；浅色不受影响（选择器带 [data-theme="dark"]）。
+   checkbox/radio/range 为 UA 绘制控件，排除以免破坏原生外观。 */
+[data-theme="dark"] input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+[data-theme="dark"] textarea,
+[data-theme="dark"] select {
+  background: var(--ss-card);
+  color: var(--ss-text-1);
+}
+[data-theme="dark"] input::placeholder,
+[data-theme="dark"] textarea::placeholder { color: var(--ss-text-4); }
+/* gsplat.html: 该页 number 输入框的 color 写成 var(--ss-border)，深色下与 #333 底同色 → 修正 */
+[data-theme="dark"] .gs-funcbar input[type="number"] { color: var(--ss-text-1); }
