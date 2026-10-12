@@ -18,8 +18,7 @@ commit_msg_*.txt
 tmp-docs/
 # 收尾A⑤(2026-09-10): 覆盖全部启动日志(startup2*/startup3*/startup_f1*等)
 startup*.log
-# LICENSE=A 批豁免，归 C 新仓发布(见 F4/LICENSE 登记)，原仓不提交
-LICENSE
+# LICENSE 豁免已解除(2026-10-12)：v2 自本仓发布，LICENSE 纳入跟踪
 # === v2 追加（2026-09-17）===
 .workbuddy/
 测试专区/
