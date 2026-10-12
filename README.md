@@ -40,7 +40,7 @@
 ## 兼容性（重点）
 
 - **任意 ComfyUI**：在「设置」页填入你的 ComfyUI 地址即可接入，**不绑定特定部署**；
-  远程 ComfyUI（如经 Tailscale / 内网）同样支持 —— 只要地址可达即可。
+  远程 ComfyUI（经内网 / 异地组网等，任意可达地址）同样支持 —— 只要地址可达即可。
 - **工作流即插即用**：本项目 `workflows/custom/` 下的工作流，只需在你的 ComfyUI 中能跑通，工坊即可直接调用。
   ★ 注意：**不同工作流依赖不同模型/自定义节点**，请按你的实际部署，用「节点能力」把任务指派给跑得动的节点。
 - **生图自动捕获**：工坊后台监听共享资产目录树（`SharedAssets`），**任何来源**落入该目录的图片都会**自动感知并资产化**，
@@ -68,7 +68,7 @@ FastAPI 后端（main.py，默认 127.0.0.1:3100）
 
 ![设置 · 多节点](docs/screenshots/07-settings.png)
 
-## 快速开始
+## 快速开始（方式二 · 源码版）
 
 **前置**：**Python 3.10 ~ 3.12**（★ **不要用 3.13+**：`audioop` 已被移除，音频校验会报错）
 ＋ 可访问的 ComfyUI 实例（含 `workflows/custom/` 所需工作流与模型）
@@ -76,7 +76,7 @@ FastAPI 后端（main.py，默认 127.0.0.1:3100）
 1. 获取代码（本仓 或 **发布包**）
 2. 双击 `run.bat` 一键启动（或 `python main.py`）
 3. 浏览器打开 `http://127.0.0.1:3100`
-4. 在「设置」页填入 ComfyUI 地址（远程实例经 Tailscale 等可达即可），**并按需为节点标上能力**
+4. 在「设置」页填入 ComfyUI 地址（远程实例经内网 / 异地组网等可达即可），**并按需为节点标上能力**
 
 > 首次启动会自动初始化数据目录与示例结构。
 
@@ -120,14 +120,12 @@ FastAPI 后端（main.py，默认 127.0.0.1:3100）
 
 ## 下载
 
-> ★ **下载 · GitHub Release（免登录直下）** —— 发布后即可下载：
+> ★ **方式一 · 便携版（推荐，免装 Python）** —— GitHub Release 免登录直下：
 >
 > 直链：`https://github.com/z7w337/xiaomaque-storyboard-studio/releases/download/v1.1.0/xiaomaque-storyboard-studio-portable-20261012.zip`
 > 发布页：`https://github.com/z7w337/xiaomaque-storyboard-studio/releases/tag/v1.1.0`
 >
-> 文件完整性校验（SHA256）：
-> `111e0b270cbab1fb6155ecdac034d16e12d77174f82c446975a7264e11073d3b`
-> （`xiaomaque-storyboard-studio-portable-20261012.zip`，49.2 MB）
+> 文件完整性校验（SHA256）：**见发布页说明**（`xiaomaque-storyboard-studio-portable-20261012.zip`，51,557,955 字节）。
 >
 > ★ 当前仅提供 GitHub 单渠道；若国内下载慢，后续可在此补充网盘备用渠道。
 
